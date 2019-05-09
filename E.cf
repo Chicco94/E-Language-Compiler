@@ -1,0 +1,176 @@
+comment "//" ;  --sembra non ci siano commenti in una linea
+comment "/*" "*/" ; -- commento multilinea con doppio asterisco
+
+entrypoints Program, Stmt, RExpr, LExpr ;
+
+rules Boolean ::= "true" | "false" ;
+rules EndLine ::= ";" | "\n" ;
+rules BasicType ::= "bool" | "char" | "string" | "float" | "int" | "void" ;
+
+-- RExpressions
+
+coercions   RExpr 14 ;
+
+-- Boolean Operators
+Or.         RExpr ::= RExpr "||" RExpr1 ;
+And.        RExpr1 ::= RExpr1 "&&" RExpr2 ;
+Not.        RExpr2 ::= "!" RExpr3 ;
+
+-- Comparison Operators
+Eq.         RExpr5 ::= RExpr6 "==" RExpr6 ;
+Neq.        RExpr5 ::= RExpr6 "!=" RExpr6 ;
+
+-- Partial Ordering operators
+Lt.         RExpr5 ::= RExpr6 "<"  RExpr6 ;
+LtE.        RExpr5 ::= RExpr6 "<=" RExpr6 ;
+Gt.         RExpr5 ::= RExpr6 ">"  RExpr6 ;
+GtE.        RExpr5 ::= RExpr6 ">=" RExpr6 ;
+--; arithmetic equality 3 <=> 3.0 -> true
+--;TODO AsBigAs.        RExpr5 ::= RExpr6 "<=>" RExpr6 ;
+ 
+--;TODO Interval operators
+--; IntInc.   RExpr_ ::= RExpr_ ".." RExpr_;
+--; IntExc.   RExpr_ ::= RExpr_ ".!" RExpr_;
+
+--;TODO Shift operators
+--; ShiftL.   RExpr_ ::= RExpr_ "<<" RExpr_;
+--; ShiftR.   RExpr_ ::= RExpr_ ">>" RExpr_;
+
+-- Aritmetic operators
+Add.        RExpr7 ::= RExpr7 "+" RExpr8 ;
+Sub.        RExpr7 ::= RExpr7 "-" RExpr8 ;
+Mul.        RExpr8 ::= RExpr8 "*" RExpr9 ;
+FloDiv.     RExpr8 ::= RExpr8 "/" RExpr9 ;
+IntDiv.     RExpr8 ::= RExpr8 "//" RExpr9 ;
+Rem.        RExpr8 ::= RExpr8 "%" RExpr9 ;
+Mod.        RExpr8 ::= RExpr8 "%%" RExpr9;
+--;TODO ModExp.        RExpr_ ::= RExpr_ "**" RExpr_ "%%" RExpr_ ;
+Pow.        RExpr9 ::= RExpr10 "**" RExpr9 ;
+
+-- Unary prefix
+Neg.        RExpr11 ::= "-" RExpr12 ;
+Ref.        RExpr11 ::= "&" LExpr ;
+--; TODO BinCom RExpr_ ::= "~" LExpr ;
+
+-- Function Call
+FCall.      RExpr12 ::= FunCall ;
+
+-- Data Types
+Int.        RExpr13 ::= Integer ;
+Char.       RExpr13 ::= Char ;
+String.     RExpr13 ::= String ;
+Float.      RExpr13 ::= Double ;
+Bool.       RExpr13 ::= Boolean ;
+
+Lexpr.      RExpr14 ::= LExpr ;
+
+Call.       FunCall ::= Ident "(" [RExpr] ")" ;
+
+separator   RExpr "," ;
+
+
+-- Pre/Post Increment/Decrement
+PreInc.     LExpr ::= "++" LExpr1 ;
+PreDecr.    LExpr ::= "--" LExpr1 ;
+
+PostInc.    LExpr1 ::= LExpr2 "++" ;
+PostDecr.   LExpr1 ::= LExpr2 "--" ;
+
+BasLExpr.  	LExpr2 ::= BLExpr ;
+
+ArrayEl.   	BLExpr ::= BLExpr "[" RExpr "]" ;
+Id.         BLExpr ::= Ident ;
+Deref.      BLExpr ::= "*" BLExpr ;
+
+
+
+Prog.       Program ::= [Decl] ;
+
+-- Declarations
+separator   Decl "" ;
+
+
+-- TODO insert an OPTIONAL guard befor := to define return type
+--; :any -> any type
+--; :void -> procedure
+--; :type -> specific type
+--; def pattern guard := init-expression
+Dvar.       Decl ::= "var" Ident TypeSpec EndLine ;
+DvarAss.    Decl ::= "var" Ident BasicType ":=" RExpr EndLine ;
+-- TODO insert list_pattern assignement, example:
+-- def/var [var1, var2] := expression
+-- def define the constant (definitive) value for a variable
+Dconst.     Decl ::= "dev" Ident BasicType "=" RExpr EndLine ;
+-- BEWARE: E should allow cyclic definition
+-- def a := [1, a, 3] -> [1, [1, [1, ..., 3], 3], 3]
+
+
+-- TODO insert a guard befor body to define return type
+-- :any -> any type
+-- :void -> procedure
+-- :type -> specific type
+-- functions:	 	def name(patterns) guard { body }
+Dfun.       Decl ::= "def" Ident "(" [Parameter] ")" CompStmt ;
+
+BasTyp.     TypeSpec ::= BasicType ;
+
+CompType.   TypeSpec ::= CompoundType ;
+ArrDef.     CompoundType ::= "[" RExpr "]" TypeSpec ;
+ArrUnDef.   CompoundType ::= "["  "]" TypeSpec ;
+Pointer.    CompoundType ::= "*" TypeSpec ;
+
+separator   Parameter "," ;
+
+
+--TODO insert a guard after parameter identifier
+-- def makePurse(var balance :(int >= 0)) :any{...}
+Param.      Parameter  ::= Modality Ident ;
+--Guard.      Guard      ::= ":"
+rules       Modality   ::= {-empty-} | "var";
+
+
+BlockDecl.  CompStmt ::= "{" [Decl] [Stmt] "}" ;
+
+separator Stmt "" ;
+
+-- Statements
+Comp.       Stmt ::= CompStmt ;
+ProcCall.   Stmt ::= FunCall EndLine ;
+-- Jmp.        Stmt ::= JumpStmt EndLine ;
+Iter.       Stmt ::= IterStmt ;
+Sel.        Stmt ::= SelectionStmt ;
+Assgn.      Stmt ::= LExpr Assignment_op RExpr EndLine ;
+LExprStmt.  Stmt ::= LExpr EndLine ;
+
+--TODO evenutally assignement AssignEv.   Assignment_op ::= "<-" ;
+Assign.      Assignment_op ::= ":=" ;
+AssgnOr.     Assignment_op ::= "|=" ;
+AssgnAnd.    Assignment_op ::= "&=" ;
+-- ;TODO AssgnShL.    Assignment_op ::= "<<=" ;
+-- ;?? Assgn__.   Assignment_op ::= "^=" ;
+AssgnAdd.    Assignment_op ::= "+=" ;
+AssgnSub.    Assignment_op ::= "-=" ;
+AssgnMul.    Assignment_op ::= "*=" ;
+AssgnDiv.    Assignment_op ::= "/=" ;
+AssgnDivInt. Assignment_op ::= "//=" ;
+AssgnRem.    Assignment_op ::= "%=" ;
+AssgnMod.    Assignment_op ::= "%%=" ;
+AssgnPow.    Assignment_op ::= "**=" ;
+-- TODO AssgnShR.    Assignment_op ::= ">>=" ;
+
+-- Not found in language
+-- Break.      JumpStmt ::= "break" ;
+-- Continue.   JumpStmt ::= "continue" ;
+
+
+IfNoElse.   SelectionStmt ::= "if" "(" RExpr ")" CompStmt ;
+IfElse.     SelectionStmt ::= "if" "(" RExpr ")" CompStmt "else" CompStmt ;
+Switch.     SelectionStmt ::= "switch" RExpr "match" [SwitchLabel] "default" CompStmt ;
+SwitchL.    SwitchLabel ::= RExpr CompStmt ;
+
+separator SwitchLabel "" ;
+
+
+While.      IterStmt ::= "while" RExpr CompStmt ;
+DoWhile.    IterStmt ::= "do" CompStmt "while" RExpr ";" ;
+For.        IterStmt ::= "for" Ident "in" RExpr CompStmt ;

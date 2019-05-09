@@ -1,0 +1,6 @@
+# ignore compilation results
+*.hi
+*.bak
+*.o
+*.x
+*.y
