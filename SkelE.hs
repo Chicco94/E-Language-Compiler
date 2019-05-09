@@ -76,20 +76,14 @@ transProgram x = case x of
   Prog decls -> failure x
 transGuard :: Guard -> Result
 transGuard x = case x of
-  Guard1 -> failure x
-  GuardGuardT guardt -> failure x
-  GuardGuardC guardc -> failure x
-transGuardT :: GuardT -> Result
-transGuardT x = case x of
-  GdefType basictype -> failure x
-transGuardC :: GuardC -> Result
-transGuardC x = case x of
-  GDefCons rexpr -> failure x
+  GuardVoid -> failure x
+  GuardType basictype -> failure x
+  GuardCons rexpr -> failure x
 transDecl :: Decl -> Result
 transDecl x = case x of
-  Dvar ident typespec endline -> failure x
-  DvarAss ident basictype guard rexpr endline -> failure x
-  Dconst ident basictype rexpr endline -> failure x
+  Dvar ident guard endline -> failure x
+  DvarAss ident guard rexpr endline -> failure x
+  Dconst ident guard rexpr endline -> failure x
   Dfun ident parameters guard compstmt -> failure x
 transTypeSpec :: TypeSpec -> Result
 transTypeSpec x = case x of

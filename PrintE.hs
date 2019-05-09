@@ -157,23 +157,15 @@ instance Print Program where
 
 instance Print Guard where
   prt i e = case e of
-    Guard1 -> prPrec i 0 (concatD [])
-    GuardGuardT guardt -> prPrec i 0 (concatD [prt 0 guardt])
-    GuardGuardC guardc -> prPrec i 0 (concatD [prt 0 guardc])
-
-instance Print GuardT where
-  prt i e = case e of
-    GdefType basictype -> prPrec i 0 (concatD [doc (showString ":"), prt 0 basictype])
-
-instance Print GuardC where
-  prt i e = case e of
-    GDefCons rexpr -> prPrec i 0 (concatD [doc (showString ":"), doc (showString "("), prt 0 rexpr, doc (showString ")")])
+    GuardVoid -> prPrec i 0 (concatD [])
+    GuardType basictype -> prPrec i 0 (concatD [doc (showString ":"), doc (showString "("), prt 0 basictype, doc (showString ")")])
+    GuardCons rexpr -> prPrec i 0 (concatD [doc (showString ":"), doc (showString "("), prt 0 rexpr, doc (showString ")")])
 
 instance Print Decl where
   prt i e = case e of
-    Dvar id typespec endline -> prPrec i 0 (concatD [doc (showString "var"), prt 0 id, prt 0 typespec, prt 0 endline])
-    DvarAss id basictype guard rexpr endline -> prPrec i 0 (concatD [doc (showString "var"), prt 0 id, prt 0 basictype, prt 0 guard, doc (showString ":="), prt 0 rexpr, prt 0 endline])
-    Dconst id basictype rexpr endline -> prPrec i 0 (concatD [doc (showString "dev"), prt 0 id, prt 0 basictype, doc (showString "="), prt 0 rexpr, prt 0 endline])
+    Dvar id guard endline -> prPrec i 0 (concatD [doc (showString "var"), prt 0 id, prt 0 guard, prt 0 endline])
+    DvarAss id guard rexpr endline -> prPrec i 0 (concatD [doc (showString "var"), prt 0 id, prt 0 guard, doc (showString ":="), prt 0 rexpr, prt 0 endline])
+    Dconst id guard rexpr endline -> prPrec i 0 (concatD [doc (showString "def"), prt 0 id, prt 0 guard, doc (showString ":="), prt 0 rexpr, prt 0 endline])
     Dfun id parameters guard compstmt -> prPrec i 0 (concatD [doc (showString "def"), prt 0 id, doc (showString "("), prt 0 parameters, doc (showString ")"), prt 0 guard, prt 0 compstmt])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])

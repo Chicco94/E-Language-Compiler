@@ -30,7 +30,7 @@ GtE.        RExpr5 ::= RExpr6 ">=" RExpr6 ;
  
 --;TODO Interval operators
 --; IntInc.   RExpr_ ::= RExpr_ ".." RExpr_;
---; IntExc.   RExpr_ ::= RExpr_ ".!" RExpr_;
+--; IntExc.   RExpr_ ::= RExpr_ "..!" RExpr_;
 
 --;TODO Shift operators
 --; ShiftL.   RExpr_ ::= RExpr_ "<<" RExpr_;
@@ -89,17 +89,18 @@ Prog.       Program ::= [Decl] ;
 -- Declarations
 separator   Decl "" ;
 
+-- ;GUARDS
+GuardVoid.   Guard ::= {-empty-} ;
+GuardType.   Guard ::= ":" BasicType ;
+GuardCons.   Guard ::= ":" "(" Constraint ")" ;
+banan.      Constraint ::= Type  
 
-rules     Guard ::= {-empty-} | GuardT | GuardC ;
-GdefType. GuardT ::= ":" BasicType ;
-GDefCons. GuardC ::= ":" "(" RExpr ")" ;
-
-Dvar.       Decl ::= "var" Ident TypeSpec EndLine ;
-DvarAss.    Decl ::= "var" Ident BasicType Guard ":=" RExpr EndLine ;
+Dvar.       Decl ::= "var" Ident Guard EndLine ;
+DvarAss.    Decl ::= "var" Ident Guard ":=" RExpr EndLine ;
 -- ; TODO insert list_pattern assignement, example:
 -- ; def/var [var1, var2] := expression
 -- ; def define the constant (definitive) value for a variable
-Dconst.     Decl ::= "dev" Ident BasicType "=" RExpr EndLine ;
+Dconst.     Decl ::= "def" Ident Guard ":=" RExpr EndLine ;
 -- ; BEWARE: E should allow cyclic definition
 -- ; def a := [1, a, 3] -> [1, [1, [1, ..., 3], 3], 3]
 
