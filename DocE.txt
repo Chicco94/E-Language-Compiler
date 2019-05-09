@@ -56,11 +56,11 @@ The symbols used in E are the following:
   | >= | + | - | *
   | / | // | % | %%
   | ** | & | , | ++
-  | -- | [ | ] | :=
-  | = | { | } | |=
-  | &= | += | -= | *=
-  | /= | //= | %= | %%=
-  | **= |  |  | 
+  | -- | [ | ] | :
+  | := | = | { | }
+  | |= | &= | += | -=
+  | *= | /= | //= | %=
+  | %%= | **= |  | 
 
 ===Comments===
 Single-line comments begin with //.Multiple-line comments are  enclosed with /* and */.
@@ -138,10 +138,15 @@ All other symbols are terminals.
   | //Program// | -> | //[Decl]// 
   | //[Decl]// | -> | **eps**
   |  |  **|**  | //Decl// //[Decl]// 
+  | //Guard// | -> | **eps**
+  |  |  **|**  | //GuardT// 
+  |  |  **|**  | //GuardC// 
+  | //GuardT// | -> | ``:`` //BasicType// 
+  | //GuardC// | -> | ``:`` ``(`` //RExpr// ``)`` 
   | //Decl// | -> | ``var`` //Ident// //TypeSpec// //EndLine// 
-  |  |  **|**  | ``var`` //Ident// //BasicType// ``:=`` //RExpr// //EndLine// 
+  |  |  **|**  | ``var`` //Ident// //BasicType// //Guard// ``:=`` //RExpr// //EndLine// 
   |  |  **|**  | ``dev`` //Ident// //BasicType// ``=`` //RExpr// //EndLine// 
-  |  |  **|**  | ``def`` //Ident// ``(`` //[Parameter]// ``)`` //CompStmt// 
+  |  |  **|**  | ``def`` //Ident// ``(`` //[Parameter]// ``)`` //Guard// //CompStmt// 
   | //TypeSpec// | -> | //BasicType// 
   |  |  **|**  | //CompoundType// 
   | //CompoundType// | -> | ``[`` //RExpr// ``]`` //TypeSpec// 
@@ -150,7 +155,7 @@ All other symbols are terminals.
   | //[Parameter]// | -> | **eps**
   |  |  **|**  | //Parameter// 
   |  |  **|**  | //Parameter// ``,`` //[Parameter]// 
-  | //Parameter// | -> | //Modality// //Ident// 
+  | //Parameter// | -> | //Modality// //Ident// //Guard// 
   | //Modality// | -> | **eps**
   |  |  **|**  | ``var`` 
   | //CompStmt// | -> | ``{`` //[Decl]// //[Stmt]// ``}`` 

@@ -74,12 +74,23 @@ transBLExpr x = case x of
 transProgram :: Program -> Result
 transProgram x = case x of
   Prog decls -> failure x
+transGuard :: Guard -> Result
+transGuard x = case x of
+  Guard1 -> failure x
+  GuardGuardT guardt -> failure x
+  GuardGuardC guardc -> failure x
+transGuardT :: GuardT -> Result
+transGuardT x = case x of
+  GdefType basictype -> failure x
+transGuardC :: GuardC -> Result
+transGuardC x = case x of
+  GDefCons rexpr -> failure x
 transDecl :: Decl -> Result
 transDecl x = case x of
   Dvar ident typespec endline -> failure x
-  DvarAss ident basictype rexpr endline -> failure x
+  DvarAss ident basictype guard rexpr endline -> failure x
   Dconst ident basictype rexpr endline -> failure x
-  Dfun ident parameters compstmt -> failure x
+  Dfun ident parameters guard compstmt -> failure x
 transTypeSpec :: TypeSpec -> Result
 transTypeSpec x = case x of
   BasTyp basictype -> failure x
@@ -91,7 +102,7 @@ transCompoundType x = case x of
   Pointer typespec -> failure x
 transParameter :: Parameter -> Result
 transParameter x = case x of
-  Param modality ident -> failure x
+  Param modality ident guard -> failure x
 transModality :: Modality -> Result
 transModality x = case x of
   Modality1 -> failure x

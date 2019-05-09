@@ -90,27 +90,21 @@ Prog.       Program ::= [Decl] ;
 separator   Decl "" ;
 
 
--- TODO insert an OPTIONAL guard befor := to define return type
---; :any -> any type
---; :void -> procedure
---; :type -> specific type
---; def pattern guard := init-expression
+rules     Guard ::= {-empty-} | GuardT | GuardC ;
+GdefType. GuardT ::= ":" BasicType ;
+GDefCons. GuardC ::= ":" "(" RExpr ")" ;
+
 Dvar.       Decl ::= "var" Ident TypeSpec EndLine ;
-DvarAss.    Decl ::= "var" Ident BasicType ":=" RExpr EndLine ;
--- TODO insert list_pattern assignement, example:
--- def/var [var1, var2] := expression
--- def define the constant (definitive) value for a variable
+DvarAss.    Decl ::= "var" Ident BasicType Guard ":=" RExpr EndLine ;
+-- ; TODO insert list_pattern assignement, example:
+-- ; def/var [var1, var2] := expression
+-- ; def define the constant (definitive) value for a variable
 Dconst.     Decl ::= "dev" Ident BasicType "=" RExpr EndLine ;
--- BEWARE: E should allow cyclic definition
--- def a := [1, a, 3] -> [1, [1, [1, ..., 3], 3], 3]
+-- ; BEWARE: E should allow cyclic definition
+-- ; def a := [1, a, 3] -> [1, [1, [1, ..., 3], 3], 3]
 
 
--- TODO insert a guard befor body to define return type
--- :any -> any type
--- :void -> procedure
--- :type -> specific type
--- functions:	 	def name(patterns) guard { body }
-Dfun.       Decl ::= "def" Ident "(" [Parameter] ")" CompStmt ;
+Dfun.       Decl ::= "def" Ident "(" [Parameter] ")" Guard CompStmt ;
 
 BasTyp.     TypeSpec ::= BasicType ;
 
@@ -120,12 +114,7 @@ ArrUnDef.   CompoundType ::= "["  "]" TypeSpec ;
 Pointer.    CompoundType ::= "*" TypeSpec ;
 
 separator   Parameter "," ;
-
-
---TODO insert a guard after parameter identifier
--- def makePurse(var balance :(int >= 0)) :any{...}
-Param.      Parameter  ::= Modality Ident ;
---Guard.      Guard      ::= ":"
+Param.      Parameter  ::= Modality Ident Guard;
 rules       Modality   ::= {-empty-} | "var";
 
 

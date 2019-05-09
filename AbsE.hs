@@ -69,11 +69,20 @@ data BLExpr = ArrayEl BLExpr RExpr | Id Ident | Deref BLExpr
 data Program = Prog [Decl]
   deriving (Eq, Ord, Show, Read)
 
+data Guard = Guard1 | GuardGuardT GuardT | GuardGuardC GuardC
+  deriving (Eq, Ord, Show, Read)
+
+data GuardT = GdefType BasicType
+  deriving (Eq, Ord, Show, Read)
+
+data GuardC = GDefCons RExpr
+  deriving (Eq, Ord, Show, Read)
+
 data Decl
     = Dvar Ident TypeSpec EndLine
-    | DvarAss Ident BasicType RExpr EndLine
+    | DvarAss Ident BasicType Guard RExpr EndLine
     | Dconst Ident BasicType RExpr EndLine
-    | Dfun Ident [Parameter] CompStmt
+    | Dfun Ident [Parameter] Guard CompStmt
   deriving (Eq, Ord, Show, Read)
 
 data TypeSpec = BasTyp BasicType | CompType CompoundType
@@ -83,7 +92,7 @@ data CompoundType
     = ArrDef RExpr TypeSpec | ArrUnDef TypeSpec | Pointer TypeSpec
   deriving (Eq, Ord, Show, Read)
 
-data Parameter = Param Modality Ident
+data Parameter = Param Modality Ident Guard
   deriving (Eq, Ord, Show, Read)
 
 data Modality = Modality1 | Modality_var

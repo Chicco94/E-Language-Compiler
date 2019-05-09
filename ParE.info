@@ -83,50 +83,55 @@ Grammar
 	Program -> ListDecl                                (72)
 	ListDecl ->                                        (73)
 	ListDecl -> ListDecl Decl                          (74)
-	Decl -> 'var' Ident TypeSpec EndLine               (75)
-	Decl -> 'var' Ident BasicType ':=' RExpr EndLine   (76)
-	Decl -> 'dev' Ident BasicType '=' RExpr EndLine    (77)
-	Decl -> 'def' Ident '(' ListParameter ')' CompStmt   (78)
-	TypeSpec -> BasicType                              (79)
-	TypeSpec -> CompoundType                           (80)
-	CompoundType -> '[' RExpr ']' TypeSpec             (81)
-	CompoundType -> '[' ']' TypeSpec                   (82)
-	CompoundType -> '*' TypeSpec                       (83)
-	ListParameter ->                                   (84)
-	ListParameter -> Parameter                         (85)
-	ListParameter -> Parameter ',' ListParameter       (86)
-	Parameter -> Modality Ident                        (87)
-	Modality ->                                        (88)
-	Modality -> 'var'                                  (89)
-	CompStmt -> '{' ListDecl ListStmt '}'              (90)
-	ListStmt ->                                        (91)
-	ListStmt -> ListStmt Stmt                          (92)
-	Stmt -> CompStmt                                   (93)
-	Stmt -> FunCall EndLine                            (94)
-	Stmt -> IterStmt                                   (95)
-	Stmt -> SelectionStmt                              (96)
-	Stmt -> LExpr Assignment_op RExpr EndLine          (97)
-	Stmt -> LExpr EndLine                              (98)
-	Assignment_op -> ':='                              (99)
-	Assignment_op -> '|='                              (100)
-	Assignment_op -> '&='                              (101)
-	Assignment_op -> '+='                              (102)
-	Assignment_op -> '-='                              (103)
-	Assignment_op -> '*='                              (104)
-	Assignment_op -> '/='                              (105)
-	Assignment_op -> '//='                             (106)
-	Assignment_op -> '%='                              (107)
-	Assignment_op -> '%%='                             (108)
-	Assignment_op -> '**='                             (109)
-	SelectionStmt -> 'if' '(' RExpr ')' CompStmt       (110)
-	SelectionStmt -> 'if' '(' RExpr ')' CompStmt 'else' CompStmt   (111)
-	SelectionStmt -> 'switch' RExpr 'match' ListSwitchLabel 'default' CompStmt   (112)
-	SwitchLabel -> RExpr CompStmt                      (113)
-	ListSwitchLabel ->                                 (114)
-	ListSwitchLabel -> ListSwitchLabel SwitchLabel     (115)
-	IterStmt -> 'while' RExpr CompStmt                 (116)
-	IterStmt -> 'do' CompStmt 'while' RExpr ';'        (117)
-	IterStmt -> 'for' Ident 'in' RExpr CompStmt        (118)
+	Guard ->                                           (75)
+	Guard -> GuardT                                    (76)
+	Guard -> GuardC                                    (77)
+	GuardT -> ':' BasicType                            (78)
+	GuardC -> ':' '(' RExpr ')'                        (79)
+	Decl -> 'var' Ident TypeSpec EndLine               (80)
+	Decl -> 'var' Ident BasicType Guard ':=' RExpr EndLine   (81)
+	Decl -> 'dev' Ident BasicType '=' RExpr EndLine    (82)
+	Decl -> 'def' Ident '(' ListParameter ')' Guard CompStmt   (83)
+	TypeSpec -> BasicType                              (84)
+	TypeSpec -> CompoundType                           (85)
+	CompoundType -> '[' RExpr ']' TypeSpec             (86)
+	CompoundType -> '[' ']' TypeSpec                   (87)
+	CompoundType -> '*' TypeSpec                       (88)
+	ListParameter ->                                   (89)
+	ListParameter -> Parameter                         (90)
+	ListParameter -> Parameter ',' ListParameter       (91)
+	Parameter -> Modality Ident Guard                  (92)
+	Modality ->                                        (93)
+	Modality -> 'var'                                  (94)
+	CompStmt -> '{' ListDecl ListStmt '}'              (95)
+	ListStmt ->                                        (96)
+	ListStmt -> ListStmt Stmt                          (97)
+	Stmt -> CompStmt                                   (98)
+	Stmt -> FunCall EndLine                            (99)
+	Stmt -> IterStmt                                   (100)
+	Stmt -> SelectionStmt                              (101)
+	Stmt -> LExpr Assignment_op RExpr EndLine          (102)
+	Stmt -> LExpr EndLine                              (103)
+	Assignment_op -> ':='                              (104)
+	Assignment_op -> '|='                              (105)
+	Assignment_op -> '&='                              (106)
+	Assignment_op -> '+='                              (107)
+	Assignment_op -> '-='                              (108)
+	Assignment_op -> '*='                              (109)
+	Assignment_op -> '/='                              (110)
+	Assignment_op -> '//='                             (111)
+	Assignment_op -> '%='                              (112)
+	Assignment_op -> '%%='                             (113)
+	Assignment_op -> '**='                             (114)
+	SelectionStmt -> 'if' '(' RExpr ')' CompStmt       (115)
+	SelectionStmt -> 'if' '(' RExpr ')' CompStmt 'else' CompStmt   (116)
+	SelectionStmt -> 'switch' RExpr 'match' ListSwitchLabel 'default' CompStmt   (117)
+	SwitchLabel -> RExpr CompStmt                      (118)
+	ListSwitchLabel ->                                 (119)
+	ListSwitchLabel -> ListSwitchLabel SwitchLabel     (120)
+	IterStmt -> 'while' RExpr CompStmt                 (121)
+	IterStmt -> 'do' CompStmt 'while' RExpr ';'        (122)
+	IterStmt -> 'for' Ident 'in' RExpr CompStmt        (123)
 
 -----------------------------------------------------------------------------
 Terminals
@@ -159,40 +164,41 @@ Terminals
 	'//'           { PT _ (TS _ 25) }
 	'//='          { PT _ (TS _ 26) }
 	'/='           { PT _ (TS _ 27) }
-	':='           { PT _ (TS _ 28) }
-	';'            { PT _ (TS _ 29) }
-	'<'            { PT _ (TS _ 30) }
-	'<='           { PT _ (TS _ 31) }
-	'='            { PT _ (TS _ 32) }
-	'=='           { PT _ (TS _ 33) }
-	'>'            { PT _ (TS _ 34) }
-	'>='           { PT _ (TS _ 35) }
-	'['            { PT _ (TS _ 36) }
-	']'            { PT _ (TS _ 37) }
-	'bool'         { PT _ (TS _ 38) }
-	'char'         { PT _ (TS _ 39) }
-	'def'          { PT _ (TS _ 40) }
-	'default'      { PT _ (TS _ 41) }
-	'dev'          { PT _ (TS _ 42) }
-	'do'           { PT _ (TS _ 43) }
-	'else'         { PT _ (TS _ 44) }
-	'false'        { PT _ (TS _ 45) }
-	'float'        { PT _ (TS _ 46) }
-	'for'          { PT _ (TS _ 47) }
-	'if'           { PT _ (TS _ 48) }
-	'in'           { PT _ (TS _ 49) }
-	'int'          { PT _ (TS _ 50) }
-	'match'        { PT _ (TS _ 51) }
-	'string'       { PT _ (TS _ 52) }
-	'switch'       { PT _ (TS _ 53) }
-	'true'         { PT _ (TS _ 54) }
-	'var'          { PT _ (TS _ 55) }
-	'void'         { PT _ (TS _ 56) }
-	'while'        { PT _ (TS _ 57) }
-	'{'            { PT _ (TS _ 58) }
-	'|='           { PT _ (TS _ 59) }
-	'||'           { PT _ (TS _ 60) }
-	'}'            { PT _ (TS _ 61) }
+	':'            { PT _ (TS _ 28) }
+	':='           { PT _ (TS _ 29) }
+	';'            { PT _ (TS _ 30) }
+	'<'            { PT _ (TS _ 31) }
+	'<='           { PT _ (TS _ 32) }
+	'='            { PT _ (TS _ 33) }
+	'=='           { PT _ (TS _ 34) }
+	'>'            { PT _ (TS _ 35) }
+	'>='           { PT _ (TS _ 36) }
+	'['            { PT _ (TS _ 37) }
+	']'            { PT _ (TS _ 38) }
+	'bool'         { PT _ (TS _ 39) }
+	'char'         { PT _ (TS _ 40) }
+	'def'          { PT _ (TS _ 41) }
+	'default'      { PT _ (TS _ 42) }
+	'dev'          { PT _ (TS _ 43) }
+	'do'           { PT _ (TS _ 44) }
+	'else'         { PT _ (TS _ 45) }
+	'false'        { PT _ (TS _ 46) }
+	'float'        { PT _ (TS _ 47) }
+	'for'          { PT _ (TS _ 48) }
+	'if'           { PT _ (TS _ 49) }
+	'in'           { PT _ (TS _ 50) }
+	'int'          { PT _ (TS _ 51) }
+	'match'        { PT _ (TS _ 52) }
+	'string'       { PT _ (TS _ 53) }
+	'switch'       { PT _ (TS _ 54) }
+	'true'         { PT _ (TS _ 55) }
+	'var'          { PT _ (TS _ 56) }
+	'void'         { PT _ (TS _ 57) }
+	'while'        { PT _ (TS _ 58) }
+	'{'            { PT _ (TS _ 59) }
+	'|='           { PT _ (TS _ 60) }
+	'||'           { PT _ (TS _ 61) }
+	'}'            { PT _ (TS _ 62) }
 	L_integ        { PT _ (TI $$) }
 	L_charac       { PT _ (TC $$) }
 	L_quoted       { PT _ (TL $$) }
@@ -237,20 +243,23 @@ Non-terminals
 	BLExpr          rules 69, 70, 71
 	Program         rule  72
 	ListDecl        rules 73, 74
-	Decl            rules 75, 76, 77, 78
-	TypeSpec        rules 79, 80
-	CompoundType    rules 81, 82, 83
-	ListParameter   rules 84, 85, 86
-	Parameter       rule  87
-	Modality        rules 88, 89
-	CompStmt        rule  90
-	ListStmt        rules 91, 92
-	Stmt            rules 93, 94, 95, 96, 97, 98
-	Assignment_op   rules 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109
-	SelectionStmt   rules 110, 111, 112
-	SwitchLabel     rule  113
-	ListSwitchLabel rules 114, 115
-	IterStmt        rules 116, 117, 118
+	Guard           rules 75, 76, 77
+	GuardT          rule  78
+	GuardC          rule  79
+	Decl            rules 80, 81, 82, 83
+	TypeSpec        rules 84, 85
+	CompoundType    rules 86, 87, 88
+	ListParameter   rules 89, 90, 91
+	Parameter       rule  92
+	Modality        rules 93, 94
+	CompStmt        rule  95
+	ListStmt        rules 96, 97
+	Stmt            rules 98, 99, 100, 101, 102, 103
+	Assignment_op   rules 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114
+	SelectionStmt   rules 115, 116, 117
+	SwitchLabel     rule  118
+	ListSwitchLabel rules 119, 120
+	IterStmt        rules 121, 122, 123
 
 -----------------------------------------------------------------------------
 States
@@ -1281,6 +1290,7 @@ State 41
 	'++'           reduce using rule 8
 	','            reduce using rule 8
 	'--'           reduce using rule 8
+	':'            reduce using rule 8
 	'['            reduce using rule 8
 	'bool'         reduce using rule 8
 	'char'         reduce using rule 8
@@ -1293,7 +1303,7 @@ State 41
 
 State 42
 
-	Stmt -> FunCall . EndLine                           (rule 94)
+	Stmt -> FunCall . EndLine                           (rule 99)
 
 	'
 '            shift, and enter state 68
@@ -1303,8 +1313,8 @@ State 42
 
 State 43
 
-	Stmt -> LExpr . Assignment_op RExpr EndLine         (rule 97)
-	Stmt -> LExpr . EndLine                             (rule 98)
+	Stmt -> LExpr . Assignment_op RExpr EndLine         (rule 102)
+	Stmt -> LExpr . EndLine                             (rule 103)
 
 	'
 '            shift, and enter state 68
@@ -1326,19 +1336,19 @@ State 43
 
 State 44
 
-	Stmt -> CompStmt .                                  (rule 93)
+	Stmt -> CompStmt .                                  (rule 98)
 
-	'++'           reduce using rule 93
-	'--'           reduce using rule 93
-	'do'           reduce using rule 93
-	'for'          reduce using rule 93
-	'if'           reduce using rule 93
-	'switch'       reduce using rule 93
-	'while'        reduce using rule 93
-	'{'            reduce using rule 93
-	'}'            reduce using rule 93
-	L_ident        reduce using rule 93
-	%eof           reduce using rule 93
+	'++'           reduce using rule 98
+	'--'           reduce using rule 98
+	'do'           reduce using rule 98
+	'for'          reduce using rule 98
+	'if'           reduce using rule 98
+	'switch'       reduce using rule 98
+	'while'        reduce using rule 98
+	'{'            reduce using rule 98
+	'}'            reduce using rule 98
+	L_ident        reduce using rule 98
+	%eof           reduce using rule 98
 
 
 State 45
@@ -1350,41 +1360,41 @@ State 45
 
 State 46
 
-	Stmt -> SelectionStmt .                             (rule 96)
+	Stmt -> SelectionStmt .                             (rule 101)
 
-	'++'           reduce using rule 96
-	'--'           reduce using rule 96
-	'do'           reduce using rule 96
-	'for'          reduce using rule 96
-	'if'           reduce using rule 96
-	'switch'       reduce using rule 96
-	'while'        reduce using rule 96
-	'{'            reduce using rule 96
-	'}'            reduce using rule 96
-	L_ident        reduce using rule 96
-	%eof           reduce using rule 96
+	'++'           reduce using rule 101
+	'--'           reduce using rule 101
+	'do'           reduce using rule 101
+	'for'          reduce using rule 101
+	'if'           reduce using rule 101
+	'switch'       reduce using rule 101
+	'while'        reduce using rule 101
+	'{'            reduce using rule 101
+	'}'            reduce using rule 101
+	L_ident        reduce using rule 101
+	%eof           reduce using rule 101
 
 
 State 47
 
-	Stmt -> IterStmt .                                  (rule 95)
+	Stmt -> IterStmt .                                  (rule 100)
 
-	'++'           reduce using rule 95
-	'--'           reduce using rule 95
-	'do'           reduce using rule 95
-	'for'          reduce using rule 95
-	'if'           reduce using rule 95
-	'switch'       reduce using rule 95
-	'while'        reduce using rule 95
-	'{'            reduce using rule 95
-	'}'            reduce using rule 95
-	L_ident        reduce using rule 95
-	%eof           reduce using rule 95
+	'++'           reduce using rule 100
+	'--'           reduce using rule 100
+	'do'           reduce using rule 100
+	'for'          reduce using rule 100
+	'if'           reduce using rule 100
+	'switch'       reduce using rule 100
+	'while'        reduce using rule 100
+	'{'            reduce using rule 100
+	'}'            reduce using rule 100
+	L_ident        reduce using rule 100
+	%eof           reduce using rule 100
 
 
 State 48
 
-	IterStmt -> 'do' . CompStmt 'while' RExpr ';'       (rule 117)
+	IterStmt -> 'do' . CompStmt 'while' RExpr ';'       (rule 122)
 
 	'{'            shift, and enter state 53
 
@@ -1392,7 +1402,7 @@ State 48
 
 State 49
 
-	IterStmt -> 'for' . Ident 'in' RExpr CompStmt       (rule 118)
+	IterStmt -> 'for' . Ident 'in' RExpr CompStmt       (rule 123)
 
 	L_ident        shift, and enter state 41
 
@@ -1400,15 +1410,15 @@ State 49
 
 State 50
 
-	SelectionStmt -> 'if' . '(' RExpr ')' CompStmt      (rule 110)
-	SelectionStmt -> 'if' . '(' RExpr ')' CompStmt 'else' CompStmt    (rule 111)
+	SelectionStmt -> 'if' . '(' RExpr ')' CompStmt      (rule 115)
+	SelectionStmt -> 'if' . '(' RExpr ')' CompStmt 'else' CompStmt    (rule 116)
 
 	'('            shift, and enter state 63
 
 
 State 51
 
-	SelectionStmt -> 'switch' . RExpr 'match' ListSwitchLabel 'default' CompStmt    (rule 112)
+	SelectionStmt -> 'switch' . RExpr 'match' ListSwitchLabel 'default' CompStmt    (rule 117)
 
 	'!'            shift, and enter state 32
 	'&'            shift, and enter state 33
@@ -1450,7 +1460,7 @@ State 51
 
 State 52
 
-	IterStmt -> 'while' . RExpr CompStmt                (rule 116)
+	IterStmt -> 'while' . RExpr CompStmt                (rule 121)
 
 	'!'            shift, and enter state 32
 	'&'            shift, and enter state 33
@@ -1492,7 +1502,7 @@ State 52
 
 State 53
 
-	CompStmt -> '{' . ListDecl ListStmt '}'             (rule 90)
+	CompStmt -> '{' . ListDecl ListStmt '}'             (rule 95)
 
 	'++'           reduce using rule 73
 	'--'           reduce using rule 73
@@ -1551,7 +1561,7 @@ State 56
 
 State 57
 
-	Decl -> 'def' . Ident '(' ListParameter ')' CompStmt    (rule 78)
+	Decl -> 'def' . Ident '(' ListParameter ')' Guard CompStmt    (rule 83)
 
 	L_ident        shift, and enter state 41
 
@@ -1559,7 +1569,7 @@ State 57
 
 State 58
 
-	Decl -> 'dev' . Ident BasicType '=' RExpr EndLine    (rule 77)
+	Decl -> 'dev' . Ident BasicType '=' RExpr EndLine    (rule 82)
 
 	L_ident        shift, and enter state 41
 
@@ -1567,8 +1577,8 @@ State 58
 
 State 59
 
-	Decl -> 'var' . Ident TypeSpec EndLine              (rule 75)
-	Decl -> 'var' . Ident BasicType ':=' RExpr EndLine    (rule 76)
+	Decl -> 'var' . Ident TypeSpec EndLine              (rule 80)
+	Decl -> 'var' . Ident BasicType Guard ':=' RExpr EndLine    (rule 81)
 
 	L_ident        shift, and enter state 41
 
@@ -1577,21 +1587,21 @@ State 59
 State 60
 
 	ListDecl -> ListDecl . Decl                         (rule 74)
-	CompStmt -> '{' ListDecl . ListStmt '}'             (rule 90)
+	CompStmt -> '{' ListDecl . ListStmt '}'             (rule 95)
 
-	'++'           reduce using rule 91
-	'--'           reduce using rule 91
+	'++'           reduce using rule 96
+	'--'           reduce using rule 96
 	'def'          shift, and enter state 57
 	'dev'          shift, and enter state 58
-	'do'           reduce using rule 91
-	'for'          reduce using rule 91
-	'if'           reduce using rule 91
-	'switch'       reduce using rule 91
+	'do'           reduce using rule 96
+	'for'          reduce using rule 96
+	'if'           reduce using rule 96
+	'switch'       reduce using rule 96
 	'var'          shift, and enter state 59
-	'while'        reduce using rule 91
-	'{'            reduce using rule 91
-	'}'            reduce using rule 91
-	L_ident        reduce using rule 91
+	'while'        reduce using rule 96
+	'{'            reduce using rule 96
+	'}'            reduce using rule 96
+	L_ident        reduce using rule 96
 
 	Decl           goto state 56
 	ListStmt       goto state 138
@@ -1599,7 +1609,7 @@ State 60
 State 61
 
 	RExpr -> RExpr . '||' RExpr1                        (rule 20)
-	IterStmt -> 'while' RExpr . CompStmt                (rule 116)
+	IterStmt -> 'while' RExpr . CompStmt                (rule 121)
 
 	'{'            shift, and enter state 53
 	'||'           shift, and enter state 101
@@ -1609,7 +1619,7 @@ State 61
 State 62
 
 	RExpr -> RExpr . '||' RExpr1                        (rule 20)
-	SelectionStmt -> 'switch' RExpr . 'match' ListSwitchLabel 'default' CompStmt    (rule 112)
+	SelectionStmt -> 'switch' RExpr . 'match' ListSwitchLabel 'default' CompStmt    (rule 117)
 
 	'match'        shift, and enter state 136
 	'||'           shift, and enter state 101
@@ -1617,8 +1627,8 @@ State 62
 
 State 63
 
-	SelectionStmt -> 'if' '(' . RExpr ')' CompStmt      (rule 110)
-	SelectionStmt -> 'if' '(' . RExpr ')' CompStmt 'else' CompStmt    (rule 111)
+	SelectionStmt -> 'if' '(' . RExpr ')' CompStmt      (rule 115)
+	SelectionStmt -> 'if' '(' . RExpr ')' CompStmt 'else' CompStmt    (rule 116)
 
 	'!'            shift, and enter state 32
 	'&'            shift, and enter state 33
@@ -1660,38 +1670,38 @@ State 63
 
 State 64
 
-	IterStmt -> 'for' Ident . 'in' RExpr CompStmt       (rule 118)
+	IterStmt -> 'for' Ident . 'in' RExpr CompStmt       (rule 123)
 
 	'in'           shift, and enter state 134
 
 
 State 65
 
-	IterStmt -> 'do' CompStmt . 'while' RExpr ';'       (rule 117)
+	IterStmt -> 'do' CompStmt . 'while' RExpr ';'       (rule 122)
 
 	'while'        shift, and enter state 133
 
 
 State 66
 
-	Stmt -> LExpr EndLine .                             (rule 98)
+	Stmt -> LExpr EndLine .                             (rule 103)
 
-	'++'           reduce using rule 98
-	'--'           reduce using rule 98
-	'do'           reduce using rule 98
-	'for'          reduce using rule 98
-	'if'           reduce using rule 98
-	'switch'       reduce using rule 98
-	'while'        reduce using rule 98
-	'{'            reduce using rule 98
-	'}'            reduce using rule 98
-	L_ident        reduce using rule 98
-	%eof           reduce using rule 98
+	'++'           reduce using rule 103
+	'--'           reduce using rule 103
+	'do'           reduce using rule 103
+	'for'          reduce using rule 103
+	'if'           reduce using rule 103
+	'switch'       reduce using rule 103
+	'while'        reduce using rule 103
+	'{'            reduce using rule 103
+	'}'            reduce using rule 103
+	L_ident        reduce using rule 103
+	%eof           reduce using rule 103
 
 
 State 67
 
-	Stmt -> LExpr Assignment_op . RExpr EndLine         (rule 97)
+	Stmt -> LExpr Assignment_op . RExpr EndLine         (rule 102)
 
 	'!'            shift, and enter state 32
 	'&'            shift, and enter state 33
@@ -1754,140 +1764,45 @@ State 68
 
 State 69
 
-	Assignment_op -> '%%=' .                            (rule 108)
+	Assignment_op -> '%%=' .                            (rule 113)
 
-	'!'            reduce using rule 108
-	'&'            reduce using rule 108
-	'('            reduce using rule 108
-	'++'           reduce using rule 108
-	'-'            reduce using rule 108
-	'--'           reduce using rule 108
-	'false'        reduce using rule 108
-	'true'         reduce using rule 108
-	L_integ        reduce using rule 108
-	L_charac       reduce using rule 108
-	L_quoted       reduce using rule 108
-	L_doubl        reduce using rule 108
-	L_ident        reduce using rule 108
+	'!'            reduce using rule 113
+	'&'            reduce using rule 113
+	'('            reduce using rule 113
+	'++'           reduce using rule 113
+	'-'            reduce using rule 113
+	'--'           reduce using rule 113
+	'false'        reduce using rule 113
+	'true'         reduce using rule 113
+	L_integ        reduce using rule 113
+	L_charac       reduce using rule 113
+	L_quoted       reduce using rule 113
+	L_doubl        reduce using rule 113
+	L_ident        reduce using rule 113
 
 
 State 70
 
-	Assignment_op -> '%=' .                             (rule 107)
+	Assignment_op -> '%=' .                             (rule 112)
 
-	'!'            reduce using rule 107
-	'&'            reduce using rule 107
-	'('            reduce using rule 107
-	'++'           reduce using rule 107
-	'-'            reduce using rule 107
-	'--'           reduce using rule 107
-	'false'        reduce using rule 107
-	'true'         reduce using rule 107
-	L_integ        reduce using rule 107
-	L_charac       reduce using rule 107
-	L_quoted       reduce using rule 107
-	L_doubl        reduce using rule 107
-	L_ident        reduce using rule 107
+	'!'            reduce using rule 112
+	'&'            reduce using rule 112
+	'('            reduce using rule 112
+	'++'           reduce using rule 112
+	'-'            reduce using rule 112
+	'--'           reduce using rule 112
+	'false'        reduce using rule 112
+	'true'         reduce using rule 112
+	L_integ        reduce using rule 112
+	L_charac       reduce using rule 112
+	L_quoted       reduce using rule 112
+	L_doubl        reduce using rule 112
+	L_ident        reduce using rule 112
 
 
 State 71
 
-	Assignment_op -> '&=' .                             (rule 101)
-
-	'!'            reduce using rule 101
-	'&'            reduce using rule 101
-	'('            reduce using rule 101
-	'++'           reduce using rule 101
-	'-'            reduce using rule 101
-	'--'           reduce using rule 101
-	'false'        reduce using rule 101
-	'true'         reduce using rule 101
-	L_integ        reduce using rule 101
-	L_charac       reduce using rule 101
-	L_quoted       reduce using rule 101
-	L_doubl        reduce using rule 101
-	L_ident        reduce using rule 101
-
-
-State 72
-
-	Assignment_op -> '**=' .                            (rule 109)
-
-	'!'            reduce using rule 109
-	'&'            reduce using rule 109
-	'('            reduce using rule 109
-	'++'           reduce using rule 109
-	'-'            reduce using rule 109
-	'--'           reduce using rule 109
-	'false'        reduce using rule 109
-	'true'         reduce using rule 109
-	L_integ        reduce using rule 109
-	L_charac       reduce using rule 109
-	L_quoted       reduce using rule 109
-	L_doubl        reduce using rule 109
-	L_ident        reduce using rule 109
-
-
-State 73
-
-	Assignment_op -> '*=' .                             (rule 104)
-
-	'!'            reduce using rule 104
-	'&'            reduce using rule 104
-	'('            reduce using rule 104
-	'++'           reduce using rule 104
-	'-'            reduce using rule 104
-	'--'           reduce using rule 104
-	'false'        reduce using rule 104
-	'true'         reduce using rule 104
-	L_integ        reduce using rule 104
-	L_charac       reduce using rule 104
-	L_quoted       reduce using rule 104
-	L_doubl        reduce using rule 104
-	L_ident        reduce using rule 104
-
-
-State 74
-
-	Assignment_op -> '+=' .                             (rule 102)
-
-	'!'            reduce using rule 102
-	'&'            reduce using rule 102
-	'('            reduce using rule 102
-	'++'           reduce using rule 102
-	'-'            reduce using rule 102
-	'--'           reduce using rule 102
-	'false'        reduce using rule 102
-	'true'         reduce using rule 102
-	L_integ        reduce using rule 102
-	L_charac       reduce using rule 102
-	L_quoted       reduce using rule 102
-	L_doubl        reduce using rule 102
-	L_ident        reduce using rule 102
-
-
-State 75
-
-	Assignment_op -> '-=' .                             (rule 103)
-
-	'!'            reduce using rule 103
-	'&'            reduce using rule 103
-	'('            reduce using rule 103
-	'++'           reduce using rule 103
-	'-'            reduce using rule 103
-	'--'           reduce using rule 103
-	'false'        reduce using rule 103
-	'true'         reduce using rule 103
-	L_integ        reduce using rule 103
-	L_charac       reduce using rule 103
-	L_quoted       reduce using rule 103
-	L_doubl        reduce using rule 103
-	L_ident        reduce using rule 103
-
-
-State 76
-
-	Assignment_op -> '//=' .                            (rule 106)
+	Assignment_op -> '&=' .                             (rule 106)
 
 	'!'            reduce using rule 106
 	'&'            reduce using rule 106
@@ -1904,42 +1819,137 @@ State 76
 	L_ident        reduce using rule 106
 
 
+State 72
+
+	Assignment_op -> '**=' .                            (rule 114)
+
+	'!'            reduce using rule 114
+	'&'            reduce using rule 114
+	'('            reduce using rule 114
+	'++'           reduce using rule 114
+	'-'            reduce using rule 114
+	'--'           reduce using rule 114
+	'false'        reduce using rule 114
+	'true'         reduce using rule 114
+	L_integ        reduce using rule 114
+	L_charac       reduce using rule 114
+	L_quoted       reduce using rule 114
+	L_doubl        reduce using rule 114
+	L_ident        reduce using rule 114
+
+
+State 73
+
+	Assignment_op -> '*=' .                             (rule 109)
+
+	'!'            reduce using rule 109
+	'&'            reduce using rule 109
+	'('            reduce using rule 109
+	'++'           reduce using rule 109
+	'-'            reduce using rule 109
+	'--'           reduce using rule 109
+	'false'        reduce using rule 109
+	'true'         reduce using rule 109
+	L_integ        reduce using rule 109
+	L_charac       reduce using rule 109
+	L_quoted       reduce using rule 109
+	L_doubl        reduce using rule 109
+	L_ident        reduce using rule 109
+
+
+State 74
+
+	Assignment_op -> '+=' .                             (rule 107)
+
+	'!'            reduce using rule 107
+	'&'            reduce using rule 107
+	'('            reduce using rule 107
+	'++'           reduce using rule 107
+	'-'            reduce using rule 107
+	'--'           reduce using rule 107
+	'false'        reduce using rule 107
+	'true'         reduce using rule 107
+	L_integ        reduce using rule 107
+	L_charac       reduce using rule 107
+	L_quoted       reduce using rule 107
+	L_doubl        reduce using rule 107
+	L_ident        reduce using rule 107
+
+
+State 75
+
+	Assignment_op -> '-=' .                             (rule 108)
+
+	'!'            reduce using rule 108
+	'&'            reduce using rule 108
+	'('            reduce using rule 108
+	'++'           reduce using rule 108
+	'-'            reduce using rule 108
+	'--'           reduce using rule 108
+	'false'        reduce using rule 108
+	'true'         reduce using rule 108
+	L_integ        reduce using rule 108
+	L_charac       reduce using rule 108
+	L_quoted       reduce using rule 108
+	L_doubl        reduce using rule 108
+	L_ident        reduce using rule 108
+
+
+State 76
+
+	Assignment_op -> '//=' .                            (rule 111)
+
+	'!'            reduce using rule 111
+	'&'            reduce using rule 111
+	'('            reduce using rule 111
+	'++'           reduce using rule 111
+	'-'            reduce using rule 111
+	'--'           reduce using rule 111
+	'false'        reduce using rule 111
+	'true'         reduce using rule 111
+	L_integ        reduce using rule 111
+	L_charac       reduce using rule 111
+	L_quoted       reduce using rule 111
+	L_doubl        reduce using rule 111
+	L_ident        reduce using rule 111
+
+
 State 77
 
-	Assignment_op -> '/=' .                             (rule 105)
+	Assignment_op -> '/=' .                             (rule 110)
 
-	'!'            reduce using rule 105
-	'&'            reduce using rule 105
-	'('            reduce using rule 105
-	'++'           reduce using rule 105
-	'-'            reduce using rule 105
-	'--'           reduce using rule 105
-	'false'        reduce using rule 105
-	'true'         reduce using rule 105
-	L_integ        reduce using rule 105
-	L_charac       reduce using rule 105
-	L_quoted       reduce using rule 105
-	L_doubl        reduce using rule 105
-	L_ident        reduce using rule 105
+	'!'            reduce using rule 110
+	'&'            reduce using rule 110
+	'('            reduce using rule 110
+	'++'           reduce using rule 110
+	'-'            reduce using rule 110
+	'--'           reduce using rule 110
+	'false'        reduce using rule 110
+	'true'         reduce using rule 110
+	L_integ        reduce using rule 110
+	L_charac       reduce using rule 110
+	L_quoted       reduce using rule 110
+	L_doubl        reduce using rule 110
+	L_ident        reduce using rule 110
 
 
 State 78
 
-	Assignment_op -> ':=' .                             (rule 99)
+	Assignment_op -> ':=' .                             (rule 104)
 
-	'!'            reduce using rule 99
-	'&'            reduce using rule 99
-	'('            reduce using rule 99
-	'++'           reduce using rule 99
-	'-'            reduce using rule 99
-	'--'           reduce using rule 99
-	'false'        reduce using rule 99
-	'true'         reduce using rule 99
-	L_integ        reduce using rule 99
-	L_charac       reduce using rule 99
-	L_quoted       reduce using rule 99
-	L_doubl        reduce using rule 99
-	L_ident        reduce using rule 99
+	'!'            reduce using rule 104
+	'&'            reduce using rule 104
+	'('            reduce using rule 104
+	'++'           reduce using rule 104
+	'-'            reduce using rule 104
+	'--'           reduce using rule 104
+	'false'        reduce using rule 104
+	'true'         reduce using rule 104
+	L_integ        reduce using rule 104
+	L_charac       reduce using rule 104
+	L_quoted       reduce using rule 104
+	L_doubl        reduce using rule 104
+	L_ident        reduce using rule 104
 
 
 State 79
@@ -1964,38 +1974,38 @@ State 79
 
 State 80
 
-	Assignment_op -> '|=' .                             (rule 100)
+	Assignment_op -> '|=' .                             (rule 105)
 
-	'!'            reduce using rule 100
-	'&'            reduce using rule 100
-	'('            reduce using rule 100
-	'++'           reduce using rule 100
-	'-'            reduce using rule 100
-	'--'           reduce using rule 100
-	'false'        reduce using rule 100
-	'true'         reduce using rule 100
-	L_integ        reduce using rule 100
-	L_charac       reduce using rule 100
-	L_quoted       reduce using rule 100
-	L_doubl        reduce using rule 100
-	L_ident        reduce using rule 100
+	'!'            reduce using rule 105
+	'&'            reduce using rule 105
+	'('            reduce using rule 105
+	'++'           reduce using rule 105
+	'-'            reduce using rule 105
+	'--'           reduce using rule 105
+	'false'        reduce using rule 105
+	'true'         reduce using rule 105
+	L_integ        reduce using rule 105
+	L_charac       reduce using rule 105
+	L_quoted       reduce using rule 105
+	L_doubl        reduce using rule 105
+	L_ident        reduce using rule 105
 
 
 State 81
 
-	Stmt -> FunCall EndLine .                           (rule 94)
+	Stmt -> FunCall EndLine .                           (rule 99)
 
-	'++'           reduce using rule 94
-	'--'           reduce using rule 94
-	'do'           reduce using rule 94
-	'for'          reduce using rule 94
-	'if'           reduce using rule 94
-	'switch'       reduce using rule 94
-	'while'        reduce using rule 94
-	'{'            reduce using rule 94
-	'}'            reduce using rule 94
-	L_ident        reduce using rule 94
-	%eof           reduce using rule 94
+	'++'           reduce using rule 99
+	'--'           reduce using rule 99
+	'do'           reduce using rule 99
+	'for'          reduce using rule 99
+	'if'           reduce using rule 99
+	'switch'       reduce using rule 99
+	'while'        reduce using rule 99
+	'{'            reduce using rule 99
+	'}'            reduce using rule 99
+	L_ident        reduce using rule 99
+	%eof           reduce using rule 99
 
 
 State 82
@@ -3378,7 +3388,7 @@ State 131
 State 132
 
 	RExpr -> RExpr . '||' RExpr1                        (rule 20)
-	Stmt -> LExpr Assignment_op RExpr . EndLine         (rule 97)
+	Stmt -> LExpr Assignment_op RExpr . EndLine         (rule 102)
 
 	'
 '            shift, and enter state 68
@@ -3389,7 +3399,7 @@ State 132
 
 State 133
 
-	IterStmt -> 'do' CompStmt 'while' . RExpr ';'       (rule 117)
+	IterStmt -> 'do' CompStmt 'while' . RExpr ';'       (rule 122)
 
 	'!'            shift, and enter state 32
 	'&'            shift, and enter state 33
@@ -3431,7 +3441,7 @@ State 133
 
 State 134
 
-	IterStmt -> 'for' Ident 'in' . RExpr CompStmt       (rule 118)
+	IterStmt -> 'for' Ident 'in' . RExpr CompStmt       (rule 123)
 
 	'!'            shift, and enter state 32
 	'&'            shift, and enter state 33
@@ -3474,8 +3484,8 @@ State 134
 State 135
 
 	RExpr -> RExpr . '||' RExpr1                        (rule 20)
-	SelectionStmt -> 'if' '(' RExpr . ')' CompStmt      (rule 110)
-	SelectionStmt -> 'if' '(' RExpr . ')' CompStmt 'else' CompStmt    (rule 111)
+	SelectionStmt -> 'if' '(' RExpr . ')' CompStmt      (rule 115)
+	SelectionStmt -> 'if' '(' RExpr . ')' CompStmt 'else' CompStmt    (rule 116)
 
 	')'            shift, and enter state 158
 	'||'           shift, and enter state 101
@@ -3483,46 +3493,46 @@ State 135
 
 State 136
 
-	SelectionStmt -> 'switch' RExpr 'match' . ListSwitchLabel 'default' CompStmt    (rule 112)
+	SelectionStmt -> 'switch' RExpr 'match' . ListSwitchLabel 'default' CompStmt    (rule 117)
 
-	'!'            reduce using rule 114
-	'&'            reduce using rule 114
-	'('            reduce using rule 114
-	'++'           reduce using rule 114
-	'-'            reduce using rule 114
-	'--'           reduce using rule 114
-	'default'      reduce using rule 114
-	'false'        reduce using rule 114
-	'true'         reduce using rule 114
-	L_integ        reduce using rule 114
-	L_charac       reduce using rule 114
-	L_quoted       reduce using rule 114
-	L_doubl        reduce using rule 114
-	L_ident        reduce using rule 114
+	'!'            reduce using rule 119
+	'&'            reduce using rule 119
+	'('            reduce using rule 119
+	'++'           reduce using rule 119
+	'-'            reduce using rule 119
+	'--'           reduce using rule 119
+	'default'      reduce using rule 119
+	'false'        reduce using rule 119
+	'true'         reduce using rule 119
+	L_integ        reduce using rule 119
+	L_charac       reduce using rule 119
+	L_quoted       reduce using rule 119
+	L_doubl        reduce using rule 119
+	L_ident        reduce using rule 119
 
 	ListSwitchLabelgoto state 157
 
 State 137
 
-	IterStmt -> 'while' RExpr CompStmt .                (rule 116)
+	IterStmt -> 'while' RExpr CompStmt .                (rule 121)
 
-	'++'           reduce using rule 116
-	'--'           reduce using rule 116
-	'do'           reduce using rule 116
-	'for'          reduce using rule 116
-	'if'           reduce using rule 116
-	'switch'       reduce using rule 116
-	'while'        reduce using rule 116
-	'{'            reduce using rule 116
-	'}'            reduce using rule 116
-	L_ident        reduce using rule 116
-	%eof           reduce using rule 116
+	'++'           reduce using rule 121
+	'--'           reduce using rule 121
+	'do'           reduce using rule 121
+	'for'          reduce using rule 121
+	'if'           reduce using rule 121
+	'switch'       reduce using rule 121
+	'while'        reduce using rule 121
+	'{'            reduce using rule 121
+	'}'            reduce using rule 121
+	L_ident        reduce using rule 121
+	%eof           reduce using rule 121
 
 
 State 138
 
-	CompStmt -> '{' ListDecl ListStmt . '}'             (rule 90)
-	ListStmt -> ListStmt . Stmt                         (rule 92)
+	CompStmt -> '{' ListDecl ListStmt . '}'             (rule 95)
+	ListStmt -> ListStmt . Stmt                         (rule 97)
 
 	'++'           shift, and enter state 7
 	'--'           shift, and enter state 8
@@ -3545,8 +3555,8 @@ State 138
 
 State 139
 
-	Decl -> 'var' Ident . TypeSpec EndLine              (rule 75)
-	Decl -> 'var' Ident . BasicType ':=' RExpr EndLine    (rule 76)
+	Decl -> 'var' Ident . TypeSpec EndLine              (rule 80)
+	Decl -> 'var' Ident . BasicType Guard ':=' RExpr EndLine    (rule 81)
 
 	'*'            shift, and enter state 153
 	'['            shift, and enter state 154
@@ -3563,7 +3573,7 @@ State 139
 
 State 140
 
-	Decl -> 'dev' Ident . BasicType '=' RExpr EndLine    (rule 77)
+	Decl -> 'dev' Ident . BasicType '=' RExpr EndLine    (rule 82)
 
 	'bool'         shift, and enter state 144
 	'char'         shift, and enter state 145
@@ -3576,28 +3586,28 @@ State 140
 
 State 141
 
-	Decl -> 'def' Ident . '(' ListParameter ')' CompStmt    (rule 78)
+	Decl -> 'def' Ident . '(' ListParameter ')' Guard CompStmt    (rule 83)
 
 	'('            shift, and enter state 142
 
 
 State 142
 
-	Decl -> 'def' Ident '(' . ListParameter ')' CompStmt    (rule 78)
+	Decl -> 'def' Ident '(' . ListParameter ')' Guard CompStmt    (rule 83)
 
-	')'            reduce using rule 84
-	'var'          shift, and enter state 183
-	L_ident        reduce using rule 88
+	')'            reduce using rule 89
+	'var'          shift, and enter state 186
+	L_ident        reduce using rule 93
 
-	ListParameter  goto state 180
-	Parameter      goto state 181
-	Modality       goto state 182
+	ListParameter  goto state 183
+	Parameter      goto state 184
+	Modality       goto state 185
 
 State 143
 
-	Decl -> 'dev' Ident BasicType . '=' RExpr EndLine    (rule 77)
+	Decl -> 'dev' Ident BasicType . '=' RExpr EndLine    (rule 82)
 
-	'='            shift, and enter state 179
+	'='            shift, and enter state 182
 
 
 State 144
@@ -3606,9 +3616,13 @@ State 144
 
 	'
 '            reduce using rule 13
+	')'            reduce using rule 13
+	','            reduce using rule 13
+	':'            reduce using rule 13
 	':='           reduce using rule 13
 	';'            reduce using rule 13
 	'='            reduce using rule 13
+	'{'            reduce using rule 13
 
 
 State 145
@@ -3617,9 +3631,13 @@ State 145
 
 	'
 '            reduce using rule 14
+	')'            reduce using rule 14
+	','            reduce using rule 14
+	':'            reduce using rule 14
 	':='           reduce using rule 14
 	';'            reduce using rule 14
 	'='            reduce using rule 14
+	'{'            reduce using rule 14
 
 
 State 146
@@ -3628,9 +3646,13 @@ State 146
 
 	'
 '            reduce using rule 16
+	')'            reduce using rule 16
+	','            reduce using rule 16
+	':'            reduce using rule 16
 	':='           reduce using rule 16
 	';'            reduce using rule 16
 	'='            reduce using rule 16
+	'{'            reduce using rule 16
 
 
 State 147
@@ -3639,9 +3661,13 @@ State 147
 
 	'
 '            reduce using rule 17
+	')'            reduce using rule 17
+	','            reduce using rule 17
+	':'            reduce using rule 17
 	':='           reduce using rule 17
 	';'            reduce using rule 17
 	'='            reduce using rule 17
+	'{'            reduce using rule 17
 
 
 State 148
@@ -3650,9 +3676,13 @@ State 148
 
 	'
 '            reduce using rule 15
+	')'            reduce using rule 15
+	','            reduce using rule 15
+	':'            reduce using rule 15
 	':='           reduce using rule 15
 	';'            reduce using rule 15
 	'='            reduce using rule 15
+	'{'            reduce using rule 15
 
 
 State 149
@@ -3661,25 +3691,33 @@ State 149
 
 	'
 '            reduce using rule 18
+	')'            reduce using rule 18
+	','            reduce using rule 18
+	':'            reduce using rule 18
 	':='           reduce using rule 18
 	';'            reduce using rule 18
 	'='            reduce using rule 18
+	'{'            reduce using rule 18
 
 
 State 150
 
-	Decl -> 'var' Ident BasicType . ':=' RExpr EndLine    (rule 76)
-	TypeSpec -> BasicType .                             (rule 79)
+	Decl -> 'var' Ident BasicType . Guard ':=' RExpr EndLine    (rule 81)
+	TypeSpec -> BasicType .                             (rule 84)
 
 	'
-'            reduce using rule 79
-	':='           shift, and enter state 178
-	';'            reduce using rule 79
+'            reduce using rule 84
+	':'            shift, and enter state 181
+	':='           reduce using rule 75
+	';'            reduce using rule 84
 
+	Guard          goto state 178
+	GuardT         goto state 179
+	GuardC         goto state 180
 
 State 151
 
-	Decl -> 'var' Ident TypeSpec . EndLine              (rule 75)
+	Decl -> 'var' Ident TypeSpec . EndLine              (rule 80)
 
 	'
 '            shift, and enter state 68
@@ -3689,16 +3727,16 @@ State 151
 
 State 152
 
-	TypeSpec -> CompoundType .                          (rule 80)
+	TypeSpec -> CompoundType .                          (rule 85)
 
 	'
-'            reduce using rule 80
-	';'            reduce using rule 80
+'            reduce using rule 85
+	';'            reduce using rule 85
 
 
 State 153
 
-	CompoundType -> '*' . TypeSpec                      (rule 83)
+	CompoundType -> '*' . TypeSpec                      (rule 88)
 
 	'*'            shift, and enter state 153
 	'['            shift, and enter state 154
@@ -3715,8 +3753,8 @@ State 153
 
 State 154
 
-	CompoundType -> '[' . RExpr ']' TypeSpec            (rule 81)
-	CompoundType -> '[' . ']' TypeSpec                  (rule 82)
+	CompoundType -> '[' . RExpr ']' TypeSpec            (rule 86)
+	CompoundType -> '[' . ']' TypeSpec                  (rule 87)
 
 	'!'            shift, and enter state 32
 	'&'            shift, and enter state 33
@@ -3759,56 +3797,56 @@ State 154
 
 State 155
 
-	ListStmt -> ListStmt Stmt .                         (rule 92)
+	ListStmt -> ListStmt Stmt .                         (rule 97)
 
-	'++'           reduce using rule 92
-	'--'           reduce using rule 92
-	'do'           reduce using rule 92
-	'for'          reduce using rule 92
-	'if'           reduce using rule 92
-	'switch'       reduce using rule 92
-	'while'        reduce using rule 92
-	'{'            reduce using rule 92
-	'}'            reduce using rule 92
-	L_ident        reduce using rule 92
+	'++'           reduce using rule 97
+	'--'           reduce using rule 97
+	'do'           reduce using rule 97
+	'for'          reduce using rule 97
+	'if'           reduce using rule 97
+	'switch'       reduce using rule 97
+	'while'        reduce using rule 97
+	'{'            reduce using rule 97
+	'}'            reduce using rule 97
+	L_ident        reduce using rule 97
 
 
 State 156
 
-	CompStmt -> '{' ListDecl ListStmt '}' .             (rule 90)
+	CompStmt -> '{' ListDecl ListStmt '}' .             (rule 95)
 
-	'!'            reduce using rule 90
-	'&'            reduce using rule 90
-	'('            reduce using rule 90
-	'++'           reduce using rule 90
-	'-'            reduce using rule 90
-	'--'           reduce using rule 90
-	'def'          reduce using rule 90
-	'default'      reduce using rule 90
-	'dev'          reduce using rule 90
-	'do'           reduce using rule 90
-	'else'         reduce using rule 90
-	'false'        reduce using rule 90
-	'for'          reduce using rule 90
-	'if'           reduce using rule 90
-	'switch'       reduce using rule 90
-	'true'         reduce using rule 90
-	'var'          reduce using rule 90
-	'while'        reduce using rule 90
-	'{'            reduce using rule 90
-	'}'            reduce using rule 90
-	L_integ        reduce using rule 90
-	L_charac       reduce using rule 90
-	L_quoted       reduce using rule 90
-	L_doubl        reduce using rule 90
-	L_ident        reduce using rule 90
-	%eof           reduce using rule 90
+	'!'            reduce using rule 95
+	'&'            reduce using rule 95
+	'('            reduce using rule 95
+	'++'           reduce using rule 95
+	'-'            reduce using rule 95
+	'--'           reduce using rule 95
+	'def'          reduce using rule 95
+	'default'      reduce using rule 95
+	'dev'          reduce using rule 95
+	'do'           reduce using rule 95
+	'else'         reduce using rule 95
+	'false'        reduce using rule 95
+	'for'          reduce using rule 95
+	'if'           reduce using rule 95
+	'switch'       reduce using rule 95
+	'true'         reduce using rule 95
+	'var'          reduce using rule 95
+	'while'        reduce using rule 95
+	'{'            reduce using rule 95
+	'}'            reduce using rule 95
+	L_integ        reduce using rule 95
+	L_charac       reduce using rule 95
+	L_quoted       reduce using rule 95
+	L_doubl        reduce using rule 95
+	L_ident        reduce using rule 95
+	%eof           reduce using rule 95
 
 
 State 157
 
-	SelectionStmt -> 'switch' RExpr 'match' ListSwitchLabel . 'default' CompStmt    (rule 112)
-	ListSwitchLabel -> ListSwitchLabel . SwitchLabel    (rule 115)
+	SelectionStmt -> 'switch' RExpr 'match' ListSwitchLabel . 'default' CompStmt    (rule 117)
+	ListSwitchLabel -> ListSwitchLabel . SwitchLabel    (rule 120)
 
 	'!'            shift, and enter state 32
 	'&'            shift, and enter state 33
@@ -3852,8 +3890,8 @@ State 157
 
 State 158
 
-	SelectionStmt -> 'if' '(' RExpr ')' . CompStmt      (rule 110)
-	SelectionStmt -> 'if' '(' RExpr ')' . CompStmt 'else' CompStmt    (rule 111)
+	SelectionStmt -> 'if' '(' RExpr ')' . CompStmt      (rule 115)
+	SelectionStmt -> 'if' '(' RExpr ')' . CompStmt 'else' CompStmt    (rule 116)
 
 	'{'            shift, and enter state 53
 
@@ -3862,7 +3900,7 @@ State 158
 State 159
 
 	RExpr -> RExpr . '||' RExpr1                        (rule 20)
-	IterStmt -> 'for' Ident 'in' RExpr . CompStmt       (rule 118)
+	IterStmt -> 'for' Ident 'in' RExpr . CompStmt       (rule 123)
 
 	'{'            shift, and enter state 53
 	'||'           shift, and enter state 101
@@ -3872,7 +3910,7 @@ State 159
 State 160
 
 	RExpr -> RExpr . '||' RExpr1                        (rule 20)
-	IterStmt -> 'do' CompStmt 'while' RExpr . ';'       (rule 117)
+	IterStmt -> 'do' CompStmt 'while' RExpr . ';'       (rule 122)
 
 	';'            shift, and enter state 167
 	'||'           shift, and enter state 101
@@ -3880,19 +3918,19 @@ State 160
 
 State 161
 
-	Stmt -> LExpr Assignment_op RExpr EndLine .         (rule 97)
+	Stmt -> LExpr Assignment_op RExpr EndLine .         (rule 102)
 
-	'++'           reduce using rule 97
-	'--'           reduce using rule 97
-	'do'           reduce using rule 97
-	'for'          reduce using rule 97
-	'if'           reduce using rule 97
-	'switch'       reduce using rule 97
-	'while'        reduce using rule 97
-	'{'            reduce using rule 97
-	'}'            reduce using rule 97
-	L_ident        reduce using rule 97
-	%eof           reduce using rule 97
+	'++'           reduce using rule 102
+	'--'           reduce using rule 102
+	'do'           reduce using rule 102
+	'for'          reduce using rule 102
+	'if'           reduce using rule 102
+	'switch'       reduce using rule 102
+	'while'        reduce using rule 102
+	'{'            reduce using rule 102
+	'}'            reduce using rule 102
+	L_ident        reduce using rule 102
+	%eof           reduce using rule 102
 
 
 State 162
@@ -3997,7 +4035,444 @@ State 166
 
 State 167
 
-	IterStmt -> 'do' CompStmt 'while' RExpr ';' .       (rule 117)
+	IterStmt -> 'do' CompStmt 'while' RExpr ';' .       (rule 122)
+
+	'++'           reduce using rule 122
+	'--'           reduce using rule 122
+	'do'           reduce using rule 122
+	'for'          reduce using rule 122
+	'if'           reduce using rule 122
+	'switch'       reduce using rule 122
+	'while'        reduce using rule 122
+	'{'            reduce using rule 122
+	'}'            reduce using rule 122
+	L_ident        reduce using rule 122
+	%eof           reduce using rule 122
+
+
+State 168
+
+	IterStmt -> 'for' Ident 'in' RExpr CompStmt .       (rule 123)
+
+	'++'           reduce using rule 123
+	'--'           reduce using rule 123
+	'do'           reduce using rule 123
+	'for'          reduce using rule 123
+	'if'           reduce using rule 123
+	'switch'       reduce using rule 123
+	'while'        reduce using rule 123
+	'{'            reduce using rule 123
+	'}'            reduce using rule 123
+	L_ident        reduce using rule 123
+	%eof           reduce using rule 123
+
+
+State 169
+
+	SelectionStmt -> 'if' '(' RExpr ')' CompStmt .      (rule 115)
+	SelectionStmt -> 'if' '(' RExpr ')' CompStmt . 'else' CompStmt    (rule 116)
+
+	'++'           reduce using rule 115
+	'--'           reduce using rule 115
+	'do'           reduce using rule 115
+	'else'         shift, and enter state 198
+	'for'          reduce using rule 115
+	'if'           reduce using rule 115
+	'switch'       reduce using rule 115
+	'while'        reduce using rule 115
+	'{'            reduce using rule 115
+	'}'            reduce using rule 115
+	L_ident        reduce using rule 115
+	%eof           reduce using rule 115
+
+
+State 170
+
+	RExpr -> RExpr . '||' RExpr1                        (rule 20)
+	SwitchLabel -> RExpr . CompStmt                     (rule 118)
+
+	'{'            shift, and enter state 53
+	'||'           shift, and enter state 101
+
+	CompStmt       goto state 197
+
+State 171
+
+	ListSwitchLabel -> ListSwitchLabel SwitchLabel .    (rule 120)
+
+	'!'            reduce using rule 120
+	'&'            reduce using rule 120
+	'('            reduce using rule 120
+	'++'           reduce using rule 120
+	'-'            reduce using rule 120
+	'--'           reduce using rule 120
+	'default'      reduce using rule 120
+	'false'        reduce using rule 120
+	'true'         reduce using rule 120
+	L_integ        reduce using rule 120
+	L_charac       reduce using rule 120
+	L_quoted       reduce using rule 120
+	L_doubl        reduce using rule 120
+	L_ident        reduce using rule 120
+
+
+State 172
+
+	SelectionStmt -> 'switch' RExpr 'match' ListSwitchLabel 'default' . CompStmt    (rule 117)
+
+	'{'            shift, and enter state 53
+
+	CompStmt       goto state 196
+
+State 173
+
+	RExpr -> RExpr . '||' RExpr1                        (rule 20)
+	CompoundType -> '[' RExpr . ']' TypeSpec            (rule 86)
+
+	']'            shift, and enter state 195
+	'||'           shift, and enter state 101
+
+
+State 174
+
+	CompoundType -> '[' ']' . TypeSpec                  (rule 87)
+
+	'*'            shift, and enter state 153
+	'['            shift, and enter state 154
+	'bool'         shift, and enter state 144
+	'char'         shift, and enter state 145
+	'float'        shift, and enter state 146
+	'int'          shift, and enter state 147
+	'string'       shift, and enter state 148
+	'void'         shift, and enter state 149
+
+	BasicType      goto state 175
+	TypeSpec       goto state 194
+	CompoundType   goto state 152
+
+State 175
+
+	TypeSpec -> BasicType .                             (rule 84)
+
+	'
+'            reduce using rule 84
+	';'            reduce using rule 84
+
+
+State 176
+
+	CompoundType -> '*' TypeSpec .                      (rule 88)
+
+	'
+'            reduce using rule 88
+	';'            reduce using rule 88
+
+
+State 177
+
+	Decl -> 'var' Ident TypeSpec EndLine .              (rule 80)
+
+	'++'           reduce using rule 80
+	'--'           reduce using rule 80
+	'def'          reduce using rule 80
+	'dev'          reduce using rule 80
+	'do'           reduce using rule 80
+	'for'          reduce using rule 80
+	'if'           reduce using rule 80
+	'switch'       reduce using rule 80
+	'var'          reduce using rule 80
+	'while'        reduce using rule 80
+	'{'            reduce using rule 80
+	'}'            reduce using rule 80
+	L_ident        reduce using rule 80
+	%eof           reduce using rule 80
+
+
+State 178
+
+	Decl -> 'var' Ident BasicType Guard . ':=' RExpr EndLine    (rule 81)
+
+	':='           shift, and enter state 193
+
+
+State 179
+
+	Guard -> GuardT .                                   (rule 76)
+
+	')'            reduce using rule 76
+	','            reduce using rule 76
+	':='           reduce using rule 76
+	'{'            reduce using rule 76
+
+
+State 180
+
+	Guard -> GuardC .                                   (rule 77)
+
+	')'            reduce using rule 77
+	','            reduce using rule 77
+	':='           reduce using rule 77
+	'{'            reduce using rule 77
+
+
+State 181
+
+	GuardT -> ':' . BasicType                           (rule 78)
+	GuardC -> ':' . '(' RExpr ')'                       (rule 79)
+
+	'('            shift, and enter state 192
+	'bool'         shift, and enter state 144
+	'char'         shift, and enter state 145
+	'float'        shift, and enter state 146
+	'int'          shift, and enter state 147
+	'string'       shift, and enter state 148
+	'void'         shift, and enter state 149
+
+	BasicType      goto state 191
+
+State 182
+
+	Decl -> 'dev' Ident BasicType '=' . RExpr EndLine    (rule 82)
+
+	'!'            shift, and enter state 32
+	'&'            shift, and enter state 33
+	'('            shift, and enter state 34
+	'++'           shift, and enter state 7
+	'-'            shift, and enter state 35
+	'--'           shift, and enter state 8
+	'false'        shift, and enter state 36
+	'true'         shift, and enter state 37
+	L_integ        shift, and enter state 5
+	L_charac       shift, and enter state 38
+	L_quoted       shift, and enter state 39
+	L_doubl        shift, and enter state 40
+	L_ident        shift, and enter state 41
+
+	Integer        goto state 9
+	Char           goto state 10
+	String         goto state 11
+	Double         goto state 12
+	Ident          goto state 13
+	Boolean        goto state 14
+	RExpr          goto state 190
+	RExpr1         goto state 16
+	RExpr2         goto state 17
+	RExpr3         goto state 18
+	RExpr4         goto state 19
+	RExpr5         goto state 20
+	RExpr6         goto state 21
+	RExpr7         goto state 22
+	RExpr8         goto state 23
+	RExpr9         goto state 24
+	RExpr10        goto state 25
+	RExpr11        goto state 26
+	RExpr12        goto state 27
+	RExpr13        goto state 28
+	RExpr14        goto state 29
+	FunCall        goto state 30
+	LExpr          goto state 31
+
+State 183
+
+	Decl -> 'def' Ident '(' ListParameter . ')' Guard CompStmt    (rule 83)
+
+	')'            shift, and enter state 189
+
+
+State 184
+
+	ListParameter -> Parameter .                        (rule 90)
+	ListParameter -> Parameter . ',' ListParameter      (rule 91)
+
+	')'            reduce using rule 90
+	','            shift, and enter state 188
+
+
+State 185
+
+	Parameter -> Modality . Ident Guard                 (rule 92)
+
+	L_ident        shift, and enter state 41
+
+	Ident          goto state 187
+
+State 186
+
+	Modality -> 'var' .                                 (rule 94)
+
+	L_ident        reduce using rule 94
+
+
+State 187
+
+	Parameter -> Modality Ident . Guard                 (rule 92)
+
+	')'            reduce using rule 75
+	','            reduce using rule 75
+	':'            shift, and enter state 181
+
+	Guard          goto state 206
+	GuardT         goto state 179
+	GuardC         goto state 180
+
+State 188
+
+	ListParameter -> Parameter ',' . ListParameter      (rule 91)
+
+	')'            reduce using rule 89
+	'var'          shift, and enter state 186
+	L_ident        reduce using rule 93
+
+	ListParameter  goto state 205
+	Parameter      goto state 184
+	Modality       goto state 185
+
+State 189
+
+	Decl -> 'def' Ident '(' ListParameter ')' . Guard CompStmt    (rule 83)
+
+	':'            shift, and enter state 181
+	'{'            reduce using rule 75
+
+	Guard          goto state 204
+	GuardT         goto state 179
+	GuardC         goto state 180
+
+State 190
+
+	RExpr -> RExpr . '||' RExpr1                        (rule 20)
+	Decl -> 'dev' Ident BasicType '=' RExpr . EndLine    (rule 82)
+
+	'
+'            shift, and enter state 68
+	';'            shift, and enter state 79
+	'||'           shift, and enter state 101
+
+	EndLine        goto state 203
+
+State 191
+
+	GuardT -> ':' BasicType .                           (rule 78)
+
+	')'            reduce using rule 78
+	','            reduce using rule 78
+	':='           reduce using rule 78
+	'{'            reduce using rule 78
+
+
+State 192
+
+	GuardC -> ':' '(' . RExpr ')'                       (rule 79)
+
+	'!'            shift, and enter state 32
+	'&'            shift, and enter state 33
+	'('            shift, and enter state 34
+	'++'           shift, and enter state 7
+	'-'            shift, and enter state 35
+	'--'           shift, and enter state 8
+	'false'        shift, and enter state 36
+	'true'         shift, and enter state 37
+	L_integ        shift, and enter state 5
+	L_charac       shift, and enter state 38
+	L_quoted       shift, and enter state 39
+	L_doubl        shift, and enter state 40
+	L_ident        shift, and enter state 41
+
+	Integer        goto state 9
+	Char           goto state 10
+	String         goto state 11
+	Double         goto state 12
+	Ident          goto state 13
+	Boolean        goto state 14
+	RExpr          goto state 202
+	RExpr1         goto state 16
+	RExpr2         goto state 17
+	RExpr3         goto state 18
+	RExpr4         goto state 19
+	RExpr5         goto state 20
+	RExpr6         goto state 21
+	RExpr7         goto state 22
+	RExpr8         goto state 23
+	RExpr9         goto state 24
+	RExpr10        goto state 25
+	RExpr11        goto state 26
+	RExpr12        goto state 27
+	RExpr13        goto state 28
+	RExpr14        goto state 29
+	FunCall        goto state 30
+	LExpr          goto state 31
+
+State 193
+
+	Decl -> 'var' Ident BasicType Guard ':=' . RExpr EndLine    (rule 81)
+
+	'!'            shift, and enter state 32
+	'&'            shift, and enter state 33
+	'('            shift, and enter state 34
+	'++'           shift, and enter state 7
+	'-'            shift, and enter state 35
+	'--'           shift, and enter state 8
+	'false'        shift, and enter state 36
+	'true'         shift, and enter state 37
+	L_integ        shift, and enter state 5
+	L_charac       shift, and enter state 38
+	L_quoted       shift, and enter state 39
+	L_doubl        shift, and enter state 40
+	L_ident        shift, and enter state 41
+
+	Integer        goto state 9
+	Char           goto state 10
+	String         goto state 11
+	Double         goto state 12
+	Ident          goto state 13
+	Boolean        goto state 14
+	RExpr          goto state 201
+	RExpr1         goto state 16
+	RExpr2         goto state 17
+	RExpr3         goto state 18
+	RExpr4         goto state 19
+	RExpr5         goto state 20
+	RExpr6         goto state 21
+	RExpr7         goto state 22
+	RExpr8         goto state 23
+	RExpr9         goto state 24
+	RExpr10        goto state 25
+	RExpr11        goto state 26
+	RExpr12        goto state 27
+	RExpr13        goto state 28
+	RExpr14        goto state 29
+	FunCall        goto state 30
+	LExpr          goto state 31
+
+State 194
+
+	CompoundType -> '[' ']' TypeSpec .                  (rule 87)
+
+	'
+'            reduce using rule 87
+	';'            reduce using rule 87
+
+
+State 195
+
+	CompoundType -> '[' RExpr ']' . TypeSpec            (rule 86)
+
+	'*'            shift, and enter state 153
+	'['            shift, and enter state 154
+	'bool'         shift, and enter state 144
+	'char'         shift, and enter state 145
+	'float'        shift, and enter state 146
+	'int'          shift, and enter state 147
+	'string'       shift, and enter state 148
+	'void'         shift, and enter state 149
+
+	BasicType      goto state 175
+	TypeSpec       goto state 200
+	CompoundType   goto state 152
+
+State 196
+
+	SelectionStmt -> 'switch' RExpr 'match' ListSwitchLabel 'default' CompStmt .    (rule 117)
 
 	'++'           reduce using rule 117
 	'--'           reduce using rule 117
@@ -4012,479 +4487,178 @@ State 167
 	%eof           reduce using rule 117
 
 
-State 168
-
-	IterStmt -> 'for' Ident 'in' RExpr CompStmt .       (rule 118)
-
-	'++'           reduce using rule 118
-	'--'           reduce using rule 118
-	'do'           reduce using rule 118
-	'for'          reduce using rule 118
-	'if'           reduce using rule 118
-	'switch'       reduce using rule 118
-	'while'        reduce using rule 118
-	'{'            reduce using rule 118
-	'}'            reduce using rule 118
-	L_ident        reduce using rule 118
-	%eof           reduce using rule 118
-
-
-State 169
-
-	SelectionStmt -> 'if' '(' RExpr ')' CompStmt .      (rule 110)
-	SelectionStmt -> 'if' '(' RExpr ')' CompStmt . 'else' CompStmt    (rule 111)
-
-	'++'           reduce using rule 110
-	'--'           reduce using rule 110
-	'do'           reduce using rule 110
-	'else'         shift, and enter state 193
-	'for'          reduce using rule 110
-	'if'           reduce using rule 110
-	'switch'       reduce using rule 110
-	'while'        reduce using rule 110
-	'{'            reduce using rule 110
-	'}'            reduce using rule 110
-	L_ident        reduce using rule 110
-	%eof           reduce using rule 110
-
-
-State 170
-
-	RExpr -> RExpr . '||' RExpr1                        (rule 20)
-	SwitchLabel -> RExpr . CompStmt                     (rule 113)
-
-	'{'            shift, and enter state 53
-	'||'           shift, and enter state 101
-
-	CompStmt       goto state 192
-
-State 171
-
-	ListSwitchLabel -> ListSwitchLabel SwitchLabel .    (rule 115)
-
-	'!'            reduce using rule 115
-	'&'            reduce using rule 115
-	'('            reduce using rule 115
-	'++'           reduce using rule 115
-	'-'            reduce using rule 115
-	'--'           reduce using rule 115
-	'default'      reduce using rule 115
-	'false'        reduce using rule 115
-	'true'         reduce using rule 115
-	L_integ        reduce using rule 115
-	L_charac       reduce using rule 115
-	L_quoted       reduce using rule 115
-	L_doubl        reduce using rule 115
-	L_ident        reduce using rule 115
-
-
-State 172
-
-	SelectionStmt -> 'switch' RExpr 'match' ListSwitchLabel 'default' . CompStmt    (rule 112)
-
-	'{'            shift, and enter state 53
-
-	CompStmt       goto state 191
-
-State 173
-
-	RExpr -> RExpr . '||' RExpr1                        (rule 20)
-	CompoundType -> '[' RExpr . ']' TypeSpec            (rule 81)
-
-	']'            shift, and enter state 190
-	'||'           shift, and enter state 101
-
-
-State 174
-
-	CompoundType -> '[' ']' . TypeSpec                  (rule 82)
-
-	'*'            shift, and enter state 153
-	'['            shift, and enter state 154
-	'bool'         shift, and enter state 144
-	'char'         shift, and enter state 145
-	'float'        shift, and enter state 146
-	'int'          shift, and enter state 147
-	'string'       shift, and enter state 148
-	'void'         shift, and enter state 149
-
-	BasicType      goto state 175
-	TypeSpec       goto state 189
-	CompoundType   goto state 152
-
-State 175
-
-	TypeSpec -> BasicType .                             (rule 79)
-
-	'
-'            reduce using rule 79
-	';'            reduce using rule 79
-
-
-State 176
-
-	CompoundType -> '*' TypeSpec .                      (rule 83)
-
-	'
-'            reduce using rule 83
-	';'            reduce using rule 83
-
-
-State 177
-
-	Decl -> 'var' Ident TypeSpec EndLine .              (rule 75)
-
-	'++'           reduce using rule 75
-	'--'           reduce using rule 75
-	'def'          reduce using rule 75
-	'dev'          reduce using rule 75
-	'do'           reduce using rule 75
-	'for'          reduce using rule 75
-	'if'           reduce using rule 75
-	'switch'       reduce using rule 75
-	'var'          reduce using rule 75
-	'while'        reduce using rule 75
-	'{'            reduce using rule 75
-	'}'            reduce using rule 75
-	L_ident        reduce using rule 75
-	%eof           reduce using rule 75
-
-
-State 178
-
-	Decl -> 'var' Ident BasicType ':=' . RExpr EndLine    (rule 76)
-
-	'!'            shift, and enter state 32
-	'&'            shift, and enter state 33
-	'('            shift, and enter state 34
-	'++'           shift, and enter state 7
-	'-'            shift, and enter state 35
-	'--'           shift, and enter state 8
-	'false'        shift, and enter state 36
-	'true'         shift, and enter state 37
-	L_integ        shift, and enter state 5
-	L_charac       shift, and enter state 38
-	L_quoted       shift, and enter state 39
-	L_doubl        shift, and enter state 40
-	L_ident        shift, and enter state 41
-
-	Integer        goto state 9
-	Char           goto state 10
-	String         goto state 11
-	Double         goto state 12
-	Ident          goto state 13
-	Boolean        goto state 14
-	RExpr          goto state 188
-	RExpr1         goto state 16
-	RExpr2         goto state 17
-	RExpr3         goto state 18
-	RExpr4         goto state 19
-	RExpr5         goto state 20
-	RExpr6         goto state 21
-	RExpr7         goto state 22
-	RExpr8         goto state 23
-	RExpr9         goto state 24
-	RExpr10        goto state 25
-	RExpr11        goto state 26
-	RExpr12        goto state 27
-	RExpr13        goto state 28
-	RExpr14        goto state 29
-	FunCall        goto state 30
-	LExpr          goto state 31
-
-State 179
-
-	Decl -> 'dev' Ident BasicType '=' . RExpr EndLine    (rule 77)
-
-	'!'            shift, and enter state 32
-	'&'            shift, and enter state 33
-	'('            shift, and enter state 34
-	'++'           shift, and enter state 7
-	'-'            shift, and enter state 35
-	'--'           shift, and enter state 8
-	'false'        shift, and enter state 36
-	'true'         shift, and enter state 37
-	L_integ        shift, and enter state 5
-	L_charac       shift, and enter state 38
-	L_quoted       shift, and enter state 39
-	L_doubl        shift, and enter state 40
-	L_ident        shift, and enter state 41
-
-	Integer        goto state 9
-	Char           goto state 10
-	String         goto state 11
-	Double         goto state 12
-	Ident          goto state 13
-	Boolean        goto state 14
-	RExpr          goto state 187
-	RExpr1         goto state 16
-	RExpr2         goto state 17
-	RExpr3         goto state 18
-	RExpr4         goto state 19
-	RExpr5         goto state 20
-	RExpr6         goto state 21
-	RExpr7         goto state 22
-	RExpr8         goto state 23
-	RExpr9         goto state 24
-	RExpr10        goto state 25
-	RExpr11        goto state 26
-	RExpr12        goto state 27
-	RExpr13        goto state 28
-	RExpr14        goto state 29
-	FunCall        goto state 30
-	LExpr          goto state 31
-
-State 180
-
-	Decl -> 'def' Ident '(' ListParameter . ')' CompStmt    (rule 78)
-
-	')'            shift, and enter state 186
-
-
-State 181
-
-	ListParameter -> Parameter .                        (rule 85)
-	ListParameter -> Parameter . ',' ListParameter      (rule 86)
-
-	')'            reduce using rule 85
-	','            shift, and enter state 185
-
-
-State 182
-
-	Parameter -> Modality . Ident                       (rule 87)
-
-	L_ident        shift, and enter state 41
-
-	Ident          goto state 184
-
-State 183
-
-	Modality -> 'var' .                                 (rule 89)
-
-	L_ident        reduce using rule 89
-
-
-State 184
-
-	Parameter -> Modality Ident .                       (rule 87)
-
-	')'            reduce using rule 87
-	','            reduce using rule 87
-
-
-State 185
-
-	ListParameter -> Parameter ',' . ListParameter      (rule 86)
-
-	')'            reduce using rule 84
-	'var'          shift, and enter state 183
-	L_ident        reduce using rule 88
-
-	ListParameter  goto state 199
-	Parameter      goto state 181
-	Modality       goto state 182
-
-State 186
-
-	Decl -> 'def' Ident '(' ListParameter ')' . CompStmt    (rule 78)
-
-	'{'            shift, and enter state 53
-
-	CompStmt       goto state 198
-
-State 187
-
-	RExpr -> RExpr . '||' RExpr1                        (rule 20)
-	Decl -> 'dev' Ident BasicType '=' RExpr . EndLine    (rule 77)
-
-	'
-'            shift, and enter state 68
-	';'            shift, and enter state 79
-	'||'           shift, and enter state 101
-
-	EndLine        goto state 197
-
-State 188
-
-	RExpr -> RExpr . '||' RExpr1                        (rule 20)
-	Decl -> 'var' Ident BasicType ':=' RExpr . EndLine    (rule 76)
-
-	'
-'            shift, and enter state 68
-	';'            shift, and enter state 79
-	'||'           shift, and enter state 101
-
-	EndLine        goto state 196
-
-State 189
-
-	CompoundType -> '[' ']' TypeSpec .                  (rule 82)
-
-	'
-'            reduce using rule 82
-	';'            reduce using rule 82
-
-
-State 190
-
-	CompoundType -> '[' RExpr ']' . TypeSpec            (rule 81)
-
-	'*'            shift, and enter state 153
-	'['            shift, and enter state 154
-	'bool'         shift, and enter state 144
-	'char'         shift, and enter state 145
-	'float'        shift, and enter state 146
-	'int'          shift, and enter state 147
-	'string'       shift, and enter state 148
-	'void'         shift, and enter state 149
-
-	BasicType      goto state 175
-	TypeSpec       goto state 195
-	CompoundType   goto state 152
-
-State 191
-
-	SelectionStmt -> 'switch' RExpr 'match' ListSwitchLabel 'default' CompStmt .    (rule 112)
-
-	'++'           reduce using rule 112
-	'--'           reduce using rule 112
-	'do'           reduce using rule 112
-	'for'          reduce using rule 112
-	'if'           reduce using rule 112
-	'switch'       reduce using rule 112
-	'while'        reduce using rule 112
-	'{'            reduce using rule 112
-	'}'            reduce using rule 112
-	L_ident        reduce using rule 112
-	%eof           reduce using rule 112
-
-
-State 192
-
-	SwitchLabel -> RExpr CompStmt .                     (rule 113)
-
-	'!'            reduce using rule 113
-	'&'            reduce using rule 113
-	'('            reduce using rule 113
-	'++'           reduce using rule 113
-	'-'            reduce using rule 113
-	'--'           reduce using rule 113
-	'default'      reduce using rule 113
-	'false'        reduce using rule 113
-	'true'         reduce using rule 113
-	L_integ        reduce using rule 113
-	L_charac       reduce using rule 113
-	L_quoted       reduce using rule 113
-	L_doubl        reduce using rule 113
-	L_ident        reduce using rule 113
-
-
-State 193
-
-	SelectionStmt -> 'if' '(' RExpr ')' CompStmt 'else' . CompStmt    (rule 111)
-
-	'{'            shift, and enter state 53
-
-	CompStmt       goto state 194
-
-State 194
-
-	SelectionStmt -> 'if' '(' RExpr ')' CompStmt 'else' CompStmt .    (rule 111)
-
-	'++'           reduce using rule 111
-	'--'           reduce using rule 111
-	'do'           reduce using rule 111
-	'for'          reduce using rule 111
-	'if'           reduce using rule 111
-	'switch'       reduce using rule 111
-	'while'        reduce using rule 111
-	'{'            reduce using rule 111
-	'}'            reduce using rule 111
-	L_ident        reduce using rule 111
-	%eof           reduce using rule 111
-
-
-State 195
-
-	CompoundType -> '[' RExpr ']' TypeSpec .            (rule 81)
-
-	'
-'            reduce using rule 81
-	';'            reduce using rule 81
-
-
-State 196
-
-	Decl -> 'var' Ident BasicType ':=' RExpr EndLine .    (rule 76)
-
-	'++'           reduce using rule 76
-	'--'           reduce using rule 76
-	'def'          reduce using rule 76
-	'dev'          reduce using rule 76
-	'do'           reduce using rule 76
-	'for'          reduce using rule 76
-	'if'           reduce using rule 76
-	'switch'       reduce using rule 76
-	'var'          reduce using rule 76
-	'while'        reduce using rule 76
-	'{'            reduce using rule 76
-	'}'            reduce using rule 76
-	L_ident        reduce using rule 76
-	%eof           reduce using rule 76
-
-
 State 197
 
-	Decl -> 'dev' Ident BasicType '=' RExpr EndLine .    (rule 77)
+	SwitchLabel -> RExpr CompStmt .                     (rule 118)
 
-	'++'           reduce using rule 77
-	'--'           reduce using rule 77
-	'def'          reduce using rule 77
-	'dev'          reduce using rule 77
-	'do'           reduce using rule 77
-	'for'          reduce using rule 77
-	'if'           reduce using rule 77
-	'switch'       reduce using rule 77
-	'var'          reduce using rule 77
-	'while'        reduce using rule 77
-	'{'            reduce using rule 77
-	'}'            reduce using rule 77
-	L_ident        reduce using rule 77
-	%eof           reduce using rule 77
+	'!'            reduce using rule 118
+	'&'            reduce using rule 118
+	'('            reduce using rule 118
+	'++'           reduce using rule 118
+	'-'            reduce using rule 118
+	'--'           reduce using rule 118
+	'default'      reduce using rule 118
+	'false'        reduce using rule 118
+	'true'         reduce using rule 118
+	L_integ        reduce using rule 118
+	L_charac       reduce using rule 118
+	L_quoted       reduce using rule 118
+	L_doubl        reduce using rule 118
+	L_ident        reduce using rule 118
 
 
 State 198
 
-	Decl -> 'def' Ident '(' ListParameter ')' CompStmt .    (rule 78)
+	SelectionStmt -> 'if' '(' RExpr ')' CompStmt 'else' . CompStmt    (rule 116)
 
-	'++'           reduce using rule 78
-	'--'           reduce using rule 78
-	'def'          reduce using rule 78
-	'dev'          reduce using rule 78
-	'do'           reduce using rule 78
-	'for'          reduce using rule 78
-	'if'           reduce using rule 78
-	'switch'       reduce using rule 78
-	'var'          reduce using rule 78
-	'while'        reduce using rule 78
-	'{'            reduce using rule 78
-	'}'            reduce using rule 78
-	L_ident        reduce using rule 78
-	%eof           reduce using rule 78
+	'{'            shift, and enter state 53
 
+	CompStmt       goto state 199
 
 State 199
 
-	ListParameter -> Parameter ',' ListParameter .      (rule 86)
+	SelectionStmt -> 'if' '(' RExpr ')' CompStmt 'else' CompStmt .    (rule 116)
 
-	')'            reduce using rule 86
+	'++'           reduce using rule 116
+	'--'           reduce using rule 116
+	'do'           reduce using rule 116
+	'for'          reduce using rule 116
+	'if'           reduce using rule 116
+	'switch'       reduce using rule 116
+	'while'        reduce using rule 116
+	'{'            reduce using rule 116
+	'}'            reduce using rule 116
+	L_ident        reduce using rule 116
+	%eof           reduce using rule 116
+
+
+State 200
+
+	CompoundType -> '[' RExpr ']' TypeSpec .            (rule 86)
+
+	'
+'            reduce using rule 86
+	';'            reduce using rule 86
+
+
+State 201
+
+	RExpr -> RExpr . '||' RExpr1                        (rule 20)
+	Decl -> 'var' Ident BasicType Guard ':=' RExpr . EndLine    (rule 81)
+
+	'
+'            shift, and enter state 68
+	';'            shift, and enter state 79
+	'||'           shift, and enter state 101
+
+	EndLine        goto state 209
+
+State 202
+
+	RExpr -> RExpr . '||' RExpr1                        (rule 20)
+	GuardC -> ':' '(' RExpr . ')'                       (rule 79)
+
+	')'            shift, and enter state 208
+	'||'           shift, and enter state 101
+
+
+State 203
+
+	Decl -> 'dev' Ident BasicType '=' RExpr EndLine .    (rule 82)
+
+	'++'           reduce using rule 82
+	'--'           reduce using rule 82
+	'def'          reduce using rule 82
+	'dev'          reduce using rule 82
+	'do'           reduce using rule 82
+	'for'          reduce using rule 82
+	'if'           reduce using rule 82
+	'switch'       reduce using rule 82
+	'var'          reduce using rule 82
+	'while'        reduce using rule 82
+	'{'            reduce using rule 82
+	'}'            reduce using rule 82
+	L_ident        reduce using rule 82
+	%eof           reduce using rule 82
+
+
+State 204
+
+	Decl -> 'def' Ident '(' ListParameter ')' Guard . CompStmt    (rule 83)
+
+	'{'            shift, and enter state 53
+
+	CompStmt       goto state 207
+
+State 205
+
+	ListParameter -> Parameter ',' ListParameter .      (rule 91)
+
+	')'            reduce using rule 91
+
+
+State 206
+
+	Parameter -> Modality Ident Guard .                 (rule 92)
+
+	')'            reduce using rule 92
+	','            reduce using rule 92
+
+
+State 207
+
+	Decl -> 'def' Ident '(' ListParameter ')' Guard CompStmt .    (rule 83)
+
+	'++'           reduce using rule 83
+	'--'           reduce using rule 83
+	'def'          reduce using rule 83
+	'dev'          reduce using rule 83
+	'do'           reduce using rule 83
+	'for'          reduce using rule 83
+	'if'           reduce using rule 83
+	'switch'       reduce using rule 83
+	'var'          reduce using rule 83
+	'while'        reduce using rule 83
+	'{'            reduce using rule 83
+	'}'            reduce using rule 83
+	L_ident        reduce using rule 83
+	%eof           reduce using rule 83
+
+
+State 208
+
+	GuardC -> ':' '(' RExpr ')' .                       (rule 79)
+
+	')'            reduce using rule 79
+	','            reduce using rule 79
+	':='           reduce using rule 79
+	'{'            reduce using rule 79
+
+
+State 209
+
+	Decl -> 'var' Ident BasicType Guard ':=' RExpr EndLine .    (rule 81)
+
+	'++'           reduce using rule 81
+	'--'           reduce using rule 81
+	'def'          reduce using rule 81
+	'dev'          reduce using rule 81
+	'do'           reduce using rule 81
+	'for'          reduce using rule 81
+	'if'           reduce using rule 81
+	'switch'       reduce using rule 81
+	'var'          reduce using rule 81
+	'while'        reduce using rule 81
+	'{'            reduce using rule 81
+	'}'            reduce using rule 81
+	L_ident        reduce using rule 81
+	%eof           reduce using rule 81
 
 
 -----------------------------------------------------------------------------
 Grammar Totals
 -----------------------------------------------------------------------------
-Number of rules: 119
-Number of terminals: 66
-Number of non-terminals: 49
-Number of states: 200
+Number of rules: 124
+Number of terminals: 67
+Number of non-terminals: 52
+Number of states: 210

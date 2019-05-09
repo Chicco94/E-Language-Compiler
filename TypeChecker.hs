@@ -11,8 +11,8 @@ import ErrM
 
 -- type Env = (Signature, [(BlockType, Context)])
 type Env = (Sig, Context)                -- signature and stack of contexts
-type Sig = Map.Map String ([Type], Type)  
-type Context = Map.Map PIdent Type        -- or Map Ident Type
+type Sig = Map.Map String ([BasicType], BasicType)  
+type Context = Map.Map PIdent BasicType        -- or Map Ident BasicType
 
 emptyEnv :: Env
 emptyEnv = (Map.empty, Map.empty) :: (Sig, Context)
@@ -27,7 +27,7 @@ extendFun env@(sig,context) def = case def of
     Just _  -> fail $ show p ++ ": function " ++ printTree fname ++ " declared twice!"
   _ -> Ok env
 
-addFun :: Sig -> String -> [Arg] -> Type -> Sig
+addFun :: Sig -> String -> [Arg] -> BasicType -> Sig
 addFun sig fname args ret = Map.insert fname ([t | (ADecl t arg) <- args], ret) sig 
 
 
