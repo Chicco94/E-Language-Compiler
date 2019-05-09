@@ -1,12 +1,12 @@
 all:
-	happy -gcak ParE.y
+	happy -gca ParE.y
 	alex -g LexE.x
-	ghc --make Main.hs
+	ghc --make TestE.hs -o TestE
 
 clean:
 	-rm -f *.log *.aux *.hi *.o *.dvi
 
 distclean: clean
-	-rm -f DocE.* LexE.* ParE.* LayoutE.* SkelE.* PrintE.* TestE.* AbsE.* TestE ErrM.* SharedString.* ComposOp.* E.dtd XMLE.* 
+	-rm -f DocE.* LexE.* ParE.* LayoutE.* SkelE.* PrintE.* TestE.* AbsE.* TestE ErrM.* SharedString.* ComposOp.* E.dtd XMLE.* Makefile*
 	
 

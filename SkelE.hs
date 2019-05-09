@@ -9,133 +9,121 @@ type Result = Err String
 failure :: Show a => a -> Result
 failure x = Bad $ "Undefined case: " ++ show x
 
-transIdent :: Ident -> Result
-transIdent x = case x of
-  Ident string -> failure x
-transBoolean :: Boolean -> Result
-transBoolean x = case x of
-  Boolean_true -> failure x
-  Boolean_false -> failure x
-transEndLine :: EndLine -> Result
-transEndLine x = case x of
-  EndLine1 -> failure x
-  EndLine2 -> failure x
-transBasicType :: BasicType -> Result
-transBasicType x = case x of
-  BasicType_bool -> failure x
-  BasicType_char -> failure x
-  BasicType_string -> failure x
-  BasicType_float -> failure x
-  BasicType_int -> failure x
-  BasicType_void -> failure x
-transRExpr :: RExpr -> Result
-transRExpr x = case x of
-  Or rexpr1 rexpr2 -> failure x
-  And rexpr1 rexpr2 -> failure x
-  Not rexpr -> failure x
-  Eq rexpr1 rexpr2 -> failure x
-  Neq rexpr1 rexpr2 -> failure x
-  Lt rexpr1 rexpr2 -> failure x
-  LtE rexpr1 rexpr2 -> failure x
-  Gt rexpr1 rexpr2 -> failure x
-  GtE rexpr1 rexpr2 -> failure x
-  Add rexpr1 rexpr2 -> failure x
-  Sub rexpr1 rexpr2 -> failure x
-  Mul rexpr1 rexpr2 -> failure x
-  FloDiv rexpr1 rexpr2 -> failure x
-  IntDiv rexpr1 rexpr2 -> failure x
-  Rem rexpr1 rexpr2 -> failure x
-  Mod rexpr1 rexpr2 -> failure x
-  Pow rexpr1 rexpr2 -> failure x
-  Neg rexpr -> failure x
-  Ref lexpr -> failure x
-  FCall funcall -> failure x
-  Int integer -> failure x
-  Char char -> failure x
-  String string -> failure x
-  Float double -> failure x
-  Bool boolean -> failure x
-  Lexpr lexpr -> failure x
-transFunCall :: FunCall -> Result
-transFunCall x = case x of
-  Call ident rexprs -> failure x
-transLExpr :: LExpr -> Result
-transLExpr x = case x of
-  PreInc lexpr -> failure x
-  PreDecr lexpr -> failure x
-  PostInc lexpr -> failure x
-  PostDecr lexpr -> failure x
-  BasLExpr blexpr -> failure x
-transBLExpr :: BLExpr -> Result
-transBLExpr x = case x of
-  ArrayEl blexpr rexpr -> failure x
-  Id ident -> failure x
-  Deref blexpr -> failure x
+transPIdent :: PIdent -> Result
+transPIdent x = case x of
+  PIdent string -> failure x
 transProgram :: Program -> Result
 transProgram x = case x of
-  Prog decls -> failure x
+  PDefs decls -> failure x
+transDecl :: Decl -> Result
+transDecl x = case x of
+  DeclFun lexpr args guard stmts -> failure x
+  DeclStmt stmt -> failure x
 transGuard :: Guard -> Result
 transGuard x = case x of
   GuardVoid -> failure x
-  GuardType basictype -> failure x
-  GuardCons rexpr -> failure x
-transDecl :: Decl -> Result
-transDecl x = case x of
-  Dvar ident guard endline -> failure x
-  DvarAss ident guard rexpr endline -> failure x
-  Dconst ident guard rexpr endline -> failure x
-  Dfun ident parameters guard compstmt -> failure x
-transTypeSpec :: TypeSpec -> Result
-transTypeSpec x = case x of
-  BasTyp basictype -> failure x
-  CompType compoundtype -> failure x
-transCompoundType :: CompoundType -> Result
-transCompoundType x = case x of
-  ArrDef rexpr typespec -> failure x
-  ArrUnDef typespec -> failure x
-  Pointer typespec -> failure x
-transParameter :: Parameter -> Result
-transParameter x = case x of
-  Param modality ident guard -> failure x
-transModality :: Modality -> Result
-transModality x = case x of
-  Modality1 -> failure x
-  Modality_var -> failure x
-transCompStmt :: CompStmt -> Result
-transCompStmt x = case x of
-  BlockDecl decls stmts -> failure x
+  GuardType type_ -> failure x
+transArg :: Arg -> Result
+transArg x = case x of
+  ArgDecl pident guard -> failure x
 transStmt :: Stmt -> Result
 transStmt x = case x of
-  Comp compstmt -> failure x
-  ProcCall funcall endline -> failure x
-  Iter iterstmt -> failure x
-  Sel selectionstmt -> failure x
-  Assgn lexpr assignmentop rexpr endline -> failure x
-  LExprStmt lexpr endline -> failure x
-transAssignment_op :: Assignment_op -> Result
-transAssignment_op x = case x of
-  Assign -> failure x
-  AssgnOr -> failure x
-  AssgnAnd -> failure x
-  AssgnAdd -> failure x
-  AssgnSub -> failure x
-  AssgnMul -> failure x
-  AssgnDiv -> failure x
-  AssgnDivInt -> failure x
-  AssgnRem -> failure x
-  AssgnMod -> failure x
-  AssgnPow -> failure x
-transSelectionStmt :: SelectionStmt -> Result
-transSelectionStmt x = case x of
-  IfNoElse rexpr compstmt -> failure x
-  IfElse rexpr compstmt1 compstmt2 -> failure x
-  Switch rexpr switchlabels compstmt -> failure x
-transSwitchLabel :: SwitchLabel -> Result
-transSwitchLabel x = case x of
-  SwitchL rexpr compstmt -> failure x
-transIterStmt :: IterStmt -> Result
-transIterStmt x = case x of
-  While rexpr compstmt -> failure x
-  DoWhile compstmt rexpr -> failure x
-  For ident rexpr compstmt -> failure x
+  StmtExpr expr endline -> failure x
+  StmtDecl lexpr guard endline -> failure x
+  StmtIterDecl lexpr guard endline -> failure x
+  StmtVarInit lexpr guard expr endline -> failure x
+  StmtDefInit lexpr guard expr endline -> failure x
+  StmtVarIterInit lexpr guard typeiter endline -> failure x
+  StmtDefIterInit lexpr guard typeiter endline -> failure x
+  StmtReturn exprs endline -> failure x
+  StmtBlock decls -> failure x
+  StmtIfElse expr stmt1 stmt2 -> failure x
+  StmtIfNoElse expr stmt -> failure x
+  SSwitchCase expr normcases dfltcases -> failure x
+  StmtBreak -> failure x
+  StmtContinue -> failure x
+  StmtWhile expr stmt -> failure x
+  StmtFor pident typeiter stmt -> failure x
+transNormCase :: NormCase -> Result
+transNormCase x = case x of
+  CaseNormal expr stmt -> failure x
+transDfltCase :: DfltCase -> Result
+transDfltCase x = case x of
+  CaseDefault stmt -> failure x
+transLExpr :: LExpr -> Result
+transLExpr x = case x of
+  LExprId pident -> failure x
+  LExprDeref deref -> failure x
+  LExprRef ref -> failure x
+transDeref :: Deref -> Result
+transDeref x = case x of
+  DerefExpr lexpr -> failure x
+transRef :: Ref -> Result
+transRef x = case x of
+  RefExpr lexpr -> failure x
+transExpr :: Expr -> Result
+transExpr x = case x of
+  LExpr lexpr -> failure x
+  ExprInt integer -> failure x
+  ExprDouble double -> failure x
+  ExprChar char -> failure x
+  ExprString string -> failure x
+  ExprTrue -> failure x
+  ExprFalse -> failure x
+  ExprFunCall pident args -> failure x
+  ExprBoolNot expr -> failure x
+  ExprNegation expr -> failure x
+  ExprPower expr1 expr2 -> failure x
+  ExprMul expr1 expr2 -> failure x
+  ExprFloatDiv expr1 expr2 -> failure x
+  ExprIntDiv expr1 expr2 -> failure x
+  ExprReminder expr1 expr2 -> failure x
+  ExprModulo expr1 expr2 -> failure x
+  ExprPlus expr1 expr2 -> failure x
+  ExprMinus expr1 expr2 -> failure x
+  ExprIntInc expr1 expr2 -> failure x
+  ExprIntExc expr1 expr2 -> failure x
+  ExprLt expr1 expr2 -> failure x
+  ExprGt expr1 expr2 -> failure x
+  ExprLtEq expr1 expr2 -> failure x
+  ExprGtEq expr1 expr2 -> failure x
+  ExprEq expr1 expr2 -> failure x
+  ExprNeq expr1 expr2 -> failure x
+  ExprAnd expr1 expr2 -> failure x
+  ExprOr expr1 expr2 -> failure x
+  ExprAssign lexpr assignoperator expr -> failure x
+  ExprTyped type_ expr -> failure x
+transAssignOperator :: AssignOperator -> Result
+transAssignOperator x = case x of
+  OpAssign -> failure x
+  OpOr -> failure x
+  OpAnd -> failure x
+  OpPlus -> failure x
+  OpMinus -> failure x
+  OpMul -> failure x
+  OpIntDiv -> failure x
+  OpFloatDiv -> failure x
+  OpRemainder -> failure x
+  OpModulo -> failure x
+  OpPower -> failure x
+transType :: Type -> Result
+transType x = case x of
+  TypeBool -> failure x
+  TypeDouble -> failure x
+  TypeInt -> failure x
+  TypeVoid -> failure x
+  TypeChar -> failure x
+  TypeString -> failure x
+  TypeCompound compoundtype -> failure x
+transCompoundType :: CompoundType -> Result
+transCompoundType x = case x of
+  TypePointer type_ -> failure x
+  TypeIterable typeiter -> failure x
+transTypeIter :: TypeIter -> Result
+transTypeIter x = case x of
+  TypeIterInterval expr -> failure x
+  TypeIterArray exprs -> failure x
+transEndLine :: EndLine -> Result
+transEndLine x = case x of
+  Semicolon -> failure x
 

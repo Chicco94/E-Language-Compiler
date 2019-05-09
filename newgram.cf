@@ -1,0 +1,81 @@
+-- Position to ident
+position token PIdent (letter (letter|digit|'_'|'\'')*) ;
+
+-- A program is a sequence of declarations.
+PDefs.     Program ::= [Decl] ;
+terminator Decl "" ;
+
+-- A program may containt (C-like) comments, which are ignored by the parser.
+comment "//" ;
+comment "/*" "*/" ;
+
+-- Function declaration. E.g.: def foo (int x, double y) : int { }
+DeclFun.   Decl ::= "def" PIdent "(" [Parameter] ")" "{" [Stmt] "}" ;
+separator  Parameter "," ;
+terminator Stmt "" ;
+
+-- An argument declaration has a type and an identifier.
+ArgDecl.   Arg ::= Type PIdent ;
+
+-- Any Expression followed by a semicolon ; can be used as a statement.
+StmtExpr.       Stmt     ::= Expr ";" ;
+StmtDecl.       Stmt     ::= Type PIdent ";" ;
+StmtInit.       Stmt     ::= Type PIdent "=" Expr ";" ;
+StmtReturn.     Stmt     ::= "return" Expr ";" ;
+StmtBlock.      Stmt     ::= "{" [Stmt] "}" ;
+StmtIfElse.     Stmt     ::= "if" "(" Expr ")" Stmt "else" Stmt ;
+StmtIfNoElse.   Stmt     ::= "if" "(" Expr ")" Stmt ;
+StmtWhile.      Stmt     ::= "while" "(" Expr ")" Stmt ;
+
+-- A statement is a declaration.
+DeclStmt.       Decl ::= Stmt ;
+
+-- (Right) Expressions
+ExprInt.      Expr15 ::= Integer ;
+ExprDouble.   Expr15 ::= Double ;
+ExprTrue.     Expr15 ::= "true" ;
+ExprFalse.    Expr15 ::= "false" ;
+ExprId.       Expr15 ::= PIdent ;
+
+ExprFunCall.  Expr15 ::= PIdent "(" [Arg] ")" ;
+
+ExprPower.    Expr13 ::= Expr14 "*"  Expr13 ;
+
+ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
+ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
+ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
+ExprReminder. Expr12 ::= Expr12 "%"  Expr13 ;
+ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
+
+ExprPlus.     Expr11 ::= Expr11 "+"  Expr12 ;
+ExprMinus.    Expr11 ::= Expr11 "-"  Expr12 ;
+
+ExprLt.       Expr9  ::= Expr9  "<"   Expr10 ;
+ExprGt.       Expr9  ::= Expr9  ">"   Expr10 ;
+ExprLtEq.     Expr9  ::= Expr9  "<="  Expr10 ;
+ExprGtEq.     Expr9  ::= Expr9  ">="  Expr10 ;
+
+ExprEq.       Expr8  ::= Expr8  "=="  Expr9 ;
+ExprNeq.      Expr8  ::= Expr8  "!="  Expr9 ;
+
+ExprBoolNot.  Expr5  ::= "!" Expr6 ;
+
+ExprAnd.      Expr4  ::= Expr4  "&&"  Expr5 ;
+
+ExprOr.       Expr3  ::= Expr3  "||"  Expr4 ;
+
+ExprAssign.   Expr2  ::= Expr3  ":="  Expr2 ;
+
+coercions Expr 15 ;
+separator Expr "," ;
+
+-- The available type are bool, double, int, void, char and string.
+TBool.   Type ::= "bool" ;
+TDouble. Type ::= "double" ;
+TInt.    Type ::= "int" ;
+TVoid.   Type ::= "void" ; 
+TChar.   Type ::= "char" ;
+TString. Type ::= "string" ; 
+
+-- The entry point is the program.
+entrypoints Program ;

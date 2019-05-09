@@ -78,9 +78,6 @@ ExprFalse.    Expr15 ::= "false" ;
 
 ExprFunCall.  Expr15 ::= PIdent "(" [Arg] ")" ;
 
-ExprBoolNot.  Expr14  ::= "!" Expr15 ;
-ExprNegation. Expr14  ::= "-" Expr15 ;
-
 ExprPower.    Expr13 ::= Expr14 "**"  Expr13 ;
 
 ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
@@ -89,12 +86,13 @@ ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
 ExprReminder. Expr12 ::= Expr12 "%"  Expr13 ;
 ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
 
+ExprNegation.  Expr11 ::= "-" Expr12 ;
 --ExprReference. Expr11 ::= "&" LExpr ;
 ExprPlus.      Expr11 ::= Expr11 "+"  Expr12 ;
 ExprMinus.     Expr11 ::= Expr11 "-"  Expr12 ;
 
-ExprIntInc.   Expr10 ::= Expr10 ".."  Expr11 ;
-ExprIntExc.   Expr10 ::= Expr10 "..!" Expr11 ;
+--ExprIntInc.   Expr10 ::= Expr10 ".."  Expr11 ;
+--ExprIntExc.   Expr10 ::= Expr10 "..!" Expr11 ;
 
 ExprLt.       Expr9  ::= Expr9  "<"   Expr10 ;
 ExprGt.       Expr9  ::= Expr9  ">"   Expr10 ;
@@ -103,6 +101,8 @@ ExprGtEq.     Expr9  ::= Expr9  ">="  Expr10 ;
 
 ExprEq.       Expr8  ::= Expr8  "=="  Expr9 ;
 ExprNeq.      Expr8  ::= Expr8  "!="  Expr9 ;
+
+ExprBoolNot.  Expr5  ::= "!" Expr6 ;
 
 ExprAnd.      Expr4  ::= Expr4  "&&"  Expr5 ;
 
@@ -136,11 +136,12 @@ TypeString. Type ::= "string" ;
 --TypeAny.    Type ::= "any" ;
 
 -- Compound types.
-TypeCompound. Type ::= CompoundType ;
-TypePointer.  CompoundType ::= Type "*" ; 
-TypeIterable. CompoundType ::= TypeIter ;
-TypeIterInterval. TypeIter ::= Expr10 ;           -- Iterable interval.
-TypeIterArray.    TypeIter ::= "[" [Expr] "]" ;   -- Iterable array.
+TypeCompound.     Type ::= CompoundType ;
+TypePointer.      CompoundType ::= Type "*" ; 
+TypeIterable.     CompoundType ::= TypeIter ;
+TypeIterIntInc.   TypeIter     ::= Expr ".." Expr ;   -- Iterable inclusive interval.
+TypeIterIntExc.   TypeIter     ::= Expr "..!" Expr ;  -- Iterable exclusive interval.
+TypeIterArray.    TypeIter     ::= "[" [Expr] "]" ;   -- Iterable array.
 
 
 -- End statement character.

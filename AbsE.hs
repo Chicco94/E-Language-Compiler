@@ -7,129 +7,117 @@ module AbsE where
 
 
 
-newtype Ident = Ident String deriving (Eq, Ord, Show, Read)
-data Boolean = Boolean_true | Boolean_false
+newtype PIdent = PIdent ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+data Program = PDefs [Decl]
   deriving (Eq, Ord, Show, Read)
 
-data EndLine = EndLine1 | EndLine2
+data Decl = DeclFun LExpr [Arg] Guard [Stmt] | DeclStmt Stmt
   deriving (Eq, Ord, Show, Read)
 
-data BasicType
-    = BasicType_bool
-    | BasicType_char
-    | BasicType_string
-    | BasicType_float
-    | BasicType_int
-    | BasicType_void
+data Guard = GuardVoid | GuardType Type
   deriving (Eq, Ord, Show, Read)
 
-data RExpr
-    = Or RExpr RExpr
-    | And RExpr RExpr
-    | Not RExpr
-    | Eq RExpr RExpr
-    | Neq RExpr RExpr
-    | Lt RExpr RExpr
-    | LtE RExpr RExpr
-    | Gt RExpr RExpr
-    | GtE RExpr RExpr
-    | Add RExpr RExpr
-    | Sub RExpr RExpr
-    | Mul RExpr RExpr
-    | FloDiv RExpr RExpr
-    | IntDiv RExpr RExpr
-    | Rem RExpr RExpr
-    | Mod RExpr RExpr
-    | Pow RExpr RExpr
-    | Neg RExpr
-    | Ref LExpr
-    | FCall FunCall
-    | Int Integer
-    | Char Char
-    | String String
-    | Float Double
-    | Bool Boolean
-    | Lexpr LExpr
-  deriving (Eq, Ord, Show, Read)
-
-data FunCall = Call Ident [RExpr]
-  deriving (Eq, Ord, Show, Read)
-
-data LExpr
-    = PreInc LExpr
-    | PreDecr LExpr
-    | PostInc LExpr
-    | PostDecr LExpr
-    | BasLExpr BLExpr
-  deriving (Eq, Ord, Show, Read)
-
-data BLExpr = ArrayEl BLExpr RExpr | Id Ident | Deref BLExpr
-  deriving (Eq, Ord, Show, Read)
-
-data Program = Prog [Decl]
-  deriving (Eq, Ord, Show, Read)
-
-data Guard = GuardVoid | GuardType BasicType | GuardCons RExpr
-  deriving (Eq, Ord, Show, Read)
-
-data Decl
-    = Dvar Ident Guard EndLine
-    | DvarAss Ident Guard RExpr EndLine
-    | Dconst Ident Guard RExpr EndLine
-    | Dfun Ident [Parameter] Guard CompStmt
-  deriving (Eq, Ord, Show, Read)
-
-data TypeSpec = BasTyp BasicType | CompType CompoundType
-  deriving (Eq, Ord, Show, Read)
-
-data CompoundType
-    = ArrDef RExpr TypeSpec | ArrUnDef TypeSpec | Pointer TypeSpec
-  deriving (Eq, Ord, Show, Read)
-
-data Parameter = Param Modality Ident Guard
-  deriving (Eq, Ord, Show, Read)
-
-data Modality = Modality1 | Modality_var
-  deriving (Eq, Ord, Show, Read)
-
-data CompStmt = BlockDecl [Decl] [Stmt]
+data Arg = ArgDecl PIdent Guard
   deriving (Eq, Ord, Show, Read)
 
 data Stmt
-    = Comp CompStmt
-    | ProcCall FunCall EndLine
-    | Iter IterStmt
-    | Sel SelectionStmt
-    | Assgn LExpr Assignment_op RExpr EndLine
-    | LExprStmt LExpr EndLine
+    = StmtExpr Expr EndLine
+    | StmtDecl LExpr Guard EndLine
+    | StmtIterDecl LExpr Guard EndLine
+    | StmtVarInit LExpr Guard Expr EndLine
+    | StmtDefInit LExpr Guard Expr EndLine
+    | StmtVarIterInit LExpr Guard TypeIter EndLine
+    | StmtDefIterInit LExpr Guard TypeIter EndLine
+    | StmtReturn [Expr] EndLine
+    | StmtBlock [Decl]
+    | StmtIfElse Expr Stmt Stmt
+    | StmtIfNoElse Expr Stmt
+    | SSwitchCase Expr [NormCase] [DfltCase]
+    | StmtBreak
+    | StmtContinue
+    | StmtWhile Expr Stmt
+    | StmtFor PIdent TypeIter Stmt
   deriving (Eq, Ord, Show, Read)
 
-data Assignment_op
-    = Assign
-    | AssgnOr
-    | AssgnAnd
-    | AssgnAdd
-    | AssgnSub
-    | AssgnMul
-    | AssgnDiv
-    | AssgnDivInt
-    | AssgnRem
-    | AssgnMod
-    | AssgnPow
+data NormCase = CaseNormal Expr Stmt
   deriving (Eq, Ord, Show, Read)
 
-data SelectionStmt
-    = IfNoElse RExpr CompStmt
-    | IfElse RExpr CompStmt CompStmt
-    | Switch RExpr [SwitchLabel] CompStmt
+data DfltCase = CaseDefault Stmt
   deriving (Eq, Ord, Show, Read)
 
-data SwitchLabel = SwitchL RExpr CompStmt
+data LExpr = LExprId PIdent | LExprDeref Deref | LExprRef Ref
   deriving (Eq, Ord, Show, Read)
 
-data IterStmt
-    = While RExpr CompStmt
-    | DoWhile CompStmt RExpr
-    | For Ident RExpr CompStmt
+data Deref = DerefExpr LExpr
+  deriving (Eq, Ord, Show, Read)
+
+data Ref = RefExpr LExpr
+  deriving (Eq, Ord, Show, Read)
+
+data Expr
+    = LExpr LExpr
+    | ExprInt Integer
+    | ExprDouble Double
+    | ExprChar Char
+    | ExprString String
+    | ExprTrue
+    | ExprFalse
+    | ExprFunCall PIdent [Arg]
+    | ExprBoolNot Expr
+    | ExprNegation Expr
+    | ExprPower Expr Expr
+    | ExprMul Expr Expr
+    | ExprFloatDiv Expr Expr
+    | ExprIntDiv Expr Expr
+    | ExprReminder Expr Expr
+    | ExprModulo Expr Expr
+    | ExprPlus Expr Expr
+    | ExprMinus Expr Expr
+    | ExprIntInc Expr Expr
+    | ExprIntExc Expr Expr
+    | ExprLt Expr Expr
+    | ExprGt Expr Expr
+    | ExprLtEq Expr Expr
+    | ExprGtEq Expr Expr
+    | ExprEq Expr Expr
+    | ExprNeq Expr Expr
+    | ExprAnd Expr Expr
+    | ExprOr Expr Expr
+    | ExprAssign LExpr AssignOperator Expr
+    | ExprTyped Type Expr
+  deriving (Eq, Ord, Show, Read)
+
+data AssignOperator
+    = OpAssign
+    | OpOr
+    | OpAnd
+    | OpPlus
+    | OpMinus
+    | OpMul
+    | OpIntDiv
+    | OpFloatDiv
+    | OpRemainder
+    | OpModulo
+    | OpPower
+  deriving (Eq, Ord, Show, Read)
+
+data Type
+    = TypeBool
+    | TypeDouble
+    | TypeInt
+    | TypeVoid
+    | TypeChar
+    | TypeString
+    | TypeCompound CompoundType
+  deriving (Eq, Ord, Show, Read)
+
+data CompoundType = TypePointer Type | TypeIterable TypeIter
+  deriving (Eq, Ord, Show, Read)
+
+data TypeIter = TypeIterInterval Expr | TypeIterArray [Expr]
+  deriving (Eq, Ord, Show, Read)
+
+data EndLine = Semicolon
   deriving (Eq, Ord, Show, Read)
 
