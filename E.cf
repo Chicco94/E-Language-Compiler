@@ -5,23 +5,35 @@ position token PIdent (letter (letter|digit|'_'|'\'')*) ;
 PDefs.     Program ::= [Decl] ;
 terminator Decl "" ;
 
+-- Include in the abstract syntax a type annotated version of expressions.
+--internal ExprTyped. Expr ::= "[" Type "]" Expr ;
+internal PTDefs. Program ::=  [AnnDecl] ;
+terminator AnnDecl "";
+
+-- A declaration is an annotated declaration with no label.
+LabeledDecl. AnnDecl ::= Decl ;
+
 -- A program may containt (C-like) comments, which are ignored by the parser.
 comment "//" ;
 comment "/*" "*/" ;
 
 -- Function declaration. E.g.: def foo (int x, double y) : int { }
 DeclFun.   Decl ::= "def" LExpr "(" [Arg] ")" Guard "{" [Stmt] "}" ;
+AnnotatedDecl.   AnnDecl ::= "[" Type ":]" Decl ;
 separator  Arg "," ;
 terminator Stmt "" ;
+
+-- An argument declaration has a type and an identifier.
+ArgDecl.   Arg      ::= Modality PIdent Guard ;
+ModEmpty.  Modality ::= {-empty-} ;  -- no modality
+ModVar.    Modality ::= "var" ;      -- variable modality
+ModDef.    Modality ::= "def" ;      -- constant modality
 
 -- Guards of declarations. E.g.: 
 -- def i : <guard>; 
 -- def foo (i : <guard>) : <guard> {}
 GuardVoid.  Guard ::= {-empty-} ;  -- empty guard
 GuardType.  Guard ::= ":" Type ;   -- guarded
-
--- An argument declaration has a type and an identifier.
-ArgDecl.   Arg ::= PIdent Guard ;
 
 -- Any Expression followed by a semicolon ; can be used as a statement.
 StmtExpr.       Stmt     ::= Expr EndLine ;
@@ -32,10 +44,13 @@ StmtExpr.       Stmt     ::= Expr EndLine ;
 
 StmtDecl.        Stmt     ::= "var" LExpr Guard EndLine ;                      -- Variable declaration.
 StmtIterDecl.    Stmt     ::= "var" "[" LExpr "]" Guard EndLine ;              -- Iterable type declaration.
+
 StmtVarInit.     Stmt     ::= "var" LExpr Guard ":=" Expr EndLine ;     -- Constant/variable initialization.
 StmtDefInit.     Stmt     ::= "def" LExpr Guard ":=" Expr EndLine ;
-StmtVarIterInit. Stmt     ::= "var" LExpr Guard ":=" TypeIter EndLine ; -- Constant/variable iterable type initialization.
-StmtDefIterInit. Stmt     ::= "def" LExpr Guard ":=" TypeIter EndLine ;
+-- ###
+-- 1 reduce/reduce conflict
+--StmtVarIterInit. Stmt     ::= "var" LExpr Guard ":=" TypeIter EndLine ; -- Constant/variable iterable type initialization.
+--StmtDefIterInit. Stmt     ::= "def" LExpr Guard ":=" TypeIter EndLine ;
 --DeclModVar.      DeclModality ::= "var" ;
 --DeclModDef.      DeclModality ::= "def" ;
 
@@ -43,6 +58,8 @@ StmtReturn.     Stmt     ::= "return" [Expr] EndLine ;
 
 StmtBlock.      Stmt     ::= "{" [Decl] "}" ;
 
+-- ###
+-- 1 shift/reduce conflict
 StmtIfElse.     Stmt     ::= "if" "(" Expr ")" Stmt "else" Stmt ;
 StmtIfNoElse.   Stmt     ::= "if" "(" Expr ")" Stmt ;
 SSwitchCase.    Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
@@ -56,33 +73,41 @@ StmtContinue.   Stmt     ::= "continue" ;
 StmtWhile.      Stmt     ::= "while" "(" Expr ")" Stmt ;
 StmtFor.        Stmt     ::= "for" PIdent "in" TypeIter Stmt ;
 
+StmtAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
+
 
 -- A statement is a declaration.
 DeclStmt.       Decl ::= Stmt ;
 
 -- (Left) Expressions
 LExprId.        LExpr ::= PIdent ;
-LExprDeref.     LExpr ::= Deref ;
+--LExprDeref.     LExpr ::= Deref ;
 LExprRef.       LExpr ::= Ref ;
-DerefExpr.      Deref ::= "&" LExpr;
+--DerefExpr.      Deref ::= "&" LExpr;
 RefExpr.        Ref   ::= "*" LExpr;
 
 -- (Right) Expressions
-LExpr.        Expr15 ::= LExpr ;
-ExprInt.      Expr15 ::= Integer ;
-ExprDouble.   Expr15 ::= Double ;
-ExprChar.     Expr15 ::= Char ;
-ExprString.   Expr15 ::= String ;
-ExprTrue.     Expr15 ::= "true" ;
-ExprFalse.    Expr15 ::= "false" ;
+LeftExpr.     Expr17 ::= LExpr ;
+ExprInt.      Expr16 ::= Integer ;
+ExprDouble.   Expr16 ::= Double ;
+ExprChar.     Expr16 ::= Char ;
+ExprString.   Expr16 ::= String ;
+ExprTrue.     Expr16 ::= "true" ;
+ExprFalse.    Expr16 ::= "false" ;
 
 ExprFunCall.  Expr15 ::= PIdent "(" [Arg] ")" ;
 
 ExprBoolNot.  Expr14  ::= "!" Expr15 ;
+ExprDeref.    Expr14  ::= "&" LExpr ;
+-- ###
+-- 6 (3+3) shift/reduce conflicts
 ExprNegation. Expr14  ::= "-" Expr15 ;
+ExprAddition. Expr14  ::= "+" Expr15 ;
 
-ExprPower.    Expr13 ::= Expr14 "**"  Expr13 ;
+--ExprPower.    Expr13 ::= Expr14 "**"  Expr13 ;
 
+-- ###
+-- 3 shift/reduce conflicts
 ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
 ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
 ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
@@ -108,9 +133,7 @@ ExprAnd.      Expr4  ::= Expr4  "&&"  Expr5 ;
 
 ExprOr.       Expr3  ::= Expr3  "||"  Expr4 ;
 
---ExprAssign.   Expr2  ::= Expr3  ":="  Expr2 ;
-ExprAssign.   Expr2  ::= LExpr  AssignOperator  Expr2  ;
-coercions Expr 15 ;
+coercions Expr 17 ;
 separator Expr "," ;
 
 -- Assignment operators (i.e., l-value operator r-value).
@@ -149,8 +172,5 @@ Semicolon. EndLine ::= ";" ;
 
 -- The entry point is the program.
 entrypoints Program ;
-
--- Include in the abstract syntax a type annotated version of expressions.
-internal ExprTyped. Expr ::= "[" Type ":]" Expr ;
 
 

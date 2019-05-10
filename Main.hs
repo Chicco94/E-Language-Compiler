@@ -42,8 +42,10 @@ run v p s = let ts = myLLexer s in case p ts of
                           case typeCheck tree of
                               Bad err -> do putStrLn err
                                             exitFailure
-                              Ok _    -> do putStrLn "Correct Typing"
-                                            exitSuccess
+                              Ok (env,prog) -> do putStrLn "Correct Typing"
+                                                  showAnnotatedTree v prog
+                                                  --putStrV v $ printTree prog 
+                                                  exitSuccess
 
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()
@@ -51,6 +53,10 @@ showTree v tree
  = do
       putStrV v $ "\n[Abstract Syntax]\n\n" ++ show tree
       putStrV v $ "\n[Linearized tree]\n\n" ++ printTree tree
+
+showAnnotatedTree :: (Show a, Print a) => Int -> a -> IO()
+showAnnotatedTree v prog = do
+  putStrV v $ "\n[Annotated tree]\n\n" ++ printTree prog
 
 usage :: IO ()
 usage = do

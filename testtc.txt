@@ -1,0 +1,6 @@
+//var i : int := 0 ;
+//var i : double := 0 ;
+
+def a(var i : char) : double {}
+def b(var j : char) : int {}
+def c(var k) : void {}
