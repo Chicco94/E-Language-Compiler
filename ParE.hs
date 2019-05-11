@@ -64,16 +64,16 @@ happyIn10 x = Happy_GHC_Exts.unsafeCoerce# x
 happyOut10 :: (HappyAbsSyn ) -> ([Decl])
 happyOut10 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut10 #-}
-happyIn11 :: ([AnnDecl]) -> (HappyAbsSyn )
+happyIn11 :: ([AnnotatedDecl]) -> (HappyAbsSyn )
 happyIn11 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn11 #-}
-happyOut11 :: (HappyAbsSyn ) -> ([AnnDecl])
+happyOut11 :: (HappyAbsSyn ) -> ([AnnotatedDecl])
 happyOut11 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut11 #-}
-happyIn12 :: (AnnDecl) -> (HappyAbsSyn )
+happyIn12 :: (AnnotatedDecl) -> (HappyAbsSyn )
 happyIn12 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn12 #-}
-happyOut12 :: (HappyAbsSyn ) -> (AnnDecl)
+happyOut12 :: (HappyAbsSyn ) -> (AnnotatedDecl)
 happyOut12 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut12 #-}
 happyIn13 :: (Decl) -> (HappyAbsSyn )
@@ -312,7 +312,7 @@ happyExpList = HappyA# "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
 {-# NOINLINE happyExpListPerState #-}
 happyExpListPerState st =
     token_strs_expected
-  where token_strs = ["error","%dummy","%start_pProgram","Integer","Double","Char","String","PIdent","Program","ListDecl","ListAnnDecl","AnnDecl","Decl","ListArg","ListStmt","Arg","Modality","Guard","Stmt","NormCase","DfltCase","ListNormCase","ListDfltCase","Expr","LExpr","Ref","Expr17","Expr16","Expr15","Expr14","Expr12","Expr11","Expr10","Expr9","Expr8","Expr4","Expr3","Expr1","Expr2","Expr5","Expr6","Expr7","Expr13","ListExpr","AssignOperator","Type","CompoundType","TypeIter","EndLine","'!'","'!='","'%'","'%%'","'%%='","'%='","'&'","'&&'","'&='","'('","')'","'*'","'**='","'*='","'+'","'+='","','","'-'","'-='","'..'","'..!'","'/'","'//'","'//='","'/='","':'","':='","':]'","';'","'<'","'<='","'=='","'>'","'>='","'['","']'","'bool'","'break'","'char'","'continue'","'def'","'double'","'else'","'false'","'for'","'if'","'in'","'int'","'match'","'match _'","'return'","'string'","'switch'","'true'","'var'","'void'","'while'","'{'","'|='","'||'","'}'","L_integ","L_doubl","L_charac","L_quoted","L_PIdent","%eof"]
+  where token_strs = ["error","%dummy","%start_pProgram","Integer","Double","Char","String","PIdent","Program","ListDecl","ListAnnotatedDecl","AnnotatedDecl","Decl","ListArg","ListStmt","Arg","Modality","Guard","Stmt","NormCase","DfltCase","ListNormCase","ListDfltCase","Expr","LExpr","Ref","Expr17","Expr16","Expr15","Expr14","Expr12","Expr11","Expr10","Expr9","Expr8","Expr4","Expr3","Expr1","Expr2","Expr5","Expr6","Expr7","Expr13","ListExpr","AssignOperator","Type","CompoundType","TypeIter","EndLine","'!'","'!='","'%'","'%%'","'%%='","'%='","'&'","'&&'","'&='","'('","')'","'*'","'**='","'*='","'+'","'+='","','","'-'","'-='","'..'","'..!'","'/'","'//'","'//='","'/='","':'","':='","':]'","';'","'<'","'<='","'=='","'>'","'>='","'['","']'","'bool'","'break'","'char'","'continue'","'def'","'double'","'else'","'false'","'for'","'if'","'in'","'int'","'match'","'match _'","'return'","'string'","'switch'","'true'","'var'","'void'","'while'","'{'","'|='","'||'","'}'","L_integ","L_doubl","L_charac","L_quoted","L_PIdent","%eof"]
         bit_start = st * 116
         bit_end = (st + 1) * 116
         read_bit = readArrayBit happyExpList
@@ -542,7 +542,7 @@ happyReduce_11 = happySpecReduce_1  8# happyReduction_11
 happyReduction_11 happy_x_1
 	 =  case happyOut13 happy_x_1 of { happy_var_1 -> 
 	happyIn12
-		 (AbsE.LabeledDecl happy_var_1
+		 (AbsE.UntypedDecl happy_var_1
 	)}
 
 happyReduce_12 = happyReduce 4# 8# happyReduction_12
@@ -554,7 +554,7 @@ happyReduction_12 (happy_x_4 `HappyStk`
 	 = case happyOut46 happy_x_2 of { happy_var_2 -> 
 	case happyOut13 happy_x_4 of { happy_var_4 -> 
 	happyIn12
-		 (AbsE.AnnotatedDecl happy_var_2 happy_var_4
+		 (AbsE.TypedDecl happy_var_2 happy_var_4
 	) `HappyStk` happyRest}}
 
 happyReduce_13 = happyReduce 9# 9# happyReduction_13

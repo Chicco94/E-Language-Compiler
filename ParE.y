@@ -94,12 +94,12 @@ Program :: { Program }
 Program : ListDecl { AbsE.PDefs (reverse $1) }
 ListDecl :: { [Decl] }
 ListDecl : {- empty -} { [] } | ListDecl Decl { flip (:) $1 $2 }
-ListAnnDecl :: { [AnnDecl] }
-ListAnnDecl : {- empty -} { [] }
-            | ListAnnDecl AnnDecl { flip (:) $1 $2 }
-AnnDecl :: { AnnDecl }
-AnnDecl : Decl { AbsE.LabeledDecl $1 }
-        | '[' Type ':]' Decl { AbsE.AnnotatedDecl $2 $4 }
+ListAnnotatedDecl :: { [AnnotatedDecl] }
+ListAnnotatedDecl : {- empty -} { [] }
+                  | ListAnnotatedDecl AnnotatedDecl { flip (:) $1 $2 }
+AnnotatedDecl :: { AnnotatedDecl }
+AnnotatedDecl : Decl { AbsE.UntypedDecl $1 }
+              | '[' Type ':]' Decl { AbsE.TypedDecl $2 $4 }
 Decl :: { Decl }
 Decl : 'def' LExpr '(' ListArg ')' Guard '{' ListStmt '}' { AbsE.DeclFun $2 $4 $6 (reverse $8) }
      | Stmt { AbsE.DeclStmt $1 }

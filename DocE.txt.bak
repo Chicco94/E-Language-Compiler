@@ -69,7 +69,6 @@ and **eps** (empty rule) belong to the BNF notation.
 All other symbols are terminals.
 
   | //Program// | -> | //[Decl]// 
-  |  |  **|**  | //[AnnDecl]// 
   | //[Decl]// | -> | **eps**
   |  |  **|**  | //Decl// //[Decl]// 
   | //[AnnDecl]// | -> | **eps**

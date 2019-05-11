@@ -7,11 +7,11 @@ terminator Decl "" ;
 
 -- Include in the abstract syntax a type annotated version of expressions.
 --internal ExprTyped. Expr ::= "[" Type "]" Expr ;
-internal PTDefs. Program ::=  [AnnDecl] ;
-terminator AnnDecl "";
+internal PTDefs. Program ::=  [AnnotatedDecl] ;
+terminator AnnotatedDecl "";
 
 -- A declaration is an annotated declaration with no label.
-LabeledDecl. AnnDecl ::= Decl ;
+UntypedDecl. AnnotatedDecl ::= Decl ;
 
 -- A program may containt (C-like) comments, which are ignored by the parser.
 comment "//" ;
@@ -19,7 +19,7 @@ comment "/*" "*/" ;
 
 -- Function declaration. E.g.: def foo (int x, double y) : int { }
 DeclFun.   Decl ::= "def" LExpr "(" [Arg] ")" Guard "{" [Stmt] "}" ;
-AnnotatedDecl.   AnnDecl ::= "[" Type ":]" Decl ;
+TypedDecl. AnnotatedDecl ::= "[" Type ":]" Decl ;
 separator  Arg "," ;
 terminator Stmt "" ;
 

@@ -15,11 +15,11 @@ transPIdent x = case x of
 transProgram :: Program -> Result
 transProgram x = case x of
   PDefs decls -> failure x
-  PTDefs anndecls -> failure x
-transAnnDecl :: AnnDecl -> Result
-transAnnDecl x = case x of
-  LabeledDecl decl -> failure x
-  AnnotatedDecl type_ decl -> failure x
+  PTDefs annotateddecls -> failure x
+transAnnotatedDecl :: AnnotatedDecl -> Result
+transAnnotatedDecl x = case x of
+  UntypedDecl decl -> failure x
+  TypedDecl type_ decl -> failure x
 transDecl :: Decl -> Result
 transDecl x = case x of
   DeclFun lexpr args guard stmts -> failure x

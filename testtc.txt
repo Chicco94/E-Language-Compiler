@@ -1,5 +1,7 @@
-//var i : int := 0 ;
-//var i : double := 0 ;
+var i : int := 0 ;
+var j : double := 0 ;
+var k : double := 0;
+//k := i+j ;
 
 def a(var i : char) : double {}
 def b(var j : char) : int {}

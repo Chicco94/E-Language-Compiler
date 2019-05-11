@@ -9,7 +9,7 @@ module AbsE where
 
 newtype PIdent = PIdent ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
-data Program = PDefs [Decl] | PAnnotatedDefs [AnnDecl]
+data Program = PDefs [Decl] | PTDefs [AnnDecl]
   deriving (Eq, Ord, Show, Read)
 
 data AnnDecl = LabeledDecl Decl | AnnotatedDecl Type Decl
