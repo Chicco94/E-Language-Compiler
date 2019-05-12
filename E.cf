@@ -3,12 +3,19 @@ position token PIdent (letter (letter|digit|'_'|'\'')*) ;
 
 -- A program is a sequence of declarations.
 PDefs.     Program ::= [Decl] ;
+--DeclStmt1.       Decl ::= Stmt ;
+--StmtDecl1.       Stmt ::= Decl ;
 terminator Decl "" ;
 
 -- Include in the abstract syntax a type annotated version of expressions.
 --internal ExprTyped. Expr ::= "[" Type "]" Expr ;
 internal PTDefs. Program ::=  [AnnotatedDecl] ;
+--internal TStmt.  Program ::= [AnnotatedStmt] ;
 terminator AnnotatedDecl "";
+--terminator AnnotatedStmt "";
+TypedStmt. AnnotatedStmt ::= "[" Type ":]" Stmt ;
+--TypeStmt. Stmt ::= AnnotatedStmt ;
+StmtAnnDecl.  Stmt ::= AnnotatedDecl ;
 
 -- A declaration is an annotated declaration with no label.
 UntypedDecl. AnnotatedDecl ::= Decl ;

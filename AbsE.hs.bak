@@ -9,7 +9,30 @@ module AbsE where
 
 newtype PIdent = PIdent ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
-data Program = PDefs [Decl] | PTDefs [AnnotatedDecl]
+data Program
+    = PDefs [Decl] | PTDefs [AnnotatedDecl] | TStmt [AnnotatedStmt]
+  deriving (Eq, Ord, Show, Read)
+
+data AnnotatedStmt = TypedStmt Type Stmt
+  deriving (Eq, Ord, Show, Read)
+
+data Stmt
+    = TypeStmt AnnotatedStmt
+    | TypeASD AnnotatedDecl
+    | StmtExpr Expr
+    | StmtDecl LExpr Guard
+    | StmtIterDecl LExpr Guard
+    | StmtVarInit LExpr Guard Expr
+    | StmtDefInit LExpr Guard Expr
+    | StmtReturn [Expr]
+    | StmtBlock [Decl]
+    | StmtIfElse Expr Stmt Stmt
+    | StmtIfNoElse Expr Stmt
+    | SSwitchCase Expr [NormCase] [DfltCase]
+    | StmtBreak
+    | StmtContinue
+    | StmtWhile Expr Stmt
+    | StmtFor PIdent TypeIter Stmt
   deriving (Eq, Ord, Show, Read)
 
 data AnnotatedDecl = UntypedDecl Decl | TypedDecl Type Decl
@@ -25,23 +48,6 @@ data Modality = ModEmpty | ModVar | ModDef
   deriving (Eq, Ord, Show, Read)
 
 data Guard = GuardVoid | GuardType Type
-  deriving (Eq, Ord, Show, Read)
-
-data Stmt
-    = StmtExpr Expr
-    | StmtDecl LExpr Guard
-    | StmtIterDecl LExpr Guard
-    | StmtVarInit LExpr Guard Expr
-    | StmtDefInit LExpr Guard Expr
-    | StmtReturn [Expr]
-    | StmtBlock [Decl]
-    | StmtIfElse Expr Stmt Stmt
-    | StmtIfNoElse Expr Stmt
-    | SSwitchCase Expr [NormCase] [DfltCase]
-    | StmtBreak
-    | StmtContinue
-    | StmtWhile Expr Stmt
-    | StmtFor PIdent TypeIter Stmt
   deriving (Eq, Ord, Show, Read)
 
 data NormCase = CaseNormal Expr Stmt
@@ -64,6 +70,7 @@ data Expr
     | ExprDeref LExpr
     | ExprNegation Expr
     | ExprAddition Expr
+    | ExprPower Expr Expr
     | ExprMul Expr Expr
     | ExprFloatDiv Expr Expr
     | ExprIntDiv Expr Expr

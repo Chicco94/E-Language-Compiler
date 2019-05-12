@@ -47,8 +47,8 @@ The reserved words used in E are the following:
   | ``true`` | ``var`` | ``void`` | ``while``
 
 The symbols used in E are the following:
-  | ( | ) | { | }
-  | [ | :] | , | :
+  | [ | :] | ( | )
+  | { | } | , | :
   | ; | ] | := | match _
   | * | ! | & | -
   | + | ** | / | //
@@ -73,6 +73,22 @@ All other symbols are terminals.
   |  |  **|**  | //Decl// //[Decl]// 
   | //[AnnotatedDecl]// | -> | **eps**
   |  |  **|**  | //AnnotatedDecl// //[AnnotatedDecl]// 
+  | //AnnotatedStmt// | -> | ``[`` //Type// ``:]`` //Stmt// 
+  | //Stmt// | -> | //AnnotatedDecl// 
+  |  |  **|**  | //Expr// ``;`` 
+  |  |  **|**  | ``var`` //LExpr// //Guard// ``;`` 
+  |  |  **|**  | ``var`` ``[`` //LExpr// ``]`` //Guard// ``;`` 
+  |  |  **|**  | ``var`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
+  |  |  **|**  | ``def`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
+  |  |  **|**  | ``return`` //[Expr]// ``;`` 
+  |  |  **|**  | ``{`` //[Decl]// ``}`` 
+  |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// ``else`` //Stmt// 
+  |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// 
+  |  |  **|**  | ``switch`` ``(`` //Expr// ``)`` ``{`` //[NormCase]// //[DfltCase]// ``}`` 
+  |  |  **|**  | ``break`` 
+  |  |  **|**  | ``continue`` 
+  |  |  **|**  | ``while`` ``(`` //Expr// ``)`` //Stmt// 
+  |  |  **|**  | ``for`` //PIdent// ``in`` //TypeIter// //Stmt// 
   | //AnnotatedDecl// | -> | //Decl// 
   |  |  **|**  | ``[`` //Type// ``:]`` //Decl// 
   | //Decl// | -> | ``def`` //LExpr// ``(`` //[Arg]// ``)`` //Guard// ``{`` //[Stmt]// ``}`` 
@@ -88,20 +104,6 @@ All other symbols are terminals.
   |  |  **|**  | ``def`` 
   | //Guard// | -> | **eps**
   |  |  **|**  | ``:`` //Type// 
-  | //Stmt// | -> | //Expr// ``;`` 
-  |  |  **|**  | ``var`` //LExpr// //Guard// ``;`` 
-  |  |  **|**  | ``var`` ``[`` //LExpr// ``]`` //Guard// ``;`` 
-  |  |  **|**  | ``var`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
-  |  |  **|**  | ``def`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
-  |  |  **|**  | ``return`` //[Expr]// ``;`` 
-  |  |  **|**  | ``{`` //[Decl]// ``}`` 
-  |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// ``else`` //Stmt// 
-  |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// 
-  |  |  **|**  | ``switch`` ``(`` //Expr// ``)`` ``{`` //[NormCase]// //[DfltCase]// ``}`` 
-  |  |  **|**  | ``break`` 
-  |  |  **|**  | ``continue`` 
-  |  |  **|**  | ``while`` ``(`` //Expr// ``)`` //Stmt// 
-  |  |  **|**  | ``for`` //PIdent// ``in`` //TypeIter// //Stmt// 
   | //NormCase// | -> | ``match`` //Expr// //Stmt// 
   | //DfltCase// | -> | ``match _`` //Stmt// 
   | //[NormCase]// | -> | **eps**

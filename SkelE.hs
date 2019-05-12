@@ -16,6 +16,26 @@ transProgram :: Program -> Result
 transProgram x = case x of
   PDefs decls -> failure x
   PTDefs annotateddecls -> failure x
+transAnnotatedStmt :: AnnotatedStmt -> Result
+transAnnotatedStmt x = case x of
+  TypedStmt type_ stmt -> failure x
+transStmt :: Stmt -> Result
+transStmt x = case x of
+  StmtAnnDecl annotateddecl -> failure x
+  StmtExpr expr -> failure x
+  StmtDecl lexpr guard -> failure x
+  StmtIterDecl lexpr guard -> failure x
+  StmtVarInit lexpr guard expr -> failure x
+  StmtDefInit lexpr guard expr -> failure x
+  StmtReturn exprs -> failure x
+  StmtBlock decls -> failure x
+  StmtIfElse expr stmt1 stmt2 -> failure x
+  StmtIfNoElse expr stmt -> failure x
+  SSwitchCase expr normcases dfltcases -> failure x
+  StmtBreak -> failure x
+  StmtContinue -> failure x
+  StmtWhile expr stmt -> failure x
+  StmtFor pident typeiter stmt -> failure x
 transAnnotatedDecl :: AnnotatedDecl -> Result
 transAnnotatedDecl x = case x of
   UntypedDecl decl -> failure x
@@ -36,22 +56,6 @@ transGuard :: Guard -> Result
 transGuard x = case x of
   GuardVoid -> failure x
   GuardType type_ -> failure x
-transStmt :: Stmt -> Result
-transStmt x = case x of
-  StmtExpr expr endline -> failure x
-  StmtDecl lexpr guard endline -> failure x
-  StmtIterDecl lexpr guard endline -> failure x
-  StmtVarInit lexpr guard expr endline -> failure x
-  StmtDefInit lexpr guard expr endline -> failure x
-  StmtReturn exprs endline -> failure x
-  StmtBlock decls -> failure x
-  StmtIfElse expr stmt1 stmt2 -> failure x
-  StmtIfNoElse expr stmt -> failure x
-  SSwitchCase expr normcases dfltcases -> failure x
-  StmtBreak -> failure x
-  StmtContinue -> failure x
-  StmtWhile expr stmt -> failure x
-  StmtFor pident typeiter stmt -> failure x
 transNormCase :: NormCase -> Result
 transNormCase x = case x of
   CaseNormal expr stmt -> failure x
@@ -73,6 +77,7 @@ transExpr x = case x of
   ExprDeref lexpr -> failure x
   ExprNegation expr -> failure x
   ExprAddition expr -> failure x
+  ExprPower expr1 expr2 -> failure x
   ExprMul expr1 expr2 -> failure x
   ExprFloatDiv expr1 expr2 -> failure x
   ExprIntDiv expr1 expr2 -> failure x
@@ -127,7 +132,4 @@ transTypeIter :: TypeIter -> Result
 transTypeIter x = case x of
   TypeIterInterval expr -> failure x
   TypeIterArray exprs -> failure x
-transEndLine :: EndLine -> Result
-transEndLine x = case x of
-  Semicolon -> failure x
 

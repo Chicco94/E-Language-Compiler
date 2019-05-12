@@ -34,9 +34,18 @@
 
 //1..100;
 
+//var i : double := 'a';
+//def a() : bool {}
+//i := a();
+
+
 var i : double := 'a';
-def a() : bool {}
-i := a();
+var j : string := "abc" ;
+def bar() : double {
+	def k : char := 'a' ;
+    def t : string := "hello" ;
+}
+//def foo () : double {}
 //a(i,j,k);
 //i := -1;
 
