@@ -60,12 +60,12 @@ checkDecl (env@(sig@(x:xs), (block:_)), prog) def =
 checkStmt :: (Env, [Program]) -> Stmt -> Err (Env, [Program])
 checkStmt (env@(sig, blocks@((blockType, context):xs)), prog) stmt =
   case stmt of
-    StmtVarInit lexpr@(LExprId (PIdent (p,ident))) guard expr end -> do
+    StmtVarInit lexpr@(LExprId (PIdent (p,ident))) guard expr -> do
       case guard of
         GuardType t ->
           case lookupVar lexpr blocks of
            Ok t -> fail $ show p ++ ": variable " ++ printTree ident ++ " declared twice!"
-           _ -> Ok ((sig, ((blockType, addVar context lexpr guard):blocks)), postAttach (PTDefs [TypedDecl t (DeclStmt (StmtVarInit lexpr guard expr end))]) prog)
+           _ -> Ok ((sig, ((blockType, addVar context lexpr guard):blocks)), postAttach (PTDefs [TypedDecl t (DeclStmt (StmtVarInit lexpr guard expr))]) prog)
         GuardVoid -> fail $ show p ++ ": variable " ++ printTree ident ++ " declared as void! this is not allowed!"
     _ -> Bad "you should not be here"
      

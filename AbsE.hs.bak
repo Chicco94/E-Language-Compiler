@@ -18,7 +18,7 @@ data AnnotatedDecl = UntypedDecl Decl | TypedDecl Type Decl
 data Decl = DeclFun LExpr [Arg] Guard [Stmt] | DeclStmt Stmt
   deriving (Eq, Ord, Show, Read)
 
-data Arg = ArgDecl Modality PIdent Guard
+data Arg = ArgDecl Stmt
   deriving (Eq, Ord, Show, Read)
 
 data Modality = ModEmpty | ModVar | ModDef
@@ -64,6 +64,7 @@ data Expr
     | ExprDeref LExpr
     | ExprNegation Expr
     | ExprAddition Expr
+    | ExprPower Expr Expr
     | ExprMul Expr Expr
     | ExprFloatDiv Expr Expr
     | ExprIntDiv Expr Expr

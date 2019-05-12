@@ -24,6 +24,7 @@ separator  Arg "," ;
 terminator Stmt "" ;
 
 -- An argument declaration has a type and an identifier.
+-- ArgDecl.   Arg      ::= Stmt ;
 ArgDecl.   Arg      ::= Modality PIdent Guard ;
 ModEmpty.  Modality ::= {-empty-} ;  -- no modality
 ModVar.    Modality ::= "var" ;      -- variable modality
@@ -108,15 +109,15 @@ ExprPower.    Expr13 ::= Expr14 "**"  Expr13 ;
 
 -- ###
 -- 3 shift/reduce conflicts
-ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
-ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
-ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
-ExprReminder. Expr12 ::= Expr12 "%"  Expr13 ;
-ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
+ExprMul.      Expr12 ::= Expr13 "*"  Expr13 ;
+ExprFloatDiv. Expr12 ::= Expr13 "/"  Expr13 ;
+ExprIntDiv.   Expr12 ::= Expr13 "//" Expr13 ;
+ExprReminder. Expr12 ::= Expr13 "%"  Expr13 ;
+ExprModulo.   Expr12 ::= Expr13 "%%" Expr13 ;
 
 --ExprReference. Expr11 ::= "&" LExpr ;
-ExprPlus.      Expr11 ::= Expr11 "+"  Expr12 ;
-ExprMinus.     Expr11 ::= Expr11 "-"  Expr12 ;
+ExprPlus.      Expr11 ::= Expr12 "+"  Expr12 ;
+ExprMinus.     Expr11 ::= Expr12 "-"  Expr12 ;
 
 ExprIntInc.   Expr10 ::= Expr10 ".."  Expr11 ;
 ExprIntExc.   Expr10 ::= Expr10 "..!" Expr11 ;

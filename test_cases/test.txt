@@ -1,14 +1,15 @@
-/** manca gaurdia 
-    def factorial(n :int) :int{
-*/ 
-def factorial(n :int){
+// guardia reale di e
+// def factorial(n :(int>=0) ) :int{
+def factorial(n :int ) :int{
     if (n == 1) {
-        return 1
+        return 1;
     } else if (n > 0) {
-        return n * factorial(n-1)
+        return n * factorial(n);
+        // return n * factorial(n-1);
     } else {
-        // secondo test
-        // throw("invalid argument to factorial"+n) 
-        throw("invalid argument to factorial")
+        def message :string := "invalid argument to factorial";
+        throw(message);
+        //throw("invalid argument to factorial"); 
+        //throw("invalid argument to factorial"+n);        
   }
 }
