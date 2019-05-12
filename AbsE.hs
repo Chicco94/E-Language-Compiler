@@ -28,12 +28,12 @@ data Guard = GuardVoid | GuardType Type
   deriving (Eq, Ord, Show, Read)
 
 data Stmt
-    = StmtExpr Expr EndLine
-    | StmtDecl LExpr Guard EndLine
-    | StmtIterDecl LExpr Guard EndLine
-    | StmtVarInit LExpr Guard Expr EndLine
-    | StmtDefInit LExpr Guard Expr EndLine
-    | StmtReturn [Expr] EndLine
+    = StmtExpr Expr --
+    | StmtDecl LExpr Guard
+    | StmtIterDecl LExpr Guard
+    | StmtVarInit LExpr Guard Expr --
+    | StmtDefInit LExpr Guard Expr
+    | StmtReturn [Expr]
     | StmtBlock [Decl]
     | StmtIfElse Expr Stmt Stmt
     | StmtIfNoElse Expr Stmt
@@ -51,36 +51,37 @@ data DfltCase = CaseDefault Stmt
   deriving (Eq, Ord, Show, Read)
 
 data Expr
-    = StmtAssign LExpr AssignOperator Expr
-    | LeftExpr LExpr
-    | ExprInt Integer
-    | ExprDouble Double
-    | ExprChar Char
-    | ExprString String
-    | ExprTrue
-    | ExprFalse
-    | ExprFunCall PIdent [Arg]
-    | ExprBoolNot Expr
+    = StmtAssign LExpr AssignOperator Expr --
+    | LeftExpr LExpr --
+    | ExprInt Integer --
+    | ExprDouble Double --
+    | ExprChar Char --
+    | ExprString String --
+    | ExprTrue --
+    | ExprFalse --
+    | ExprFunCall PIdent [Arg] --
+    | ExprBoolNot Expr --
     | ExprDeref LExpr
-    | ExprNegation Expr
-    | ExprAddition Expr
-    | ExprMul Expr Expr
+    | ExprNegation Expr --
+    | ExprAddition Expr --
+    | ExprPower Expr Expr --
+    | ExprMul Expr Expr --
     | ExprFloatDiv Expr Expr
     | ExprIntDiv Expr Expr
-    | ExprReminder Expr Expr
-    | ExprModulo Expr Expr
-    | ExprPlus Expr Expr
-    | ExprMinus Expr Expr
-    | ExprIntInc Expr Expr
-    | ExprIntExc Expr Expr
-    | ExprLt Expr Expr
-    | ExprGt Expr Expr
-    | ExprLtEq Expr Expr
-    | ExprGtEq Expr Expr
-    | ExprEq Expr Expr
-    | ExprNeq Expr Expr
-    | ExprAnd Expr Expr
-    | ExprOr Expr Expr
+    | ExprReminder Expr Expr --
+    | ExprModulo Expr Expr --
+    | ExprPlus Expr Expr --
+    | ExprMinus Expr Expr --
+    | ExprIntInc Expr Expr --
+    | ExprIntExc Expr Expr --
+    | ExprLt Expr Expr --
+    | ExprGt Expr Expr -- 
+    | ExprLtEq Expr Expr --
+    | ExprGtEq Expr Expr --
+    | ExprEq Expr Expr --
+    | ExprNeq Expr Expr --
+    | ExprAnd Expr Expr --
+    | ExprOr Expr Expr --
   deriving (Eq, Ord, Show, Read)
 
 data LExpr = LExprId PIdent | LExprRef Ref
@@ -90,17 +91,17 @@ data Ref = RefExpr LExpr
   deriving (Eq, Ord, Show, Read)
 
 data AssignOperator
-    = OpAssign
-    | OpOr
-    | OpAnd
-    | OpPlus
-    | OpMinus
-    | OpMul
-    | OpIntDiv
-    | OpFloatDiv
-    | OpRemainder
-    | OpModulo
-    | OpPower
+    = OpAssign --
+    | OpOr --
+    | OpAnd --
+    | OpPlus --
+    | OpMinus --
+    | OpMul --
+    | OpIntDiv --
+    | OpFloatDiv --
+    | OpRemainder --
+    | OpModulo --
+    | OpPower --
   deriving (Eq, Ord, Show, Read)
 
 data Type
@@ -117,8 +118,5 @@ data CompoundType = TypePointer Type | TypeIterable TypeIter
   deriving (Eq, Ord, Show, Read)
 
 data TypeIter = TypeIterInterval Expr | TypeIterArray [Expr]
-  deriving (Eq, Ord, Show, Read)
-
-data EndLine = Semicolon
   deriving (Eq, Ord, Show, Read)
 

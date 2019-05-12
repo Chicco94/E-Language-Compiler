@@ -49,15 +49,15 @@ The reserved words used in E are the following:
 The symbols used in E are the following:
   | ( | ) | { | }
   | [ | :] | , | :
-  | ] | := | match _ | *
-  | ! | & | - | +
-  | / | // | % | %%
-  | .. | ..! | < | >
-  | <= | >= | == | !=
-  | && | || | |= | &=
-  | += | -= | *= | //=
-  | /= | %= | %%= | **=
-  | ; |  |  | 
+  | ; | ] | := | match _
+  | * | ! | & | -
+  | + | / | // | %
+  | %% | .. | ..! | <
+  | > | <= | >= | ==
+  | != | && | || | |=
+  | &= | += | -= | *=
+  | //= | /= | %= | %%=
+  | **= |  |  | 
 
 ===Comments===
 Single-line comments begin with //.Multiple-line comments are  enclosed with /* and */.
@@ -71,9 +71,9 @@ All other symbols are terminals.
   | //Program// | -> | //[Decl]// 
   | //[Decl]// | -> | **eps**
   |  |  **|**  | //Decl// //[Decl]// 
-  | //[AnnDecl]// | -> | **eps**
-  |  |  **|**  | //AnnDecl// //[AnnDecl]// 
-  | //AnnDecl// | -> | //Decl// 
+  | //[AnnotatedDecl]// | -> | **eps**
+  |  |  **|**  | //AnnotatedDecl// //[AnnotatedDecl]// 
+  | //AnnotatedDecl// | -> | //Decl// 
   |  |  **|**  | ``[`` //Type// ``:]`` //Decl// 
   | //Decl// | -> | ``def`` //LExpr// ``(`` //[Arg]// ``)`` //Guard// ``{`` //[Stmt]// ``}`` 
   |  |  **|**  | //Stmt// 
@@ -88,12 +88,12 @@ All other symbols are terminals.
   |  |  **|**  | ``def`` 
   | //Guard// | -> | **eps**
   |  |  **|**  | ``:`` //Type// 
-  | //Stmt// | -> | //Expr// //EndLine// 
-  |  |  **|**  | ``var`` //LExpr// //Guard// //EndLine// 
-  |  |  **|**  | ``var`` ``[`` //LExpr// ``]`` //Guard// //EndLine// 
-  |  |  **|**  | ``var`` //LExpr// //Guard// ``:=`` //Expr// //EndLine// 
-  |  |  **|**  | ``def`` //LExpr// //Guard// ``:=`` //Expr// //EndLine// 
-  |  |  **|**  | ``return`` //[Expr]// //EndLine// 
+  | //Stmt// | -> | //Expr// ``;`` 
+  |  |  **|**  | ``var`` //LExpr// //Guard// ``;`` 
+  |  |  **|**  | ``var`` ``[`` //LExpr// ``]`` //Guard// ``;`` 
+  |  |  **|**  | ``var`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
+  |  |  **|**  | ``def`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
+  |  |  **|**  | ``return`` //[Expr]// ``;`` 
   |  |  **|**  | ``{`` //[Decl]// ``}`` 
   |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// ``else`` //Stmt// 
   |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// 
@@ -184,6 +184,5 @@ All other symbols are terminals.
   |  |  **|**  | //TypeIter// 
   | //TypeIter// | -> | //Expr10// 
   |  |  **|**  | ``[`` //[Expr]// ``]`` 
-  | //EndLine// | -> | ``;`` 
 
 

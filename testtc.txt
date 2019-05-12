@@ -1,8 +1,53 @@
-var i : int := 0 ;
-var j : double := 0 ;
-var k : double := 0;
-//k := i+j ;
+//var j : double := 0 ;
+//var k : double := 0;
 
-def a(var i : char) : double {}
-def b(var j : char) : int {}
-def c(var k) : void {}
+//def a(var i : char) : double {}
+//def b(var j : char) : int {}
+//def c(var k) : void {}
+
+//2 + 2 + 'a' % 2 - 3 * 3;
+
+//2 < 3 <= 6.0 >= 10 > 0 == 0;
+
+//2 == 0 && 2 < 0;
+
+//var i : char := 0 ;
+//i := 'b';
+//i += 'a';
+
+//var j : double := 0;
+//j |= 0;
+
+
+//2**4.4;
+
+
+//j |= 0;
+//j &= 4.2;
+
+//0;
+//false;
+//!true;
+
+//i;
+
+
+//1..100;
+
+var i : double := 'a';
+def a() : bool {}
+i := a();
+//a(i,j,k);
+//i := -1;
+
+
+
+
+
+
+
+
+
+
+
+
