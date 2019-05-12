@@ -92,7 +92,6 @@ PIdent    :: { PIdent} : L_PIdent { PIdent (mkPosToken $1)}
 
 Program :: { Program }
 Program : ListDecl { AbsE.PDefs (reverse $1) }
-        | ListAnnDecl { AbsE.PAnnotatedDefs (reverse $1) }
 ListDecl :: { [Decl] }
 ListDecl : {- empty -} { [] } | ListDecl Decl { flip (:) $1 $2 }
 ListAnnDecl :: { [AnnDecl] }
@@ -184,6 +183,7 @@ Expr11 : Expr11 '+' Expr12 { AbsE.ExprPlus $1 $3 }
 Expr10 :: { Expr }
 Expr10 : Expr10 '..' Expr11 { AbsE.ExprIntInc $1 $3 }
        | Expr10 '..!' Expr11 { AbsE.ExprIntExc $1 $3 }
+       | TypeIter { AbsE.ExprTypeIter $1 }
        | Expr11 { $1 }
 Expr9 :: { Expr }
 Expr9 : Expr9 '<' Expr10 { AbsE.ExprLt $1 $3 }

@@ -1,9 +1,9 @@
-def foo() : int {
-  var k : bool := & i ;
-  * * * * i := 5 ;
+def foo() :int {
+  var &k : bool := & i ;
+  & * & & i := 5 ;
   var i : bool := true ;
   var j : double := 4.0 ;
-  //def arr : int := [1,2,3,4,arr] ;
+  def arr : int := [1,2,3,4,arr] ;
 
   if (i == 1) {}
   else if (j == 3) {
@@ -30,5 +30,3 @@ def foo() : int {
   y := -i ;
   return ;
 }
-
-def bar(i : int, j) {}

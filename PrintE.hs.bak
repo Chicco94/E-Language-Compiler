@@ -87,7 +87,7 @@ instance Print PIdent where
 instance Print Program where
   prt i e = case e of
     PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
-    PAnnotatedDefs anndecls -> prPrec i 0 (concatD [prt 0 anndecls])
+    PTDefs anndecls -> prPrec i 0 (concatD [prt 0 anndecls])
 
 instance Print AnnDecl where
   prt i e = case e of
@@ -170,6 +170,7 @@ instance Print Expr where
     ExprMinus expr1 expr2 -> prPrec i 11 (concatD [prt 11 expr1, doc (showString "-"), prt 12 expr2])
     ExprIntInc expr1 expr2 -> prPrec i 10 (concatD [prt 10 expr1, doc (showString ".."), prt 11 expr2])
     ExprIntExc expr1 expr2 -> prPrec i 10 (concatD [prt 10 expr1, doc (showString "..!"), prt 11 expr2])
+    ExprTypeIter typeiter -> prPrec i 10 (concatD [prt 0 typeiter])
     ExprLt expr1 expr2 -> prPrec i 9 (concatD [prt 9 expr1, doc (showString "<"), prt 10 expr2])
     ExprGt expr1 expr2 -> prPrec i 9 (concatD [prt 9 expr1, doc (showString ">"), prt 10 expr2])
     ExprLtEq expr1 expr2 -> prPrec i 9 (concatD [prt 9 expr1, doc (showString "<="), prt 10 expr2])

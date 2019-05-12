@@ -17,7 +17,7 @@ LabeledDecl. AnnDecl ::= Decl ;
 comment "//" ;
 comment "/*" "*/" ;
 
--- Function declaration. E.g.: def foo (int x, double y) : int { }
+-- Function declaration. E.g.: def foo (var x :int,def y :double) : int { }
 DeclFun.   Decl ::= "def" LExpr "(" [Arg] ")" Guard "{" [Stmt] "}" ;
 AnnotatedDecl.   AnnDecl ::= "[" Type ":]" Decl ;
 separator  Arg "," ;
@@ -47,6 +47,7 @@ StmtIterDecl.    Stmt     ::= "var" "[" LExpr "]" Guard EndLine ;              -
 
 StmtVarInit.     Stmt     ::= "var" LExpr Guard ":=" Expr EndLine ;     -- Constant/variable initialization.
 StmtDefInit.     Stmt     ::= "def" LExpr Guard ":=" Expr EndLine ;
+
 -- ###
 -- 1 reduce/reduce conflict
 --StmtVarIterInit. Stmt     ::= "var" LExpr Guard ":=" TypeIter EndLine ; -- Constant/variable iterable type initialization.
@@ -168,7 +169,7 @@ TypeIterArray.    TypeIter ::= "[" [Expr] "]" ;   -- Iterable array.
 
 -- End statement character.
 Semicolon. EndLine ::= ";" ;
---NewLine.   EndLine ::= "\n" ;
+--NewLine.   EndLine ::= "\\n" ;
 
 -- The entry point is the program.
 entrypoints Program ;
