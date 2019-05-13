@@ -9,9 +9,6 @@ import ErrM
 }
 
 %name pProgram Program
-%name pStmt Stmt
-%name pExpr Expr
-%name pLExpr LExpr
 -- no lexer declaration
 %monad { Err } { thenM } { returnM }
 %tokentype {Token}
@@ -54,20 +51,28 @@ import ErrM
   '[' { PT _ (TS _ 36) }
   ']' { PT _ (TS _ 37) }
   'bool' { PT _ (TS _ 38) }
-  'char' { PT _ (TS _ 39) }
-  'def' { PT _ (TS _ 40) }
-  'double' { PT _ (TS _ 41) }
-  'false' { PT _ (TS _ 42) }
-  'int' { PT _ (TS _ 43) }
-  'return' { PT _ (TS _ 44) }
-  'string' { PT _ (TS _ 45) }
-  'true' { PT _ (TS _ 46) }
-  'var' { PT _ (TS _ 47) }
-  'void' { PT _ (TS _ 48) }
-  '{' { PT _ (TS _ 49) }
-  '|=' { PT _ (TS _ 50) }
-  '||' { PT _ (TS _ 51) }
-  '}' { PT _ (TS _ 52) }
+  'break' { PT _ (TS _ 39) }
+  'char' { PT _ (TS _ 40) }
+  'continue' { PT _ (TS _ 41) }
+  'def' { PT _ (TS _ 42) }
+  'double' { PT _ (TS _ 43) }
+  'false' { PT _ (TS _ 44) }
+  'for' { PT _ (TS _ 45) }
+  'in' { PT _ (TS _ 46) }
+  'int' { PT _ (TS _ 47) }
+  'match' { PT _ (TS _ 48) }
+  'match _' { PT _ (TS _ 49) }
+  'return' { PT _ (TS _ 50) }
+  'string' { PT _ (TS _ 51) }
+  'switch' { PT _ (TS _ 52) }
+  'true' { PT _ (TS _ 53) }
+  'var' { PT _ (TS _ 54) }
+  'void' { PT _ (TS _ 55) }
+  'while' { PT _ (TS _ 56) }
+  '{' { PT _ (TS _ 57) }
+  '|=' { PT _ (TS _ 58) }
+  '||' { PT _ (TS _ 59) }
+  '}' { PT _ (TS _ 60) }
 
 L_integ  { PT _ (TI $$) }
 L_doubl  { PT _ (TD $$) }
@@ -114,14 +119,30 @@ Guard : {- empty -} { AbsE.GuardVoid }
       | ':' Type { AbsE.GuardType $2 }
 Stmt :: { Stmt }
 Stmt : Expr ';' { AbsE.StmtExpr $1 }
-     | 'var' LExpr Guard ';' { AbsE.StmtDecl $2 $3 }
+     | 'var' LExpr Guard ';' { AbsE.StmtVarDecl $2 $3 }
      | 'var' '[' LExpr ']' Guard ';' { AbsE.StmtIterDecl $3 $5 }
      | 'var' LExpr Guard ':=' Expr ';' { AbsE.StmtVarInit $2 $3 $5 }
      | 'def' LExpr Guard ':=' Expr ';' { AbsE.StmtDefInit $2 $3 $5 }
-     | 'return' ListExpr ';' { AbsE.StmtReturn $2 }
+     | 'return' '(' Expr ')' ';' { AbsE.StmtReturn $3 }
+     | 'return' ';' { AbsE.StmtNoReturn }
      | CompStmt { AbsE.SComp $1 }
+     | 'switch' '(' Expr ')' '{' ListNormCase ListDfltCase '}' { AbsE.SSwitchCase $3 (reverse $6) (reverse $7) }
+     | 'break' { AbsE.StmtBreak }
+     | 'continue' { AbsE.StmtContinue }
+     | 'while' '(' Expr ')' CompStmt { AbsE.StmtWhile $3 $5 }
+     | 'for' PIdent 'in' TypeIter CompStmt { AbsE.StmtFor $2 $4 $5 }
 CompStmt :: { CompStmt }
 CompStmt : '{' ListDecl '}' { AbsE.StmtBlock (reverse $2) }
+NormCase :: { NormCase }
+NormCase : 'match' Expr CompStmt { AbsE.CaseNormal $2 $3 }
+DfltCase :: { DfltCase }
+DfltCase : 'match _' CompStmt { AbsE.CaseDefault $2 }
+ListNormCase :: { [NormCase] }
+ListNormCase : {- empty -} { [] }
+             | ListNormCase NormCase { flip (:) $1 $2 }
+ListDfltCase :: { [DfltCase] }
+ListDfltCase : {- empty -} { [] }
+             | ListDfltCase DfltCase { flip (:) $1 $2 }
 Expr :: { Expr }
 Expr : LExpr AssignOperator Expr1 { AbsE.StmtAssign $1 $2 $3 }
      | Expr1 { $1 }
@@ -140,7 +161,7 @@ Expr16 : Integer { AbsE.ExprInt $1 }
        | 'false' { AbsE.ExprFalse }
        | Expr17 { $1 }
 Expr15 :: { Expr }
-Expr15 : PIdent '(' ListArg ')' { AbsE.ExprFunCall $1 $3 }
+Expr15 : PIdent '(' ListExpr ')' { AbsE.ExprFunCall $1 $3 }
        | Expr16 { $1 }
 Expr14 :: { Expr }
 Expr14 : '!' Expr15 { AbsE.ExprBoolNot $2 }

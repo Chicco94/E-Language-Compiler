@@ -32,15 +32,27 @@ data Guard = GuardVoid | GuardType Type
 
 data Stmt
     = StmtExpr Expr
-    | StmtDecl LExpr Guard
+    | StmtVarDecl LExpr Guard
     | StmtIterDecl LExpr Guard
     | StmtVarInit LExpr Guard Expr
     | StmtDefInit LExpr Guard Expr
-    | StmtReturn [Expr]
+    | StmtReturn Expr
+    | StmtNoReturn
     | SComp CompStmt
+    | SSwitchCase Expr [NormCase] [DfltCase]
+    | StmtBreak
+    | StmtContinue
+    | StmtWhile Expr CompStmt
+    | StmtFor PIdent TypeIter CompStmt
   deriving (Eq, Ord, Show, Read)
 
 data CompStmt = StmtBlock [Decl]
+  deriving (Eq, Ord, Show, Read)
+
+data NormCase = CaseNormal Expr CompStmt
+  deriving (Eq, Ord, Show, Read)
+
+data DfltCase = CaseDefault CompStmt
   deriving (Eq, Ord, Show, Read)
 
 data Expr
@@ -52,7 +64,7 @@ data Expr
     | ExprString String
     | ExprTrue
     | ExprFalse
-    | ExprFunCall PIdent [Arg]
+    | ExprFunCall PIdent [Expr]
     | ExprBoolNot Expr
     | ExprDeref LExpr
     | ExprNegation Expr

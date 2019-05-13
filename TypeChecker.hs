@@ -59,20 +59,20 @@ checkDecl (env@(sig@(x:xs), (block:_)), prog) def =
 
 -- Check function declaration.
 checkFunDecl :: (Env, [Program]) -> LExpr -> [Arg] -> Guard -> CompStmt -> Err (Env, [Program])
-checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId (PIdent (p, fname))) args guard@(GuardType t) compstmt = do
-  case lookupFun sig fname of
-    Ok t  -> fail $ show p ++ ": function " ++ printTree fname ++ " already declared"
-    _ -> do case checkArgDecl (env, prog) args of
+checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId (PIdent (p, fname))) args guard compstmt = do
+  case guard of
+    GuardType t ->
+      case lookupFun sig fname of
+        Ok t  -> fail $ show p ++ ": function " ++ printTree fname ++ " already declared"
+        _ -> do case checkArgDecl (env, prog) args of
               -- call extendEnv putting an empty Signature and a FunBlock block
               -- TODO: add parameters to FunBlock 
-              Ok _ -> do case extendEnv (((Map.empty:(addFun x fname args guard):xs), ((FunBlock, Map.empty):blocks)), prog) compstmt of
-                           Ok (e', p') -> Ok (e', postAttach (PTDefs [ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p')))]) prog)
-                           Bad s -> Bad s
-                           _ -> fail $ "checkFunDecl: fatal error!"
-              Bad s -> Bad s
-
-
-
+                  Ok _ -> do case extendEnv (((Map.empty:(addFun x fname args guard):xs), ((FunBlock, Map.empty):blocks)), prog) compstmt of
+                               Ok (e', p') -> Ok (e', postAttach (PTDefs [ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p')))]) prog)
+                               Bad s -> Bad s
+                               _ -> fail $ "checkFunDecl: fatal error!"
+                  Bad s -> Bad s
+    GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " has to have a type to be well defined!"
 
 
 
@@ -108,7 +108,8 @@ extendEnv :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
 extendEnv (env@(s, y), prog) compstmt = do
   case compstmt of
     StmtBlock decls         -> do (e@((sig:sigs), b@(block:blocks)), p) <- foldM checkDecl (env, prog) decls
-                                  Ok ((sigs,blocks), p List.\\ prog) -- list difference
+                                  Ok ((sigs,blocks), p List.\\ prog) -- pop & list difference
+                                  --Ok ((sigs,blocks), p)
                                   --Ok (e, p List.\\ prog)      
 
 -- Check argument(s) declaration.
@@ -141,25 +142,72 @@ mod `isCompatibleWithMutability` mut
 
 -- Check statement declaration.
 checkDeclStmt :: (Env, [Program]) -> Stmt -> Err (Env, [Program])
-checkDeclStmt (env@(sig, blocks@((blockType, context):xs)), prog) stmt =
+checkDeclStmt (env@(sigs, blocks), prog) stmt =
   case stmt of
-    StmtExpr expr -> checkExpr (env, prog) expr
-    StmtVarInit lexpr@(LExprId (PIdent (p, ident))) guard expr -> do
-      case guard of
-        GuardType t ->
-          case lookupVar blocks ident of
-           Ok (m,t) -> fail $ show p ++ ": variable '" ++ printTree ident ++ "' already declared"
-           --_        -> Ok ((sig, ((blockType, addVar context (MutVar, ident) guard):blocks)), postAttach (PTDefs [TypedDecl t (DeclStmt (StmtVarInit lexpr guard expr))]) prog)
-           _        -> Ok ((sig, ((blockType, addVar context (MutVar, ident) guard):blocks)), postAttach (PTDefs [ADecl t (DeclStmt (StmtVarInit lexpr guard expr))]) prog)
-        GuardVoid -> fail $ show p ++ ": variable '" ++ printTree ident ++ "' declared as void! this is not allowed!"
-    StmtDefInit lexpr@(LExprId (PIdent (p, ident))) guard expr -> do
-      case guard of
-        GuardType t ->
-          case lookupVar blocks ident of
-           Ok (m,t) -> fail $ show p ++ ": variable '" ++ printTree ident ++ "' already declared"
-           _        -> Ok ((sig, ((blockType, addVar context (MutConst, ident) guard):blocks)), postAttach (PTDefs [ADecl t (DeclStmt (StmtDefInit lexpr guard expr))]) prog)
-        GuardVoid -> fail $ show p ++ ": variable '" ++ printTree ident ++ "' declared as void! this is not allowed!"
+    StmtExpr expr                -> checkExpr (env, prog) expr
+    StmtVarInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutVar
+    StmtDefInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutConst
+    StmtReturn expr              -> checkReturn (env, prog) expr
+    
+    SComp compstmt               -> checkSComp (env, prog) compstmt --extendEnv (((Map.empty:sigs), ((NormBlock, Map.empty):blocks)), prog) compstmt
+
+    StmtWhile expr compstmt      -> checkWhile (env, prog) expr compstmt
     _ -> Bad "checkStmt: fatal error!"
+
+checkReturn :: (Env, [Program]) -> Expr -> Err (Env, [Program])
+checkReturn (env@(sigs, blocks), prog) expr = do
+  texpr <- inferExpr env expr
+  (PIdent (p,fname),tfun)  <- findFunType prog
+  if (texpr == tfun)
+    then Ok (env, postAttach (PTDefs [ADecl texpr (DeclStmt (StmtReturn expr))]) prog)
+    else fail $ "the returned type (" ++ show texpr ++ ") of function " ++ printTree fname ++ " " ++ show p ++" doesn't match with the function's type " ++ show tfun
+
+findFunType :: [Program] -> Err (PIdent, Type)
+findFunType [] = fail $ "there is no function block declared, the return is invalid"
+findFunType (prog:progs) =
+  case prog of
+    PTDefs [ADecl t (DeclFun (LExprId pident) _ _ _)] -> Ok (pident, t)
+    _ -> findFunType progs
+  {- if blockType == NormBlock
+    then Ok t
+    else findFunType sigs blocks  
+      where (id,(_,t)) = head . Map.toList $ sig -}
+
+checkSComp :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
+checkSComp (env@(sigs, blocks), prog) compstmt =
+  case extendEnv (((Map.empty:sigs), ((NormBlock, Map.empty):blocks)), prog) compstmt of
+    Ok (e', p') -> Ok (e', postAttach (PTDefs [ADecl TypeBool (DeclStmt (SComp (StmtBlock (getDecls p'))))]) prog)
+                   --Ok (e', postAttach (PDefs [DeclStmt (SComp (StmtBlock (getDecls p')))]) prog)
+    Bad s       -> Bad s
+
+checkWhile :: (Env, [Program]) -> Expr -> CompStmt -> Err (Env, [Program])
+checkWhile (env@(xs, blocks@((blockType, context):ys)), prog) expr compstmt = do
+  t <- inferExpr env expr
+  if (t == TypeBool)
+    then case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
+           -- TODO: the type is necessary?
+           Ok (e', p') -> Ok (e', postAttach (PTDefs [ADecl t (DeclStmt (StmtWhile expr (StmtBlock (getDecls p'))))]) prog)
+                          --Ok (e', postAttach (PDefs [DeclStmt (StmtWhile expr (StmtBlock (getDecls p')))]) prog) -- if is not necessary, but it does not work, atm
+                          --Ok (e', postAttach (PDefs (getDecls p')) prog)
+           Bad s       -> Bad s
+    else fail $ "the expression type in the while statement must be boolean"
+
+extendEnv2 :: (Env, [Program]) -> Stmt -> Err (Env, [Program])
+extendEnv2 (env@(s, y), prog) stmt = do
+  case stmt of
+    StmtExpr expr -> do (e@((sig:sigs), b@(block:blocks)), p) <- checkExpr (env, prog) expr
+                        Ok ((sigs,blocks), p List.\\ prog) -- list difference
+    _ -> fail $ "extendEnv2: fatal error!"
+
+checkStmtInit :: (Env, [Program]) -> LExpr -> Guard -> Expr -> Mutability -> Err (Env, [Program])
+checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard expr mut = do
+  case guard of
+    GuardType t ->
+      case lookupVar blocks ident of
+        Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
+        _        -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PTDefs [ADecl t (DeclStmt (StmtVarInit lexpr guard expr))]) prog)
+    GuardVoid -> fail $ show p ++ ": variable " ++ printTree ident ++ " declared as void! this is not allowed!"
+  
 
 -- Check assignment.
 checkAssign :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])

@@ -46,7 +46,7 @@
 //a(i,j,k);
 //i := -1;
 
-def foo () : void {}
+/* def foo () : void {}
 def choc () : int {}
 
 def bar() : double {
@@ -61,7 +61,93 @@ def bar() : double {
 	def e () : void {}
 }
 
+def h() {} */
 
+/* while (true) {
+	false ;
+	def x () : void {
+		def y () : double {
+			true ;
+			def z () : string {
+				4.0 ;
+			}
+		}
+	}
+} */
+
+/* {
+	true;
+	4.0;
+	1;
+} */
+
+/* def bar() : char {
+	def i : char := 'a' ;
+	def x() : void {
+		def y() : double {
+		}
+	}
+	while (true) {
+		4.0;
+		def j : int := 3;
+		{
+			false;
+		}
+	}
+	def z() : char {
+		def t() : string {
+		}
+	}
+} */
+
+/* while(true) {
+	true;
+	def foo () : char {
+		while(true) {
+			1;
+			{
+				2.0;
+			}
+			false;
+		}
+	}
+} */
+
+
+/* true;
+{
+	false;
+	1;
+	def x () : void {
+		4.0;
+		{
+			true;
+			def y () : double {
+				{
+					{
+						false;
+						2.3;
+						while (true && false) {
+							def i : double := 4.0;
+							def j : int := 3;
+							x();
+							i := 1*3**j;
+                            i *= -1;
+							//return (i);
+                            i := 1%%3*12+4312+24.123;
+						}
+					}
+				}
+			}
+		}
+	}
+} */
+
+def i : double := 4.0;
+def foo() : double {
+	true;
+	return (i);
+}
 
 
 
