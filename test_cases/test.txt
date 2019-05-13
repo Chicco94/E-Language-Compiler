@@ -20,7 +20,7 @@ def test_function(array_of_tests, function) :bool{
 }
 
 def main() :int{
-    def tests :int := 0..20;
-    test_function(tests, factorial);
+    def tests :int := 20;
+    test_function(0..test, factorial);
     return 1;
 }
