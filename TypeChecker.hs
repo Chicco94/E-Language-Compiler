@@ -53,50 +53,64 @@ typeCheck prog@(PDefs def) = foldM checkDecl (initEnv, []) def
 checkDecl :: (Env, [Program]) -> Decl -> Err (Env,[Program])
 checkDecl (env@(sig@(x:xs), (block:_)), prog) def = 
   case def of
-    DeclFun lexpr args guard stmts -> checkFunDecl (env, prog) lexpr args guard stmts
+    DeclFun lexpr args guard compstmt -> checkFunDecl (env, prog) lexpr args guard compstmt
     DeclStmt stmt -> checkDeclStmt (env, prog) stmt
     --_ -> Ok (env, prog)
 
 -- Check function declaration.
-checkFunDecl :: (Env, [Program]) -> LExpr -> [Arg] -> Guard -> [Stmt] -> Err (Env, [Program])
-checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId (PIdent (p, fname))) args guard@(GuardType t) stmts = do
+checkFunDecl :: (Env, [Program]) -> LExpr -> [Arg] -> Guard -> CompStmt -> Err (Env, [Program])
+checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId (PIdent (p, fname))) args guard@(GuardType t) compstmt = do
   case lookupFun sig fname of
     Ok t  -> fail $ show p ++ ": function " ++ printTree fname ++ " already declared"
-    --_ -> Ok (([addFun x fname args guard], [block]), postAttach (PTDefs [TypedDecl t (DeclFun lexpr args guard stmts)]) prog)
     _ -> do case checkArgDecl (env, prog) args of
+              -- call extendEnv putting an empty Signature and a FunBlock block
+              -- TODO: add parameters to FunBlock 
+              Ok _ -> do case extendEnv (((Map.empty:(addFun x fname args guard):xs), ((FunBlock, Map.empty):blocks)), prog) compstmt of
+                           Ok (e', p') -> Ok (e', postAttach (PTDefs [ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p')))]) prog)
+                           Bad s -> Bad s
+                           _ -> fail $ "checkFunDecl: fatal error!"
+              Bad s -> Bad s
+
+
+
+
+
+
+
+
+    --_ -> Ok (([addFun x fname args guard], [block]), postAttach (PTDefs [TypedDecl t (DeclFun lexpr args guard stmts)]) prog)
+
               --Ok _  -> Ok (([addFun x fname args guard], [block]), postAttach (PTDefs [TypedDecl t (DeclFun lexpr args guard stmts)]) prog) 
               {-Ok _  -> do Ok (env', postAttach (PTDefs [TypedDecl t (DeclFun lexpr args guard [labeledstmts])]) prog)
                          where --env' = (addFun x fname args guard, ((FunBlock, Map.empty):blocks))
                                Ok (env',(PTDefs [TypedDecl t (DeclStmt labeledstmts)])) = foldM checkDeclStmt (([addFun x fname args guard], ((FunBlock, Map.empty):blocks)), prog) stmts-}
-              Ok _ -> do case extendEnv (env, prog) stmts of
+
 --case extendEnv (([addFun x fname args guard], ((FunBlock, Map.empty):blocks)), prog) stmts of
                            --Ok (e',p'@([PTDefs [TypedDecl t' (DeclStmt lbl)]])) -> Ok (e',[PTDefs [TypedDecl t' (DeclFun lexpr args guard [lbl])]])
-                           Ok (e', p') -> Ok (e', postAttach (PTDefs [TypedDecl t (DeclFun lexpr args guard (getDecls p'))]) prog)
-                           --Ok (e', p') -> Ok (e', postAttach (PTDefs [TypedDecl t (DeclFun lexpr args guard [PTDefs [TypedDecl t (DeclStmt p')]])]) prog)
-                           --Ok (e',p') -> Ok (e',p')
-                           Bad s -> Bad s
-                           _ -> fail $ "checkFunDecl: error!"
-              Bad s -> Bad s
-
 --getProgramType :: [Program] -> Type
 
-getDecls :: [Program] -> [Stmt]
+getDecls :: [Program] -> [Decl]
 getDecls [] = []
 getDecls (prog:progs) = case prog of
-  PTDefs [TypedDecl t (DeclStmt s)] -> (StmtAnnDecl (TypedDecl t (DeclStmt s))) : getDecls progs
+  PTDefs [ADecl t s] -> (TypedDecl (ADecl t s)) : getDecls progs
   _ -> []
+
+{- getStatements :: [Program] -> [Decl]
+getStatements [] = []
+getStatements (prog:progs) = case prog of
+  PTDefs [TypedDecl t (DeclStmt (SComp (StmtBlock [DeclStmt s])))] -> s : getStatements progs
+  _ -> [] -}
  
 --let env' = (addFun x fname args guard, ((FunBlock, Map.empty):blocks)) -- add function to the environment
 -- the argument declaration succeeded, add the function to the signature (TODO: add block, etc.)
 
-extendEnv :: (Env, [Program]) -> [Stmt] -> Err (Env, [Program])
-extendEnv (env, prog) stmts = do 
-  (e@(x@(sig:sigs), blocks), p) <- foldM checkDeclStmt (env, prog) stmts
-  Ok ((sigs, blocks), p List.\\ prog)
-  --(env', prog')  <- foldM checkDeclStmt (enterBlock env, prog) stmts
-  --env''          <- exitBlock env'
-  --Ok 
-      
+extendEnv :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
+extendEnv (env@(s, y), prog) compstmt = do
+  case compstmt of
+    StmtBlock decls         -> do (e@((sig:sigs), b@(block:blocks)), p) <- foldM checkDecl (env, prog) decls
+                                  Ok ((sigs,blocks), p List.\\ prog) -- list difference
+                                  --Ok (e, p List.\\ prog)      
+
 -- Check argument(s) declaration.
 checkArgDecl :: (Env, [Program]) -> [Arg] -> Err (Env, [Program])  
 checkArgDecl (env, prog) [] = Ok (env, prog) 
@@ -135,14 +149,15 @@ checkDeclStmt (env@(sig, blocks@((blockType, context):xs)), prog) stmt =
         GuardType t ->
           case lookupVar blocks ident of
            Ok (m,t) -> fail $ show p ++ ": variable '" ++ printTree ident ++ "' already declared"
-           _        -> Ok ((sig, ((blockType, addVar context (MutVar, ident) guard):blocks)), postAttach (PTDefs [TypedDecl t (DeclStmt (StmtVarInit lexpr guard expr))]) prog)
+           --_        -> Ok ((sig, ((blockType, addVar context (MutVar, ident) guard):blocks)), postAttach (PTDefs [TypedDecl t (DeclStmt (StmtVarInit lexpr guard expr))]) prog)
+           _        -> Ok ((sig, ((blockType, addVar context (MutVar, ident) guard):blocks)), postAttach (PTDefs [ADecl t (DeclStmt (StmtVarInit lexpr guard expr))]) prog)
         GuardVoid -> fail $ show p ++ ": variable '" ++ printTree ident ++ "' declared as void! this is not allowed!"
     StmtDefInit lexpr@(LExprId (PIdent (p, ident))) guard expr -> do
       case guard of
         GuardType t ->
           case lookupVar blocks ident of
            Ok (m,t) -> fail $ show p ++ ": variable '" ++ printTree ident ++ "' already declared"
-           _        -> Ok ((sig, ((blockType, addVar context (MutConst, ident) guard):blocks)), postAttach (PTDefs [TypedDecl t (DeclStmt (StmtDefInit lexpr guard expr))]) prog)
+           _        -> Ok ((sig, ((blockType, addVar context (MutConst, ident) guard):blocks)), postAttach (PTDefs [ADecl t (DeclStmt (StmtDefInit lexpr guard expr))]) prog)
         GuardVoid -> fail $ show p ++ ": variable '" ++ printTree ident ++ "' declared as void! this is not allowed!"
     _ -> Bad "checkStmt: fatal error!"
 
@@ -173,7 +188,7 @@ checkAssignBoolOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr
 checkAssignBoolOp (env, prog) t1 lexpr op expr = do
   t2 <- inferExpr env expr
   if (t2 `isCompatibleWith` t1)
-    then Ok (env, postAttach (PTDefs [TypedDecl TypeBool (DeclStmt (StmtExpr (StmtAssign lexpr op expr)))]) prog)
+    then Ok (env, postAttach (PTDefs [ADecl TypeBool (DeclStmt (StmtExpr (StmtAssign lexpr op expr)))]) prog)
     else fail $ printTree t2 ++ " is not compatible with " ++ printTree t1
 
 -- Check assignment operator.
@@ -181,7 +196,7 @@ checkAssignOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> 
 checkAssignOp (env, prog) t1 lexpr op expr = do
   t2 <- inferExpr env expr
   if (t2 `isCompatibleWith` t1)
-    then Ok (env, postAttach (PTDefs [TypedDecl t1 (DeclStmt (StmtExpr (StmtAssign lexpr op expr)))]) prog)
+    then Ok (env, postAttach (PTDefs [ADecl t1 (DeclStmt (StmtExpr (StmtAssign lexpr op expr)))]) prog)
     else fail $ printTree t2 ++ " is not compatible with " ++ printTree t1
 
 -- Check function call.
@@ -189,7 +204,7 @@ checkFunCall :: (Env, [Program]) -> Expr -> Err (Env, [Program])
 checkFunCall (env@(sig, _), prog) (ExprFunCall (PIdent pident@(p,ident)) args) = do
   case lookupFun sig ident of
     Ok funDef@(mods,t) -> if length args == length mods -- !! doesn't work..
-                          then Ok (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr (ExprFunCall (PIdent pident) args)))]) prog)
+                          then Ok (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr (ExprFunCall (PIdent pident) args)))]) prog)
                           else fail $ show p ++ ": function '" ++ printTree ident ++ " doesn't match its parameters"
     _ -> fail $ show p ++ ": function '" ++ printTree ident ++ "' is not defined!" 
 
@@ -202,46 +217,46 @@ checkExpr (env, prog) expr = do
 
     -- Left expressions.
     LeftExpr lexpr           -> do t <- inferLExpr env lexpr
-                                   return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr (LeftExpr lexpr)))])prog) 
+                                   return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr (LeftExpr lexpr)))])prog) 
 
     -- Base expressions (i.e., integers, floats, chars, strings, booleans)
-    ExprInt int              -> return (env, postAttach (PTDefs [TypedDecl TypeInt (DeclStmt (StmtExpr (ExprInt int)))]) prog)
-    ExprDouble dbl           -> return (env, postAttach (PTDefs [TypedDecl TypeDouble (DeclStmt (StmtExpr (ExprDouble dbl)))]) prog)
-    ExprChar chr             -> return (env, postAttach (PTDefs [TypedDecl TypeChar (DeclStmt (StmtExpr (ExprChar chr)))]) prog)
-    ExprString str           -> return (env, postAttach (PTDefs [TypedDecl TypeString (DeclStmt (StmtExpr (ExprString str)))]) prog)
-    ExprTrue                 -> return (env, postAttach (PTDefs [TypedDecl TypeBool (DeclStmt (StmtExpr ExprTrue))]) prog)
-    ExprFalse                -> return (env, postAttach (PTDefs [TypedDecl TypeBool (DeclStmt (StmtExpr ExprFalse))]) prog)
+    ExprInt int              -> return (env, postAttach (PTDefs [ADecl TypeInt (DeclStmt (StmtExpr (ExprInt int)))]) prog)
+    ExprDouble dbl           -> return (env, postAttach (PTDefs [ADecl TypeDouble (DeclStmt (StmtExpr (ExprDouble dbl)))]) prog)
+    ExprChar chr             -> return (env, postAttach (PTDefs [ADecl TypeChar (DeclStmt (StmtExpr (ExprChar chr)))]) prog)
+    ExprString str           -> return (env, postAttach (PTDefs [ADecl TypeString (DeclStmt (StmtExpr (ExprString str)))]) prog)
+    ExprTrue                 -> return (env, postAttach (PTDefs [ADecl TypeBool (DeclStmt (StmtExpr ExprTrue))]) prog)
+    ExprFalse                -> return (env, postAttach (PTDefs [ADecl TypeBool (DeclStmt (StmtExpr ExprFalse))]) prog)
 
     -- Function call.
     ExprFunCall pident args  -> do checkFunCall (env, prog) expr
 
     -- Boolean not.
     ExprBoolNot e            -> do t <- inferBoolUnOp env expr e
-                                   return (env, postAttach (PTDefs [TypedDecl TypeBool (DeclStmt (StmtExpr expr))]) prog)
+                                   return (env, postAttach (PTDefs [ADecl TypeBool (DeclStmt (StmtExpr expr))]) prog)
 
     -- Arithmetic unary operators.
     ExprAddition e           -> do t <- inferArithUnOp env expr e
-                                   return (env, postAttach (PTDefs [TypedDecl TypeBool (DeclStmt (StmtExpr expr))]) prog)  
+                                   return (env, postAttach (PTDefs [ADecl TypeBool (DeclStmt (StmtExpr expr))]) prog)  
     ExprNegation e           -> do t <- inferArithUnOp env expr e
-                                   return (env, postAttach (PTDefs [TypedDecl TypeBool (DeclStmt (StmtExpr expr))]) prog)    
+                                   return (env, postAttach (PTDefs [ADecl TypeBool (DeclStmt (StmtExpr expr))]) prog)    
 
     -- Arithmetic binary operators.
     ExprPower e1 e2    -> do t <- inferArithBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
     ExprMul e1 e2      -> do t <- inferArithBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
     --ExprFloatDiv e1 e2 -> do t <- inferArithBinDoubleOp env expr e1 e2
     --                         return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
     --ExprIntDiv e1 e2 -> do t <- inferArithBinIntOp env expr e1 e2
     --                            return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
     ExprReminder e1 e2 -> do t <- inferArithBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
     ExprModulo e1 e2   -> do t <- inferArithBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
     ExprPlus e1 e2     -> do t <- inferArithBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
     ExprMinus e1 e2    -> do t <- inferArithBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
 
     -- Interval creation. (Recall that an interval is an iterable.)
     ExprIntInc e1 e2   -> checkInterval (env, prog) expr e1 e2
@@ -249,23 +264,23 @@ checkExpr (env, prog) expr = do
 
     -- Relational binary operators.
     ExprLt e1 e2       -> do t <- inferRelBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
     ExprGt e1 e2       -> do t <- inferRelBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
     ExprLtEq e1 e2     -> do t <- inferRelBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
     ExprGtEq e1 e2     -> do t <- inferRelBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
     ExprEq e1 e2       -> do t <- inferRelBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
     ExprNeq e1 e2      -> do t <- inferRelBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
 
     -- Boolean binary operator.
     ExprAnd e1 e2      -> do t <- inferBoolBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
     ExprOr e1 e2       -> do t <- inferBoolBinOp env expr e1 e2
-                             return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+                             return (env, postAttach (PTDefs [ADecl t (DeclStmt (StmtExpr expr))]) prog)
     _ -> return (env, prog)
 
 -- Check interval creation.
@@ -274,7 +289,7 @@ checkInterval (env, prog) expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
   if (t1 == TypeInt) && (t2 == TypeInt) -- only ints are allowed.
-    then Ok (env, postAttach (PTDefs [TypedDecl t1 (DeclStmt (StmtExpr expr))]) prog)
+    then Ok (env, postAttach (PTDefs [ADecl t1 (DeclStmt (StmtExpr expr))]) prog)
     else fail $ "only integer intervals allowed!"
   
 -- Look for function in signature.

@@ -89,39 +89,16 @@ instance Print Program where
     PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
     PTDefs annotateddecls -> prPrec i 0 (concatD [prt 0 annotateddecls])
 
-instance Print AnnotatedStmt where
+instance Print Decl where
   prt i e = case e of
-    TypedStmt type_ stmt -> prPrec i 0 (concatD [doc (showString "["), prt 0 type_, doc (showString ":]"), prt 0 stmt])
-
-instance Print Stmt where
-  prt i e = case e of
-    StmtAnnDecl annotateddecl -> prPrec i 0 (concatD [prt 0 annotateddecl])
-    StmtExpr expr -> prPrec i 0 (concatD [prt 0 expr, doc (showString ";")])
-    StmtDecl lexpr guard -> prPrec i 0 (concatD [doc (showString "var"), prt 0 lexpr, prt 0 guard, doc (showString ";")])
-    StmtIterDecl lexpr guard -> prPrec i 0 (concatD [doc (showString "var"), doc (showString "["), prt 0 lexpr, doc (showString "]"), prt 0 guard, doc (showString ";")])
-    StmtVarInit lexpr guard expr -> prPrec i 0 (concatD [doc (showString "var"), prt 0 lexpr, prt 0 guard, doc (showString ":="), prt 0 expr, doc (showString ";")])
-    StmtDefInit lexpr guard expr -> prPrec i 0 (concatD [doc (showString "def"), prt 0 lexpr, prt 0 guard, doc (showString ":="), prt 0 expr, doc (showString ";")])
-    StmtReturn exprs -> prPrec i 0 (concatD [doc (showString "return"), prt 0 exprs, doc (showString ";")])
-    StmtBlock decls -> prPrec i 0 (concatD [doc (showString "{"), prt 0 decls, doc (showString "}")])
-    StmtIfElse expr stmt1 stmt2 -> prPrec i 0 (concatD [doc (showString "if"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 stmt1, doc (showString "else"), prt 0 stmt2])
-    StmtIfNoElse expr stmt -> prPrec i 0 (concatD [doc (showString "if"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 stmt])
-    SSwitchCase expr normcases dfltcases -> prPrec i 0 (concatD [doc (showString "switch"), doc (showString "("), prt 0 expr, doc (showString ")"), doc (showString "{"), prt 0 normcases, prt 0 dfltcases, doc (showString "}")])
-    StmtBreak -> prPrec i 0 (concatD [doc (showString "break")])
-    StmtContinue -> prPrec i 0 (concatD [doc (showString "continue")])
-    StmtWhile expr stmt -> prPrec i 0 (concatD [doc (showString "while"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 stmt])
-    StmtFor pident typeiter stmt -> prPrec i 0 (concatD [doc (showString "for"), prt 0 pident, doc (showString "in"), prt 0 typeiter, prt 0 stmt])
+    TypedDecl annotateddecl -> prPrec i 0 (concatD [prt 0 annotateddecl])
+    DeclFun lexpr args guard compstmt -> prPrec i 0 (concatD [doc (showString "def"), prt 0 lexpr, doc (showString "("), prt 0 args, doc (showString ")"), prt 0 guard, prt 0 compstmt])
+    DeclStmt stmt -> prPrec i 0 (concatD [prt 0 stmt])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
 instance Print AnnotatedDecl where
   prt i e = case e of
-    UntypedDecl decl -> prPrec i 0 (concatD [prt 0 decl])
-    TypedDecl type_ decl -> prPrec i 0 (concatD [doc (showString "["), prt 0 type_, doc (showString ":]"), prt 0 decl])
-  prtList _ [] = (concatD [])
-  prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
-instance Print Decl where
-  prt i e = case e of
-    DeclFun lexpr args guard stmts -> prPrec i 0 (concatD [doc (showString "def"), prt 0 lexpr, doc (showString "("), prt 0 args, doc (showString ")"), prt 0 guard, doc (showString "{"), prt 0 stmts, doc (showString "}")])
-    DeclStmt stmt -> prPrec i 0 (concatD [prt 0 stmt])
+    ADecl type_ decl -> prPrec i 0 (concatD [doc (showString "["), prt 0 type_, doc (showString ":]"), prt 0 decl])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
 instance Print Arg where
@@ -141,16 +118,21 @@ instance Print Guard where
     GuardVoid -> prPrec i 0 (concatD [])
     GuardType type_ -> prPrec i 0 (concatD [doc (showString ":"), prt 0 type_])
 
-instance Print NormCase where
+instance Print Stmt where
   prt i e = case e of
-    CaseNormal expr stmt -> prPrec i 0 (concatD [doc (showString "match"), prt 0 expr, prt 0 stmt])
+    StmtExpr expr -> prPrec i 0 (concatD [prt 0 expr, doc (showString ";")])
+    StmtDecl lexpr guard -> prPrec i 0 (concatD [doc (showString "var"), prt 0 lexpr, prt 0 guard, doc (showString ";")])
+    StmtIterDecl lexpr guard -> prPrec i 0 (concatD [doc (showString "var"), doc (showString "["), prt 0 lexpr, doc (showString "]"), prt 0 guard, doc (showString ";")])
+    StmtVarInit lexpr guard expr -> prPrec i 0 (concatD [doc (showString "var"), prt 0 lexpr, prt 0 guard, doc (showString ":="), prt 0 expr, doc (showString ";")])
+    StmtDefInit lexpr guard expr -> prPrec i 0 (concatD [doc (showString "def"), prt 0 lexpr, prt 0 guard, doc (showString ":="), prt 0 expr, doc (showString ";")])
+    StmtReturn exprs -> prPrec i 0 (concatD [doc (showString "return"), prt 0 exprs, doc (showString ";")])
+    SComp compstmt -> prPrec i 0 (concatD [prt 0 compstmt])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
-instance Print DfltCase where
+instance Print CompStmt where
   prt i e = case e of
-    CaseDefault stmt -> prPrec i 0 (concatD [doc (showString "match _"), prt 0 stmt])
-  prtList _ [] = (concatD [])
-  prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
+    StmtBlock decls -> prPrec i 0 (concatD [doc (showString "{"), prt 0 decls, doc (showString "}")])
+
 instance Print Expr where
   prt i e = case e of
     StmtAssign lexpr assignoperator expr -> prPrec i 0 (concatD [prt 0 lexpr, prt 0 assignoperator, prt 1 expr])

@@ -40,24 +40,22 @@ PIdent literals are recognized by the regular expression
 The set of reserved words is the set of terminals appearing in the grammar. Those reserved words that consist of non-letter characters are called symbols, and they are treated in a different way from those that are similar to identifiers. The lexer follows rules familiar from languages like Haskell, C, and Java, including longest match and spacing conventions.
 
 The reserved words used in E are the following:
-  | ``bool`` | ``break`` | ``char`` | ``continue``
-  | ``def`` | ``double`` | ``else`` | ``false``
-  | ``for`` | ``if`` | ``in`` | ``int``
-  | ``match`` | ``return`` | ``string`` | ``switch``
-  | ``true`` | ``var`` | ``void`` | ``while``
+  | ``bool`` | ``char`` | ``def`` | ``double``
+  | ``false`` | ``int`` | ``return`` | ``string``
+  | ``true`` | ``var`` | ``void`` | 
 
 The symbols used in E are the following:
-  | [ | :] | ( | )
-  | { | } | , | :
-  | ; | ] | := | match _
-  | * | ! | & | -
-  | + | ** | / | //
-  | % | %% | .. | ..!
-  | < | > | <= | >=
-  | == | != | && | ||
-  | |= | &= | += | -=
-  | *= | //= | /= | %=
-  | %%= | **= |  | 
+  | ( | ) | [ | :]
+  | , | : | ; | ]
+  | := | { | } | *
+  | ! | & | - | +
+  | ** | / | // | %
+  | %% | .. | ..! | <
+  | > | <= | >= | ==
+  | != | && | || | |=
+  | &= | += | -= | *=
+  | //= | /= | %= | %%=
+  | **= |  |  | 
 
 ===Comments===
 Single-line comments begin with //.Multiple-line comments are  enclosed with /* and */.
@@ -73,28 +71,9 @@ All other symbols are terminals.
   |  |  **|**  | //Decl// //[Decl]// 
   | //[AnnotatedDecl]// | -> | **eps**
   |  |  **|**  | //AnnotatedDecl// //[AnnotatedDecl]// 
-  | //[AnnotatedStmt]// | -> | **eps**
-  |  |  **|**  | //AnnotatedStmt// //[AnnotatedStmt]// 
-  | //AnnotatedStmt// | -> | ``[`` //Type// ``:]`` //Stmt// 
-  | //Stmt// | -> | //AnnotatedStmt// 
-  |  |  **|**  | //AnnotatedDecl// 
-  |  |  **|**  | //Expr// ``;`` 
-  |  |  **|**  | ``var`` //LExpr// //Guard// ``;`` 
-  |  |  **|**  | ``var`` ``[`` //LExpr// ``]`` //Guard// ``;`` 
-  |  |  **|**  | ``var`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
-  |  |  **|**  | ``def`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
-  |  |  **|**  | ``return`` //[Expr]// ``;`` 
-  |  |  **|**  | ``{`` //[Decl]// ``}`` 
-  |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// ``else`` //Stmt// 
-  |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// 
-  |  |  **|**  | ``switch`` ``(`` //Expr// ``)`` ``{`` //[NormCase]// //[DfltCase]// ``}`` 
-  |  |  **|**  | ``break`` 
-  |  |  **|**  | ``continue`` 
-  |  |  **|**  | ``while`` ``(`` //Expr// ``)`` //Stmt// 
-  |  |  **|**  | ``for`` //PIdent// ``in`` //TypeIter// //Stmt// 
   | //AnnotatedDecl// | -> | //Decl// 
   |  |  **|**  | ``[`` //Type// ``:]`` //Decl// 
-  | //Decl// | -> | ``def`` //LExpr// ``(`` //[Arg]// ``)`` //Guard// ``{`` //[Stmt]// ``}`` 
+  | //Decl// | -> | ``def`` //LExpr// ``(`` //[Arg]// ``)`` //Guard// //CompStmt// 
   |  |  **|**  | //Stmt// 
   | //[Arg]// | -> | **eps**
   |  |  **|**  | //Arg// 
@@ -107,12 +86,14 @@ All other symbols are terminals.
   |  |  **|**  | ``def`` 
   | //Guard// | -> | **eps**
   |  |  **|**  | ``:`` //Type// 
-  | //NormCase// | -> | ``match`` //Expr// //Stmt// 
-  | //DfltCase// | -> | ``match _`` //Stmt// 
-  | //[NormCase]// | -> | **eps**
-  |  |  **|**  | //NormCase// //[NormCase]// 
-  | //[DfltCase]// | -> | **eps**
-  |  |  **|**  | //DfltCase// //[DfltCase]// 
+  | //Stmt// | -> | //Expr// ``;`` 
+  |  |  **|**  | ``var`` //LExpr// //Guard// ``;`` 
+  |  |  **|**  | ``var`` ``[`` //LExpr// ``]`` //Guard// ``;`` 
+  |  |  **|**  | ``var`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
+  |  |  **|**  | ``def`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
+  |  |  **|**  | ``return`` //[Expr]// ``;`` 
+  |  |  **|**  | //CompStmt// 
+  | //CompStmt// | -> | ``{`` //[Decl]// ``}`` 
   | //Expr// | -> | //LExpr// //AssignOperator// //Expr1// 
   |  |  **|**  | //Expr1// 
   | //LExpr// | -> | //PIdent// 

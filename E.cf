@@ -3,30 +3,23 @@ position token PIdent (letter (letter|digit|'_'|'\'')*) ;
 
 -- A program is a sequence of declarations.
 PDefs.     Program ::= [Decl] ;
---DeclStmt1.       Decl ::= Stmt ;
---StmtDecl1.       Stmt ::= Decl ;
 terminator Decl "" ;
 
 -- Include in the abstract syntax a type annotated version of expressions.
 --internal ExprTyped. Expr ::= "[" Type "]" Expr ;
 internal PTDefs. Program ::=  [AnnotatedDecl] ;
---internal TStmt.  Program ::= [AnnotatedStmt] ;
 terminator AnnotatedDecl "";
---terminator AnnotatedStmt "";
-TypedStmt. AnnotatedStmt ::= "[" Type ":]" Stmt ;
---TypeStmt. Stmt ::= AnnotatedStmt ;
-StmtAnnDecl.  Stmt ::= AnnotatedDecl ;
 
 -- A declaration is an annotated declaration with no label.
-UntypedDecl. AnnotatedDecl ::= Decl ;
+TypedDecl. Decl ::= AnnotatedDecl ;
 
 -- A program may containt (C-like) comments, which are ignored by the parser.
 comment "//" ;
 comment "/*" "*/" ;
 
 -- Function declaration. E.g.: def foo (int x, double y) : int { }
-DeclFun.   Decl ::= "def" LExpr "(" [Arg] ")" Guard "{" [Stmt] "}" ;
-TypedDecl. AnnotatedDecl ::= "[" Type ":]" Decl ;
+DeclFun.   Decl          ::= "def" LExpr "(" [Arg] ")" Guard CompStmt ;
+ADecl.     AnnotatedDecl ::= "[" Type ":]" Decl ;
 separator  Arg "," ;
 terminator Stmt "" ;
 
@@ -63,22 +56,23 @@ StmtDefInit.     Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;
 
 StmtReturn.     Stmt     ::= "return" [Expr] ";" ;
 
-StmtBlock.      Stmt     ::= "{" [Decl] "}" ;
+StmtBlock.      CompStmt ::= "{" [Decl] "}" ;
+SComp.          Stmt ::= CompStmt ;
 
 -- ###
 -- 1 shift/reduce conflict
-StmtIfElse.     Stmt     ::= "if" "(" Expr ")" Stmt "else" Stmt ;
-StmtIfNoElse.   Stmt     ::= "if" "(" Expr ")" Stmt ;
-SSwitchCase.    Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
-CaseNormal.     NormCase ::= "match" Expr Stmt ;
-CaseDefault.    DfltCase ::= "match _" Stmt ;
-separator NormCase "" ;
-separator DfltCase "" ;
-StmtBreak.      Stmt     ::= "break" ;
-StmtContinue.   Stmt     ::= "continue" ;
+--StmtIfElse.     Stmt     ::= "if" "(" Expr ")" Stmt "else" Stmt ;
+--StmtIfNoElse.   Stmt     ::= "if" "(" Expr ")" Stmt ;
+--SSwitchCase.    Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
+--CaseNormal.     NormCase ::= "match" Expr Stmt ;
+--CaseDefault.    DfltCase ::= "match _" Stmt ;
+--separator NormCase "" ;
+--separator DfltCase "" ;
+--StmtBreak.      Stmt     ::= "break" ;
+--StmtContinue.   Stmt     ::= "continue" ;
 
-StmtWhile.      Stmt     ::= "while" "(" Expr ")" Stmt ;
-StmtFor.        Stmt     ::= "for" PIdent "in" TypeIter Stmt ;
+--StmtWhile.      Stmt     ::= "while" "(" Expr ")" Stmt ;
+--StmtFor.        Stmt     ::= "for" PIdent "in" TypeIter Stmt ;
 
 StmtAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
 

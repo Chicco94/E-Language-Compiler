@@ -39,19 +39,27 @@
 //i := a();
 
 
-var i : double := 'a';
-var j : string := "abc" ;
-def bar() : double {
-	def k : char := 'a' ;
-    def t : string := "hello" ;
-}
+//var i : double := 'a';
+//var j : string := "abc" ;
+
 //def foo () : double {}
 //a(i,j,k);
 //i := -1;
 
+def foo () : void {}
+def choc () : int {}
 
-
-
+def bar() : double {
+	def k : char := 'a' ;
+    //def t : string := "hello" ;
+    def f () : void {
+		def t : string := "hello" ;
+		def z : string := "world" ;
+		def c (t, z, k) : void {}
+		def d (t : char,t,t,t) : double {}
+	}
+	def e () : void {}
+}
 
 
 

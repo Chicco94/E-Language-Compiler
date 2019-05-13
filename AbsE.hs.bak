@@ -9,36 +9,13 @@ module AbsE where
 
 newtype PIdent = PIdent ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
-data Program
-    = PDefs [Decl] | PTDefs [AnnotatedDecl] | TStmt [AnnotatedStmt]
-  deriving (Eq, Ord, Show, Read)
-
-data AnnotatedStmt = TypedStmt Type Stmt
-  deriving (Eq, Ord, Show, Read)
-
-data Stmt
-    = TypeStmt AnnotatedStmt
-    | TypeASD AnnotatedDecl
-    | StmtExpr Expr
-    | StmtDecl LExpr Guard
-    | StmtIterDecl LExpr Guard
-    | StmtVarInit LExpr Guard Expr
-    | StmtDefInit LExpr Guard Expr
-    | StmtReturn [Expr]
-    | StmtBlock [Decl]
-    | StmtIfElse Expr Stmt Stmt
-    | StmtIfNoElse Expr Stmt
-    | SSwitchCase Expr [NormCase] [DfltCase]
-    | StmtBreak
-    | StmtContinue
-    | StmtWhile Expr Stmt
-    | StmtFor PIdent TypeIter Stmt
+data Program = PDefs [Decl] | PTDefs [AnnotatedDecl]
   deriving (Eq, Ord, Show, Read)
 
 data AnnotatedDecl = UntypedDecl Decl | TypedDecl Type Decl
   deriving (Eq, Ord, Show, Read)
 
-data Decl = DeclFun LExpr [Arg] Guard [Stmt] | DeclStmt Stmt
+data Decl = DeclFun LExpr [Arg] Guard CompStmt | DeclStmt Stmt
   deriving (Eq, Ord, Show, Read)
 
 data Arg = ArgDecl Modality PIdent Guard
@@ -50,10 +27,17 @@ data Modality = ModEmpty | ModVar | ModDef
 data Guard = GuardVoid | GuardType Type
   deriving (Eq, Ord, Show, Read)
 
-data NormCase = CaseNormal Expr Stmt
+data Stmt
+    = StmtExpr Expr
+    | StmtDecl LExpr Guard
+    | StmtIterDecl LExpr Guard
+    | StmtVarInit LExpr Guard Expr
+    | StmtDefInit LExpr Guard Expr
+    | StmtReturn [Expr]
+    | SComp CompStmt
   deriving (Eq, Ord, Show, Read)
 
-data DfltCase = CaseDefault Stmt
+data CompStmt = StmtBlock [Decl]
   deriving (Eq, Ord, Show, Read)
 
 data Expr

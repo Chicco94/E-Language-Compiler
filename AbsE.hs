@@ -12,31 +12,13 @@ newtype PIdent = PIdent ((Int,Int),String)
 data Program = PDefs [Decl] | PTDefs [AnnotatedDecl]
   deriving (Eq, Ord, Show, Read)
 
-data AnnotatedStmt = TypedStmt Type Stmt
+data Decl
+    = TypedDecl AnnotatedDecl
+    | DeclFun LExpr [Arg] Guard CompStmt
+    | DeclStmt Stmt
   deriving (Eq, Ord, Show, Read)
 
-data Stmt
-    = StmtAnnDecl AnnotatedDecl
-    | StmtExpr Expr
-    | StmtDecl LExpr Guard
-    | StmtIterDecl LExpr Guard
-    | StmtVarInit LExpr Guard Expr
-    | StmtDefInit LExpr Guard Expr
-    | StmtReturn [Expr]
-    | StmtBlock [Decl]
-    | StmtIfElse Expr Stmt Stmt
-    | StmtIfNoElse Expr Stmt
-    | SSwitchCase Expr [NormCase] [DfltCase]
-    | StmtBreak
-    | StmtContinue
-    | StmtWhile Expr Stmt
-    | StmtFor PIdent TypeIter Stmt
-  deriving (Eq, Ord, Show, Read)
-
-data AnnotatedDecl = UntypedDecl Decl | TypedDecl Type Decl
-  deriving (Eq, Ord, Show, Read)
-
-data Decl = DeclFun LExpr [Arg] Guard [Stmt] | DeclStmt Stmt
+data AnnotatedDecl = ADecl Type Decl
   deriving (Eq, Ord, Show, Read)
 
 data Arg = ArgDecl Modality PIdent Guard
@@ -48,10 +30,17 @@ data Modality = ModEmpty | ModVar | ModDef
 data Guard = GuardVoid | GuardType Type
   deriving (Eq, Ord, Show, Read)
 
-data NormCase = CaseNormal Expr Stmt
+data Stmt
+    = StmtExpr Expr
+    | StmtDecl LExpr Guard
+    | StmtIterDecl LExpr Guard
+    | StmtVarInit LExpr Guard Expr
+    | StmtDefInit LExpr Guard Expr
+    | StmtReturn [Expr]
+    | SComp CompStmt
   deriving (Eq, Ord, Show, Read)
 
-data DfltCase = CaseDefault Stmt
+data CompStmt = StmtBlock [Decl]
   deriving (Eq, Ord, Show, Read)
 
 data Expr
