@@ -101,14 +101,14 @@ ExprFunCall.  Expr15 ::= PIdent "(" [Expr] ")" ;
 ExprBoolNot.  Expr14  ::= "!" Expr15 ;
 ExprDeref.    Expr14  ::= "&" LExpr ;
 -- ###
--- 6 (3+3) shift/reduce conflicts
+-- 2 shift/reduce conflicts
 ExprNegation. Expr14  ::= "-" Expr15 ;
 ExprAddition. Expr14  ::= "+" Expr15 ;
 
 ExprPower.    Expr13 ::= Expr14 "**"  Expr13 ;
 
 -- ###
--- 3 shift/reduce conflicts
+-- 1 shift/reduce conflicts
 ExprMul.      Expr12 ::= Expr13 "*"  Expr13 ;
 ExprFloatDiv. Expr12 ::= Expr13 "/"  Expr13 ;
 ExprIntDiv.   Expr12 ::= Expr13 "//" Expr13 ;

@@ -12,10 +12,15 @@ def factorial(n :int) :int{
   }
 }
 
+def test_function(array_of_tests, function) :bool{
+    for test in array_of_tests{
+        print( function(test) );
+    }
+    return True;
+}
+
 def main() :int{
     def tests :int := 0..20;
-    for test in tests{
-        print( factorial(test) );
-    }
+    test_function(tests, factorial);
     return 1;
 }
