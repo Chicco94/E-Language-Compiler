@@ -18,8 +18,8 @@ comment "//" ;
 comment "/*" "*/" ;
 
 -- Function declaration. E.g.: def foo (int x, double y) : int { }
-DeclFun.   Decl ::= "def" LExpr "(" [Arg] ")" Guard "{" [Stmt] "}" ;
-TypedDecl. AnnotatedDecl ::= "[" Type ":]" Decl ;
+DeclFun.   Decl ::= "def" LExpr "(" [Arg] ")" Guard CompStmt ;
+ADecl.     AnnotatedDecl ::= "[" Type ":]" Decl ;
 separator  Arg "," ;
 terminator Stmt "" ;
 
@@ -55,24 +55,25 @@ StmtDefInit.     Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;
 --DeclModVar.      DeclModality ::= "var" ;
 --DeclModDef.      DeclModality ::= "def" ;
 
-StmtReturn.     Stmt     ::= "return" [Expr] ";" ;
+StmtReturn.     Stmt     ::= "return" "(" Expr ")" ";" ;
+StmtNoReturn.   Stmt     ::= "return" ";" ;
 
-StmtBlock.      Stmt     ::= "{" [Decl] "}" ;
-
+StmtBlock.      CompStmt ::= "{" [Decl] "}" ;
+SComp.          Stmt     ::= CompStmt ;
 -- ###
 -- 1 shift/reduce conflict
-StmtIfElse.     Stmt     ::= "if" "(" Expr ")" Stmt "else" Stmt ;
-StmtIfNoElse.   Stmt     ::= "if" "(" Expr ")" Stmt ;
+StmtIfElse.     Stmt     ::= "if" "(" Expr ")" CompStmt "else" Stmt ;
+StmtIfNoElse.   Stmt     ::= "if" "(" Expr ")" CompStmt ;
 SSwitchCase.    Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
-CaseNormal.     NormCase ::= "match" Expr Stmt ;
-CaseDefault.    DfltCase ::= "match _" Stmt ;
+CaseNormal.     NormCase ::= "match" Expr CompStmt ;
+CaseDefault.    DfltCase ::= "match _" CompStmt ;
 separator NormCase "" ;
 separator DfltCase "" ;
 StmtBreak.      Stmt     ::= "break" ;
 StmtContinue.   Stmt     ::= "continue" ;
 
-StmtWhile.      Stmt     ::= "while" "(" Expr ")" Stmt ;
-StmtFor.        Stmt     ::= "for" PIdent "in" TypeIter Stmt ;
+StmtWhile.      Stmt     ::= "while" "(" Expr ")" CompStmt ;
+StmtFor.        Stmt     ::= "for" PIdent "in" TypeIter CompStmt ;
 
 StmtAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
 
@@ -109,15 +110,15 @@ ExprPower.    Expr13 ::= Expr14 "**"  Expr13 ;
 
 -- ###
 -- 1 shift/reduce conflicts
-ExprMul.      Expr12 ::= Expr13 "*"  Expr13 ;
-ExprFloatDiv. Expr12 ::= Expr13 "/"  Expr13 ;
-ExprIntDiv.   Expr12 ::= Expr13 "//" Expr13 ;
-ExprReminder. Expr12 ::= Expr13 "%"  Expr13 ;
-ExprModulo.   Expr12 ::= Expr13 "%%" Expr13 ;
+ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
+ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
+ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
+ExprReminder. Expr12 ::= Expr12 "%"  Expr13 ;
+ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
 
 --ExprReference. Expr11 ::= "&" LExpr ;
-ExprPlus.      Expr11 ::= Expr12 "+"  Expr12 ;
-ExprMinus.     Expr11 ::= Expr12 "-"  Expr12 ;
+ExprPlus.      Expr11 ::= Expr11 "+"  Expr12 ;
+ExprMinus.     Expr11 ::= Expr11 "-"  Expr12 ;
 
 ExprIntInc.   Expr10 ::= Expr10 ".."  Expr11 ;
 ExprIntExc.   Expr10 ::= Expr10 "..!" Expr11 ;
@@ -164,7 +165,8 @@ TypeCompound. Type ::= CompoundType ;
 TypePointer.  CompoundType ::= Type "*" ; 
 TypeIterable. CompoundType ::= TypeIter ;
 TypeIterInterval. TypeIter ::= Expr10 ;           -- Iterable interval.
-TypeIterArray.    TypeIter ::= "[" [Expr] "]" ;   -- Iterable array.
+TypeIterArray.    TypeIter ::= TypeIter "[" [Expr] "]" ;   -- Iterable array.
+--TestEnrico.       Expr     ::= TypeIter ;
 
 
 -- End statement character.
@@ -172,6 +174,6 @@ TypeIterArray.    TypeIter ::= "[" [Expr] "]" ;   -- Iterable array.
 --NewLine.   EndLine ::= "\n" ;
 
 -- The entry point is the program.
-entrypoints Program, Stmt, Expr, LExpr ;
+entrypoints Program;
 
 
