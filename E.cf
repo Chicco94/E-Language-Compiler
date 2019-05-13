@@ -96,7 +96,7 @@ ExprString.   Expr16 ::= String ;
 ExprTrue.     Expr16 ::= "true" ;
 ExprFalse.    Expr16 ::= "false" ;
 
-ExprFunCall.  Expr15 ::= PIdent "(" [Arg] ")" ;
+ExprFunCall.  Expr15 ::= PIdent "(" [Expr] ")" ;
 
 ExprBoolNot.  Expr14  ::= "!" Expr15 ;
 ExprDeref.    Expr14  ::= "&" LExpr ;

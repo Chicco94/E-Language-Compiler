@@ -9,10 +9,10 @@ module AbsE where
 
 newtype PIdent = PIdent ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
-data Program = PDefs [Decl] | PTDefs [AnnDecl]
+data Program = PDefs [Decl] | PTDefs [AnnotatedDecl]
   deriving (Eq, Ord, Show, Read)
 
-data AnnDecl = LabeledDecl Decl | AnnotatedDecl Type Decl
+data AnnotatedDecl = UntypedDecl Decl | TypedDecl Type Decl
   deriving (Eq, Ord, Show, Read)
 
 data Decl = DeclFun LExpr [Arg] Guard [Stmt] | DeclStmt Stmt
@@ -28,12 +28,12 @@ data Guard = GuardVoid | GuardType Type
   deriving (Eq, Ord, Show, Read)
 
 data Stmt
-    = StmtExpr Expr EndLine
-    | StmtDecl LExpr Guard EndLine
-    | StmtIterDecl LExpr Guard EndLine
-    | StmtVarInit LExpr Guard Expr EndLine
-    | StmtDefInit LExpr Guard Expr EndLine
-    | StmtReturn [Expr] EndLine
+    = StmtExpr Expr
+    | StmtDecl LExpr Guard
+    | StmtIterDecl LExpr Guard
+    | StmtVarInit LExpr Guard Expr
+    | StmtDefInit LExpr Guard Expr
+    | StmtReturn [Expr]
     | StmtBlock [Decl]
     | StmtIfElse Expr Stmt Stmt
     | StmtIfNoElse Expr Stmt
@@ -59,11 +59,12 @@ data Expr
     | ExprString String
     | ExprTrue
     | ExprFalse
-    | ExprFunCall PIdent [Arg]
+    | ExprFunCall PIdent [Expr]
     | ExprBoolNot Expr
     | ExprDeref LExpr
     | ExprNegation Expr
     | ExprAddition Expr
+    | ExprPower Expr Expr
     | ExprMul Expr Expr
     | ExprFloatDiv Expr Expr
     | ExprIntDiv Expr Expr
@@ -117,8 +118,5 @@ data CompoundType = TypePointer Type | TypeIterable TypeIter
   deriving (Eq, Ord, Show, Read)
 
 data TypeIter = TypeIterInterval Expr | TypeIterArray [Expr]
-  deriving (Eq, Ord, Show, Read)
-
-data EndLine = Semicolon
   deriving (Eq, Ord, Show, Read)
 

@@ -15,11 +15,11 @@ transPIdent x = case x of
 transProgram :: Program -> Result
 transProgram x = case x of
   PDefs decls -> failure x
-  PTDefs anndecls -> failure x
-transAnnDecl :: AnnDecl -> Result
-transAnnDecl x = case x of
-  LabeledDecl decl -> failure x
-  AnnotatedDecl type_ decl -> failure x
+  PTDefs annotateddecls -> failure x
+transAnnotatedDecl :: AnnotatedDecl -> Result
+transAnnotatedDecl x = case x of
+  UntypedDecl decl -> failure x
+  TypedDecl type_ decl -> failure x
 transDecl :: Decl -> Result
 transDecl x = case x of
   DeclFun lexpr args guard stmts -> failure x
@@ -38,12 +38,12 @@ transGuard x = case x of
   GuardType type_ -> failure x
 transStmt :: Stmt -> Result
 transStmt x = case x of
-  StmtExpr expr endline -> failure x
-  StmtDecl lexpr guard endline -> failure x
-  StmtIterDecl lexpr guard endline -> failure x
-  StmtVarInit lexpr guard expr endline -> failure x
-  StmtDefInit lexpr guard expr endline -> failure x
-  StmtReturn exprs endline -> failure x
+  StmtExpr expr -> failure x
+  StmtDecl lexpr guard -> failure x
+  StmtIterDecl lexpr guard -> failure x
+  StmtVarInit lexpr guard expr -> failure x
+  StmtDefInit lexpr guard expr -> failure x
+  StmtReturn exprs -> failure x
   StmtBlock decls -> failure x
   StmtIfElse expr stmt1 stmt2 -> failure x
   StmtIfNoElse expr stmt -> failure x
@@ -68,11 +68,12 @@ transExpr x = case x of
   ExprString string -> failure x
   ExprTrue -> failure x
   ExprFalse -> failure x
-  ExprFunCall pident args -> failure x
+  ExprFunCall pident exprs -> failure x
   ExprBoolNot expr -> failure x
   ExprDeref lexpr -> failure x
   ExprNegation expr -> failure x
   ExprAddition expr -> failure x
+  ExprPower expr1 expr2 -> failure x
   ExprMul expr1 expr2 -> failure x
   ExprFloatDiv expr1 expr2 -> failure x
   ExprIntDiv expr1 expr2 -> failure x
@@ -127,7 +128,4 @@ transTypeIter :: TypeIter -> Result
 transTypeIter x = case x of
   TypeIterInterval expr -> failure x
   TypeIterArray exprs -> failure x
-transEndLine :: EndLine -> Result
-transEndLine x = case x of
-  Semicolon -> failure x
 
