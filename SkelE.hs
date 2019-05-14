@@ -15,7 +15,6 @@ transPIdent x = case x of
 transProgram :: Program -> Result
 transProgram x = case x of
   PDefs decls -> failure x
-  PTDefs annotateddecls -> failure x
 transDecl :: Decl -> Result
 transDecl x = case x of
   TypedDecl annotateddecl -> failure x

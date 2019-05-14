@@ -87,7 +87,6 @@ instance Print PIdent where
 instance Print Program where
   prt i e = case e of
     PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
-    PTDefs annotateddecls -> prPrec i 0 (concatD [prt 0 annotateddecls])
 
 instance Print Decl where
   prt i e = case e of
@@ -99,8 +98,7 @@ instance Print Decl where
 instance Print AnnotatedDecl where
   prt i e = case e of
     ADecl type_ decl -> prPrec i 0 (concatD [doc (showString "["), prt 0 type_, doc (showString ":]"), prt 0 decl])
-  prtList _ [] = (concatD [])
-  prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
+
 instance Print Arg where
   prt i e = case e of
     ArgDecl modality pident guard -> prPrec i 0 (concatD [prt 0 modality, prt 0 pident, prt 0 guard])

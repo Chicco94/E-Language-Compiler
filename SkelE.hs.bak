@@ -59,7 +59,7 @@ transNormCase x = case x of
   CaseNormal expr compstmt -> failure x
 transDfltCase :: DfltCase -> Result
 transDfltCase x = case x of
-  CaseDefault stmt -> failure x
+  CaseDefault compstmt -> failure x
 transExpr :: Expr -> Result
 transExpr x = case x of
   StmtAssign lexpr assignoperator expr -> failure x
@@ -70,7 +70,7 @@ transExpr x = case x of
   ExprString string -> failure x
   ExprTrue -> failure x
   ExprFalse -> failure x
-  ExprFunCall pident args -> failure x
+  ExprFunCall pident exprs -> failure x
   ExprBoolNot expr -> failure x
   ExprDeref lexpr -> failure x
   ExprNegation expr -> failure x

@@ -18,8 +18,8 @@ type Context   = Map.Map String (Mutability, Type)         -- Variables context:
 data Mutability = MutConst | MutVar
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
-data BlockType = NormBlock | FunBlock | IterBlock
-  deriving(Eq, Ord, Show, Read, Enum, Bounded)
+data BlockType = NormBlock | FunBlock PIdent Type | IterBlock
+  deriving(Eq, Ord, Show, Read)
 
 --emptyEnv :: Env
 --emptyEnv = ([Map.empty], [(NormBlock, Map.empty)]) :: ([Sig], [(BlockType, Context)])
@@ -59,7 +59,7 @@ checkDecl (env@(sig@(x:xs), (block:_)), prog) def =
 
 -- Check function declaration.
 checkFunDecl :: (Env, [Program]) -> LExpr -> [Arg] -> Guard -> CompStmt -> Err (Env, [Program])
-checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId (PIdent (p, fname))) args guard compstmt = do
+checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId pident@(PIdent (p, fname))) args guard compstmt = do
   case guard of
     GuardType t ->
       case lookupFun sig fname of
@@ -67,11 +67,10 @@ checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId (PIdent (
         _ -> do case checkArgDecl (env, prog) args of
               -- call extendEnv putting an empty Signature and a FunBlock block
               -- TODO: add parameters to FunBlock 
-                  Ok _ -> do case extendEnv (((Map.empty:(addFun x fname args guard):xs), ((FunBlock, Map.empty):blocks)), prog) compstmt of
+                  Ok _ -> do case extendEnv (((Map.empty:(addFun x fname args guard):xs), (((FunBlock pident t), Map.empty):blocks)), prog) compstmt of
                                --Ok (e', p') -> Ok (e', postAttach (PTDefs [ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p')))]) prog)
                                Ok (e', p') -> Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))]) prog)
                                Bad s -> Bad s
-                               _ -> fail $ "checkFunDecl: fatal error!"
                   Bad s -> Bad s
     GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " has to have a type to be well defined!"
 
@@ -134,38 +133,31 @@ checkDeclStmt (env@(sigs, blocks), prog) stmt =
     StmtExpr expr                -> checkExpr (env, prog) expr
     StmtVarInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutVar
     StmtDefInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutConst
-    --StmtReturn expr              -> checkReturn (env, prog) expr
+    StmtReturn expr              -> checkReturn (env, prog) expr
     
     SComp compstmt               -> checkSComp (env, prog) compstmt --extendEnv (((Map.empty:sigs), ((NormBlock, Map.empty):blocks)), prog) compstmt
 
     StmtWhile expr compstmt      -> checkWhile (env, prog) expr compstmt
     _ -> Bad "checkStmt: fatal error!"
 
-{- checkReturn :: (Env, [Program]) -> Expr -> Err (Env, [Program])
+checkReturn :: (Env, [Program]) -> Expr -> Err (Env, [Program])
 checkReturn (env@(sigs, blocks), prog) expr = do
   texpr <- inferExpr env expr
-  let lst = last prog
-  (PIdent (p,fname),tfun)  <- findFunType [(PTDefs lst)]
-  if (texpr == tfun)
-    then Ok (env, postAttach (PTDefs [ADecl texpr (DeclStmt (StmtReturn expr))]) prog)
-    else fail $ "the returned type (" ++ show texpr ++ ") of function " ++ printTree fname ++ " " ++ show p ++" doesn't match with the function's type " ++ show tfun
+  case findFunType blocks of
+    Ok(PIdent (p, fname), tfun) -> 
+      if (texpr == tfun) 
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl texpr (DeclStmt (StmtReturn expr)))]) prog)
+        else fail $ "the returned type (" ++ show texpr ++ ") of function " ++ printTree fname ++ " " ++ show p ++" doesn't match with the function's type " ++ show tfun
+    _                           -> fail $ "returning something that it is not inside a function?"
 
-findFunType :: [AnnotatedDecl] -> Err (PIdent, Type)
-findFunType [] = fail $ "there is no function block declared, the return is invalid"
-findFunType (tdecl:tdecls) = 
-  case tdecl of
-    ADecl t (DeclFun (LExprId pident) _ _ _) -> Ok (pident, t)
-    _ -> Ok (PIdent ((1,1),"ciao"),TypeBool) -}
-{- findFunType (prog:progs) =
-  case prog of
-    PTDefs [ADecl t (DeclFun (LExprId pident) _ _ _)] -> Ok (pident, t)
---    StmtBlock [TypedDecl (ADecl t )]
-    _ -> findFunType progs -}
-  {- if blockType == NormBlock
-    then Ok t
-    else findFunType sigs blocks  
-      where (id,(_,t)) = head . Map.toList $ sig -}
-
+-- Find 
+findFunType :: [(BlockType, Context)] -> Err (PIdent, Type)
+findFunType [] = fail $ "there is no function block declared"
+findFunType (block@(blockType, context):blocks) = 
+  case blockType of
+    FunBlock pident t -> Ok (pident, t)
+    _                 -> findFunType blocks
+    
 checkSComp :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
 checkSComp (env@(sigs, blocks), prog) compstmt =
   case extendEnv (((Map.empty:sigs), ((NormBlock, Map.empty):blocks)), prog) compstmt of

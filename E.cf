@@ -7,11 +7,11 @@ terminator Decl "" ;
 
 -- Include in the abstract syntax a type annotated version of expressions.
 --internal ExprTyped. Expr ::= "[" Type "]" Expr ;
-internal PTDefs. Program ::=  [AnnotatedDecl] ;
-terminator AnnotatedDecl "";
+--PTDefs. Program ::=  [AnnotatedDecl] ;
+--terminator AnnotatedDecl "";
 
 -- An annotated declaration is a declaration.
-TypedDecl. Decl ::= AnnotatedDecl ;
+internal TypedDecl. Decl ::= AnnotatedDecl ;
 
 -- A program may containt (C-like) comments, which are ignored by the parser.
 comment "//" ;

@@ -71,10 +71,7 @@ All other symbols are terminals.
   | //Program// | -> | //[Decl]// 
   | //[Decl]// | -> | **eps**
   |  |  **|**  | //Decl// //[Decl]// 
-  | //[AnnotatedDecl]// | -> | **eps**
-  |  |  **|**  | //AnnotatedDecl// //[AnnotatedDecl]// 
-  | //Decl// | -> | //AnnotatedDecl// 
-  |  |  **|**  | ``def`` //LExpr// ``(`` //[Arg]// ``)`` //Guard// //CompStmt// 
+  | //Decl// | -> | ``def`` //LExpr// ``(`` //[Arg]// ``)`` //Guard// //CompStmt// 
   |  |  **|**  | //Stmt// 
   | //AnnotatedDecl// | -> | ``[`` //Type// ``:]`` //Decl// 
   | //[Arg]// | -> | **eps**

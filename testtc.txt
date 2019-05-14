@@ -146,19 +146,23 @@ true == false;
 } */
 
 def i : double := 4.0;
-def bar () : void {
+def a () : void {
 	true;
-	def foo() : double {
+	def b() : char {
+	} 
+	def c() : double {
 		true;
-		//return (i);
+		i := 2;
+		def d() : string {
+            {
+				true;
+			}
+		}
+		return (i);
 	}
-}
-
-while (true) {
- 	{
-		true;
+	def e() : double {
 	}
-}
+} 
 
 
 
