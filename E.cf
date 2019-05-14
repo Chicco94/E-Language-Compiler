@@ -69,8 +69,8 @@ CaseNormal.     NormCase ::= "match" Expr CompStmt ;
 CaseDefault.    DfltCase ::= "match _" CompStmt ;
 separator NormCase "" ;
 separator DfltCase "" ;
-StmtBreak.      Stmt     ::= "break" ;
-StmtContinue.   Stmt     ::= "continue" ;
+StmtBreak.      Stmt     ::= "break" ";" ;
+StmtContinue.   Stmt     ::= "continue" ";" ;
 
 StmtWhile.      Stmt     ::= "while" "(" Expr ")" CompStmt ;
 StmtFor.        Stmt     ::= "for" PIdent "in" TypeIter CompStmt ;

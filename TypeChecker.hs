@@ -21,9 +21,6 @@ data Mutability = MutConst | MutVar
 data BlockType = NormBlock | FunBlock PIdent Type | IterBlock
   deriving(Eq, Ord, Show, Read)
 
---emptyEnv :: Env
---emptyEnv = ([Map.empty], [(NormBlock, Map.empty)]) :: ([Sig], [(BlockType, Context)])
-
 -- Default given primitives.
 defaultPrimitives :: Sig
 defaultPrimitives = 
@@ -55,7 +52,6 @@ checkDecl (env@(sig@(x:xs), (block:_)), prog) def =
   case def of
     DeclFun lexpr args guard compstmt -> checkFunDecl (env, prog) lexpr args guard compstmt
     DeclStmt stmt -> checkDeclStmt (env, prog) stmt
-    --_ -> Ok (env, prog)
 
 -- Check function declaration.
 checkFunDecl :: (Env, [Program]) -> LExpr -> [Arg] -> Guard -> CompStmt -> Err (Env, [Program])
@@ -68,7 +64,6 @@ checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId pident@(P
               -- call extendEnv putting an empty Signature and a FunBlock block
               -- TODO: add parameters to FunBlock 
                   Ok _ -> do case extendEnv (((Map.empty:(addFun x fname args guard):xs), (((FunBlock pident t), Map.empty):blocks)), prog) compstmt of
-                               --Ok (e', p') -> Ok (e', postAttach (PTDefs [ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p')))]) prog)
                                Ok (e', p') -> Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))]) prog)
                                Bad s -> Bad s
                   Bad s -> Bad s
@@ -81,22 +76,10 @@ getDecls (prog:progs) = case prog of
   PDefs [DeclStmt stmt] -> (DeclStmt stmt) : getDecls progs 
   _ -> []
 
-{- getStatements :: [Program] -> [Decl]
-getStatements [] = []
-getStatements (prog:progs) = case prog of
-  PTDefs [TypedDecl t (DeclStmt (SComp (StmtBlock [DeclStmt s])))] -> s : getStatements progs
-  _ -> [] -}
- 
---let env' = (addFun x fname args guard, ((FunBlock, Map.empty):blocks)) -- add function to the environment
--- the argument declaration succeeded, add the function to the signature (TODO: add block, etc.)
-
 extendEnv :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
-extendEnv (env@(s, y), prog) compstmt = do
-  case compstmt of
-    StmtBlock decls         -> do (e@((sig:sigs), b@(block:blocks)), p) <- foldM checkDecl (env, prog) decls
-                                  Ok ((sigs,blocks), p List.\\ prog) -- pop & list difference
-                                  --Ok ((sigs,blocks), p)
-                                  --Ok (e, p List.\\ prog)      
+extendEnv (env@(s, y), prog) (StmtBlock decls) = do 
+  (e@((sig:sigs), b@(block:blocks)), p) <- foldM checkDecl (env, prog) decls
+  Ok ((sigs,blocks), p List.\\ prog) -- pop & list difference    
 
 -- Check argument(s) declaration.
 checkArgDecl :: (Env, [Program]) -> [Arg] -> Err (Env, [Program])  
@@ -106,7 +89,6 @@ checkArgDecl (env@(sig@(x:xs), blocks), prog) (arg@(ArgDecl mod (PIdent pident@(
     GuardVoid    -> do case lookupVar blocks ident of
                          Ok _ -> checkArgDecl (env, prog) args
                          _    -> fail $ show p ++ ": argument " ++ printTree ident ++ " is not declared!"
---fail $ show p ++ ": argument " ++ printTree ident ++ " cannot be declared as void!" -- TODO: if it is void, check for type if it exists
     GuardType t1 -> case lookupVar blocks ident of
                      Ok (mut,t2) -> do if mod `isCompatibleWithMutability` mut
                                          then if t1 `isCompatibleWith` t2
@@ -124,18 +106,23 @@ mod `isCompatibleWithMutability` mut
   | mod == ModDef && mut == MutVar   = True  -- if the argument is a constant that is defined as variable, then it is ok
   | otherwise                        = False -- otherwise, not compatible
 
---(([addFun x fname args guard], [block]), postAttach (PTDefs [TypedDecl t (DeclFun lexpr args guard stmts)]) prog)
-
 -- Check statement declaration.
 checkDeclStmt :: (Env, [Program]) -> Stmt -> Err (Env, [Program])
-checkDeclStmt (env@(sigs, blocks), prog) stmt =
+checkDeclStmt (env, prog) stmt =
   case stmt of
     StmtExpr expr                -> checkExpr (env, prog) expr
+
+    --StmtVarDecl lexpr guard      -> checkStmtVarDecl (env, prog) lexpr guard
     StmtVarInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutVar
     StmtDefInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutConst
+
     StmtReturn expr              -> checkReturn (env, prog) expr
+    StmtNoReturn                 -> checkNoReturn (env, prog)
+
+    StmtBreak                    -> Ok (env, postAttach (PDefs [DeclStmt StmtBreak]) prog)
+    StmtContinue                 -> Ok (env, postAttach (PDefs [DeclStmt StmtContinue]) prog)
     
-    SComp compstmt               -> checkSComp (env, prog) compstmt --extendEnv (((Map.empty:sigs), ((NormBlock, Map.empty):blocks)), prog) compstmt
+    SComp compstmt               -> checkSComp (env, prog) compstmt
 
     StmtWhile expr compstmt      -> checkWhile (env, prog) expr compstmt
     _ -> Bad "checkStmt: fatal error!"
@@ -145,26 +132,34 @@ checkReturn (env@(sigs, blocks), prog) expr = do
   texpr <- inferExpr env expr
   case findFunType blocks of
     Ok(PIdent (p, fname), tfun) -> 
-      if (texpr == tfun) 
-        then Ok (env, postAttach (PDefs [TypedDecl (ADecl texpr (DeclStmt (StmtReturn expr)))]) prog)
-        else fail $ "the returned type (" ++ show texpr ++ ") of function " ++ printTree fname ++ " " ++ show p ++" doesn't match with the function's type " ++ show tfun
+      if (texpr `isCompatibleWith` tfun) 
+        -- If the type of the expression (texpr) is compatible with the type of the function (tfun), 
+        -- then the returned type is tfun 
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtReturn expr)))]) prog)
+        else fail $ show p ++ ": function " ++ printTree fname ++ " has return type " ++ show tfun ++ ", but there is a return statement inside the declaration of the function with type " ++ show texpr
     _                           -> fail $ "returning something that it is not inside a function?"
 
--- Find 
+checkNoReturn :: (Env, [Program]) -> Err (Env, [Program])
+checkNoReturn (env@(sigs, blocks), prog) = do
+  case findFunType blocks of
+    Ok (PIdent (p, fname), tfun) ->
+      if (tfun == TypeVoid)
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt StmtNoReturn))]) prog)
+        else fail $ show p ++ ": function " ++ printTree fname ++ " has return type " ++ show tfun ++ ", but there is a return statement inside the declaration of the function with type " ++ show TypeVoid
+    _                            -> fail $ "returning something that is not inside a function?"
+
+-- Find function and type, if exists
 findFunType :: [(BlockType, Context)] -> Err (PIdent, Type)
 findFunType [] = fail $ "there is no function block declared"
 findFunType (block@(blockType, context):blocks) = 
   case blockType of
     FunBlock pident t -> Ok (pident, t)
     _                 -> findFunType blocks
-    
+
 checkSComp :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
 checkSComp (env@(sigs, blocks), prog) compstmt =
   case extendEnv (((Map.empty:sigs), ((NormBlock, Map.empty):blocks)), prog) compstmt of
     Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (SComp (StmtBlock (getDecls p')))]) prog)
-                   --Ok (e', postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (SComp (StmtBlock (getDecls p')))))]) prog)
-                   --Ok (e', postAttach (PTDefs [ADecl TypeBool (DeclStmt (SComp (StmtBlock (getDecls p'))))]) prog) -- old
-                   --Ok (e', postAttach (PDefs [DeclStmt (SComp (StmtBlock (getDecls p')))]) prog)
     Bad s       -> Bad s
 
 checkWhile :: (Env, [Program]) -> Expr -> CompStmt -> Err (Env, [Program])
@@ -172,12 +167,7 @@ checkWhile (env@(xs, blocks@((blockType, context):ys)), prog) expr compstmt = do
   t <- inferExpr env expr
   if (t == TypeBool)
     then case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
-           -- TODO: the type is necessary?
-           Ok (e', p') -> --Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtWhile expr (StmtBlock (getDecls p')))))]) prog)
-                          Ok (e', postAttach (PDefs [DeclStmt (StmtWhile expr (StmtBlock (getDecls p')))]) prog)
-                          --Ok (e', postAttach (PTDefs [ADecl t (DeclStmt (StmtWhile expr (StmtBlock (getDecls p'))))]) prog) --old
-                          --Ok (e', postAttach (PDefs [DeclStmt (StmtWhile expr (StmtBlock (getDecls p')))]) prog) -- if is not necessary, but it does not work, atm
-                          --Ok (e', postAttach (PDefs (getDecls p')) prog)
+           Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtWhile expr (StmtBlock (getDecls p')))]) prog)
            Bad s       -> Bad s
     else fail $ "the expression type in the while statement must be boolean"
 
