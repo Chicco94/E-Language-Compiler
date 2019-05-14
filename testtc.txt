@@ -115,6 +115,8 @@ def h() {} */
 
 
 /* true;
+false;
+true == false;
 {
 	false;
 	1;
@@ -144,12 +146,19 @@ def h() {} */
 } */
 
 def i : double := 4.0;
-def foo() : double {
+def bar () : void {
 	true;
-	return (i);
+	def foo() : double {
+		true;
+		//return (i);
+	}
 }
 
-
+while (true) {
+ 	{
+		true;
+	}
+}
 
 
 

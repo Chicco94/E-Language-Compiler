@@ -45,6 +45,8 @@ run v p s = let ts = myLLexer s in case p ts of
                               Ok (env,prog) -> do putStrLn "\nType checking successful!"
                                                   showAnnotatedTree v prog
                                                   exitSuccess
+                                               --where
+                                               --   rev = foldl (flip (:)) []
 
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()
