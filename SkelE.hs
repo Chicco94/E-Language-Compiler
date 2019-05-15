@@ -15,15 +15,14 @@ transPIdent x = case x of
 transProgram :: Program -> Result
 transProgram x = case x of
   PDefs decls -> failure x
-  PTDefs annotateddecls -> failure x
-transAnnotatedDecl :: AnnotatedDecl -> Result
-transAnnotatedDecl x = case x of
-  UntypedDecl decl -> failure x
-  ADecl type_ decl -> failure x
 transDecl :: Decl -> Result
 transDecl x = case x of
+  TypedDecl annotateddecl -> failure x
   DeclFun lexpr args guard compstmt -> failure x
   DeclStmt stmt -> failure x
+transAnnotatedDecl :: AnnotatedDecl -> Result
+transAnnotatedDecl x = case x of
+  ADecl type_ decl -> failure x
 transArg :: Arg -> Result
 transArg x = case x of
   ArgDecl modality pident guard -> failure x
@@ -40,29 +39,25 @@ transStmt :: Stmt -> Result
 transStmt x = case x of
   StmtExpr expr -> failure x
   StmtDecl lexpr guard -> failure x
-  StmtVIterDecl lexpr guard -> failure x
-  StmtEIterDecl expr lexpr guard -> failure x
-  StmtVarInit lexpr guard expr -> failure x
-  StmtIterInit lexpr guard typeiter -> failure x
+  StmtInit lexpr guard expr -> failure x
+  StmtVoidIterDecl lexpr guard -> failure x
+  StmtIterDecl expr lexpr guard -> failure x
+  StmtArrDecl lexpr guard array -> failure x
   StmtDeclD lexpr guard -> failure x
-  StmtVIterDeclD lexpr guard -> failure x
-  StmtEIterDeclD expr lexpr guard -> failure x
-  StmtVarInitD lexpr guard expr -> failure x
-  StmtIterInitD lexpr guard typeiter -> failure x
+  StmtInitD lexpr guard expr -> failure x
+  StmtVoidIterDeclD lexpr guard -> failure x
+  StmtIterDeclD expr lexpr guard -> failure x
+  StmtArrDeclD lexpr guard array -> failure x
   StmtReturn expr -> failure x
   StmtNoReturn -> failure x
   SComp compstmt -> failure x
-  StmtIfElse expr compstmt stmt -> failure x
-  StmtIfNoElse expr compstmt -> failure x
+  StmtIfThenElse expr compstmt1 compstmt2 -> failure x
+  StmtIfThen expr compstmt -> failure x
   SSwitchCase expr normcases dfltcases -> failure x
   StmtBreak -> failure x
   StmtContinue -> failure x
   StmtWhile expr compstmt -> failure x
-  StmtFor pident typeiter compstmt -> failure x
-transDeclModality :: DeclModality -> Result
-transDeclModality x = case x of
-  DeclModVar -> failure x
-  DeclModDef -> failure x
+  StmtFor pident array compstmt -> failure x
 transCompStmt :: CompStmt -> Result
 transCompStmt x = case x of
   StmtBlock decls -> failure x
@@ -94,8 +89,6 @@ transExpr x = case x of
   ExprModulo expr1 expr2 -> failure x
   ExprPlus expr1 expr2 -> failure x
   ExprMinus expr1 expr2 -> failure x
-  ExprIntInc expr1 expr2 -> failure x
-  ExprIntExc expr1 expr2 -> failure x
   ExprLt expr1 expr2 -> failure x
   ExprGt expr1 expr2 -> failure x
   ExprLtEq expr1 expr2 -> failure x
@@ -109,12 +102,16 @@ transLExpr x = case x of
   LExprId pident -> failure x
   LExprDeref deref -> failure x
   LExprRef ref -> failure x
+  LExprArr arr -> failure x
 transDeref :: Deref -> Result
 transDeref x = case x of
-  DerefExpr lexpr -> failure x
+  LDerefExpr lexpr -> failure x
 transRef :: Ref -> Result
 transRef x = case x of
-  RefExpr lexpr -> failure x
+  LRefExpr lexpr -> failure x
+transArr :: Arr -> Result
+transArr x = case x of
+  LArrExpr lexpr expr -> failure x
 transAssignOperator :: AssignOperator -> Result
 transAssignOperator x = case x of
   OpAssign -> failure x
@@ -140,9 +137,8 @@ transType x = case x of
 transCompoundType :: CompoundType -> Result
 transCompoundType x = case x of
   TypePointer type_ -> failure x
-  TypeIterable typeiter -> failure x
-transTypeIter :: TypeIter -> Result
-transTypeIter x = case x of
-  TypeIterInterval expr -> failure x
-  TypeIterArray exprs -> failure x
+  TypeArray array -> failure x
+transArray :: Array -> Result
+transArray x = case x of
+  TypeMultiArray arrays -> failure x
 

@@ -9,13 +9,16 @@ module AbsE where
 
 newtype PIdent = PIdent ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
-data Program = PDefs [Decl] | PTDefs [AnnotatedDecl]
+data Program = PDefs [Decl]
   deriving (Eq, Ord, Show, Read)
 
-data AnnotatedDecl = UntypedDecl Decl | ADecl Type Decl
+data Decl
+    = TypedDecl AnnotatedDecl
+    | DeclFun LExpr [Arg] Guard CompStmt
+    | DeclStmt Stmt
   deriving (Eq, Ord, Show, Read)
 
-data Decl = DeclFun LExpr [Arg] Guard CompStmt | DeclStmt Stmt
+data AnnotatedDecl = ADecl Type Decl
   deriving (Eq, Ord, Show, Read)
 
 data Arg = ArgDecl Modality PIdent Guard
@@ -30,28 +33,25 @@ data Guard = GuardVoid | GuardType Type
 data Stmt
     = StmtExpr Expr
     | StmtDecl LExpr Guard
-    | StmtVIterDecl LExpr Guard
-    | StmtEIterDecl Expr LExpr Guard
-    | StmtVarInit LExpr Guard Expr
-    | StmtIterInit LExpr Guard TypeIter
+    | StmtInit LExpr Guard Expr
+    | StmtVoidIterDecl LExpr Guard
+    | StmtIterDecl Expr LExpr Guard
+    | StmtArrDecl LExpr Guard Array
     | StmtDeclD LExpr Guard
-    | StmtVIterDeclD LExpr Guard
-    | StmtEIterDeclD Expr LExpr Guard
-    | StmtVarInitD LExpr Guard Expr
-    | StmtIterInitD LExpr Guard TypeIter
+    | StmtInitD LExpr Guard Expr
+    | StmtVoidIterDeclD LExpr Guard
+    | StmtIterDeclD Expr LExpr Guard
+    | StmtArrDeclD LExpr Guard Array
     | StmtReturn Expr
     | StmtNoReturn
     | SComp CompStmt
-    | StmtIfElse Expr CompStmt Stmt
-    | StmtIfNoElse Expr CompStmt
+    | StmtIfThenElse Expr CompStmt CompStmt
+    | StmtIfThen Expr CompStmt
     | SSwitchCase Expr [NormCase] [DfltCase]
     | StmtBreak
     | StmtContinue
     | StmtWhile Expr CompStmt
-    | StmtFor PIdent TypeIter CompStmt
-  deriving (Eq, Ord, Show, Read)
-
-data DeclModality = DeclModVar | DeclModDef
+    | StmtFor PIdent Array CompStmt
   deriving (Eq, Ord, Show, Read)
 
 data CompStmt = StmtBlock [Decl]
@@ -84,8 +84,6 @@ data Expr
     | ExprModulo Expr Expr
     | ExprPlus Expr Expr
     | ExprMinus Expr Expr
-    | ExprIntInc Expr Expr
-    | ExprIntExc Expr Expr
     | ExprLt Expr Expr
     | ExprGt Expr Expr
     | ExprLtEq Expr Expr
@@ -96,13 +94,17 @@ data Expr
     | ExprOr Expr Expr
   deriving (Eq, Ord, Show, Read)
 
-data LExpr = LExprId PIdent | LExprDeref Deref | LExprRef Ref
+data LExpr
+    = LExprId PIdent | LExprDeref Deref | LExprRef Ref | LExprArr Arr
   deriving (Eq, Ord, Show, Read)
 
-data Deref = DerefExpr LExpr
+data Deref = LDerefExpr LExpr
   deriving (Eq, Ord, Show, Read)
 
-data Ref = RefExpr LExpr
+data Ref = LRefExpr LExpr
+  deriving (Eq, Ord, Show, Read)
+
+data Arr = LArrExpr LExpr Expr
   deriving (Eq, Ord, Show, Read)
 
 data AssignOperator
@@ -129,9 +131,9 @@ data Type
     | TypeCompound CompoundType
   deriving (Eq, Ord, Show, Read)
 
-data CompoundType = TypePointer Type | TypeIterable TypeIter
+data CompoundType = TypePointer Type | TypeArray Array
   deriving (Eq, Ord, Show, Read)
 
-data TypeIter = TypeIterInterval Expr | TypeIterArray [Expr]
+data Array = TypeMultiArray [Array]
   deriving (Eq, Ord, Show, Read)
 

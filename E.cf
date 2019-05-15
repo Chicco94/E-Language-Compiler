@@ -45,14 +45,16 @@ GuardType.  Guard ::= ":" Type ;   -- guarded
 -- Any Expression followed by a semicolon ; can be used as a statement.
 StmtExpr.       Stmt     ::= Expr ";" ;
 
-
-StmtDecl.         Stmt     ::= DeclModality LExpr Guard ";" ;                      -- Variable declaration.
-StmtInit.         Stmt     ::= DeclModality LExpr Guard ":=" Expr ";" ;            -- Constant/variable initialization.
-StmtVoidIterDecl. Stmt     ::= DeclModality "[" "]" LExpr Guard ";" ;              -- Iterable type declaration.
-StmtIterDecl.     Stmt     ::= DeclModality "[" Expr "]" LExpr Guard ";" ;         -- Iterable type declaration.
-StmtArrDecl.      Stmt     ::= DeclModality LExpr Guard ":=" TypeIter ";" ;
-DeclModVar.       DeclModality ::= "var" ;
-DeclModDef.       DeclModality ::= "def" ;
+StmtDecl.          Stmt     ::= "var" LExpr Guard ";" ;                      -- Variable declaration.
+StmtInit.          Stmt     ::= "var" LExpr Guard ":=" Expr ";" ;            -- Constant/variable initialization.
+StmtVoidIterDecl.  Stmt     ::= "var" "[" "]" LExpr Guard ";" ;              -- Iterable type declaration.
+StmtIterDecl.      Stmt     ::= "var" "[" Expr "]" LExpr Guard ";" ;         -- Iterable type declaration.
+StmtArrDecl.       Stmt     ::= "var" LExpr Guard ":=" Array ";" ;
+StmtDeclD.         Stmt     ::= "def" LExpr Guard ";" ;                      -- Variable declaration.
+StmtInitD.         Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;            -- Constant/variable initialization.
+StmtVoidIterDeclD. Stmt     ::= "def" "[" "]" LExpr Guard ";" ;              -- Iterable type declaration.
+StmtIterDeclD.     Stmt     ::= "def" "[" Expr "]" LExpr Guard ";" ;         -- Iterable type declaration.
+StmtArrDeclD.      Stmt     ::= "def" LExpr Guard ":=" Array ";" ;
 
 
 StmtReturn.     Stmt     ::= "return" "(" Expr ")" ";" ;
@@ -74,7 +76,7 @@ StmtBreak.      Stmt     ::= "break" ";" ;
 StmtContinue.   Stmt     ::= "continue" ";" ;
 
 StmtWhile.      Stmt     ::= "while" "(" Expr ")" CompStmt ;
-StmtFor.        Stmt     ::= "for" PIdent "in" TypeIter CompStmt ;
+StmtFor.        Stmt     ::= "for" PIdent "in" Array CompStmt ;
 
 StmtAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
 
@@ -84,12 +86,21 @@ DeclStmt.       Decl ::= Stmt ;
 
 
 -- (Left) Expressions
+
 LExprId.        LExpr ::= PIdent ;
 LExprDeref.     LExpr ::= Deref ;
 LExprRef.       LExpr ::= Ref ;
-DerefExpr.      Deref ::= "&" LExpr;
-RefExpr.        Ref   ::= "*" LExpr;
-coercions LExpr 1;
+LExprArr.       LExpr ::= Arr ;
+-- # 1 shift/reduce conflict with Arr
+-- # when I read a LExpr followed by a "[" I shift to read a LArrExpr
+-- # (The reducing rule is used after read all that rule)
+LDerefExpr.     Deref ::= "&" LExpr;
+-- # 1 shift/reduce conflict
+-- # same as before
+LRefExpr.       Ref   ::= "*" LExpr;
+LArrExpr.       Arr   ::= LExpr "[" Expr "]";
+--coercions LExpr 1;
+--_. LExpr ::= "(" LExpr ")" ;
 
 
 -- (Right) Expressions
@@ -105,15 +116,11 @@ ExprFunCall.  Expr15 ::= PIdent "(" [Expr] ")" ;
 
 ExprBoolNot.  Expr14  ::= "!" Expr15 ;
 
--- ###
--- 6 (3+3) shift/reduce conflicts
 ExprNegation. Expr14  ::= "-" Expr15 ;
 ExprAddition. Expr14  ::= "+" Expr15 ;
 
 ExprPower.    Expr13 ::= Expr14 "^"  Expr13 ;
 
--- ###
--- 3 shift/reduce conflicts
 ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
 ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
 ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
@@ -124,8 +131,10 @@ ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
 ExprPlus.      Expr11 ::= Expr11 "+"  Expr12 ;
 ExprMinus.     Expr11 ::= Expr11 "-"  Expr12 ;
 
-ExprIntInc.   Expr10 ::= Expr10 ".."  Expr11 ;
-ExprIntExc.   Expr10 ::= Expr10 "..!" Expr11 ;
+-- Tolti per ridurre i conflitti reduce reduce con Array
+-- Potrebbero essere richiesti
+-- ExprIntInc.   Expr10 ::= Expr10 ".."  Expr11 ;
+-- ExprIntExc.   Expr10 ::= Expr10 "..!" Expr11 ;
 
 ExprLt.       Expr9  ::= Expr9  "<"   Expr10 ;
 ExprGt.       Expr9  ::= Expr9  ">"   Expr10 ;
@@ -171,11 +180,11 @@ TypeString. Type ::= "string" ;
 -- Compound types.
 TypeCompound. Type ::= CompoundType ;
 TypePointer.  CompoundType ::= Type "*" ; 
-TypeIterable. CompoundType ::= TypeIter ;
-TypeIterInterval. TypeIter ::= Expr10 ;           -- Iterable interval.
-TypeIterArray.    TypeIter ::= "[" [Expr] "]" ;   -- Iterable array.
-TypeMultiArray.   TypeIter ::= "[" [TypeIter] "]" ;   -- Iterable array.
-separator TypeIter "," ;
+TypeArray. CompoundType ::= Array ;
+-- TypeArrayInterval. Array ::= Expr10 ;           -- Iterable interval.
+-- TypeArrayArray.    Array ::= "[" [Expr] "]" ;   -- Iterable array.
+TypeMultiArray.   Array ::= "[" [Array] "]" ;   -- Iterable array.
+separator Array "," ;
 
 
 -- The entry point is the program.
