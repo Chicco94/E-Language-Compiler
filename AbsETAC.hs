@@ -4,22 +4,23 @@ newtype Label = Label (String,Integer)
   deriving (Eq, Ord, Show, Read)
 
 -- temporal variables: 't'id_numeber
-data Temp = Temp (String,Integer,Type)
+data Temp = Temp (String,(Int,Int),Type)
   deriving (Eq, Ord, Show, Read)
 -- user variables: var_name@line_number
-data Var = Var (String,Integer,Type)
+data Var = Var (String,(Int,Int),Type)
   deriving (Eq, Ord, Show, Read)
 
 type TACProgram = [TAC]
 
-data Type
-  = Bool
-  | Double
-  | Int
-  | Void
-  | Char
-  | String
-deriving (Eq, Ord, Show, Read)
+-- presenti in AbsE
+-- data Type
+--  = Bool
+--  | Double
+--  | Int
+--  | Void
+--  | Char
+--  | String
+-- deriving (Eq, Ord, Show, Read)
 -- | Compound CompoundType
 -- data CompoundType = TypePointer Type | TypeIterable TypeIter
 -- deriving (Eq, Ord, Show, Read)
@@ -27,16 +28,16 @@ deriving (Eq, Ord, Show, Read)
 -- deriving (Eq, Ord, Show, Read)
 
 data TAC 
-    = AssignI Temp Integer
-    | AssignV Var Temp
-    | AssignT Temp Temp
+    = AssignInt   Temp Integer
+    | AssignChr   Temp Char
+    | AssignBool  Temp Bool
+    | AssignFloat Temp Float
+    | AssignVar Var Temp
+    | AssignTemp Temp Temp
+    | AssignV2T Temp Var
     | BinOp Op Temp Temp Temp
     | UnaryOp UnaryOp Temp Temp
     | Goto Label
-    | WriteI Temp
-    | WriteB Temp
-    | WriteS String
-    | Read Temp
     | IfNot Temp Label
     | L Label
     | Noop
