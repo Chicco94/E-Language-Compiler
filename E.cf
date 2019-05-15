@@ -7,24 +7,23 @@ terminator Decl "" ;
 
 -- Include in the abstract syntax a type annotated version of expressions.
 --internal ExprTyped. Expr ::= "[" Type "]" Expr ;
-internal PTDefs. Program ::=  [AnnotatedDecl] ;
-terminator AnnotatedDecl "";
+--PTDefs. Program ::=  [AnnotatedDecl] ;
+--terminator AnnotatedDecl "";
 
--- A declaration is an annotated declaration with no label.
-UntypedDecl. AnnotatedDecl ::= Decl ;
+-- An annotated declaration is a declaration.
+internal TypedDecl. Decl ::= AnnotatedDecl ;
 
 -- A program may containt (C-like) comments, which are ignored by the parser.
 comment "//" ;
 comment "/*" "*/" ;
 
 -- Function declaration. E.g.: def foo (int x, double y) : int { }
-DeclFun.   Decl ::= "def" LExpr "(" [Arg] ")" Guard CompStmt ;
+DeclFun.   Decl          ::= "def" LExpr "(" [Arg] ")" Guard CompStmt ;
 ADecl.     AnnotatedDecl ::= "[" Type ":]" Decl ;
 separator  Arg "," ;
 terminator Stmt "" ;
 
 -- An argument declaration has a type and an identifier.
--- ArgDecl.   Arg      ::= Stmt ;
 ArgDecl.   Arg      ::= Modality PIdent Guard ;
 ModEmpty.  Modality ::= {-empty-} ;  -- no modality
 ModVar.    Modality ::= "var" ;      -- variable modality
@@ -39,39 +38,39 @@ GuardType.  Guard ::= ":" Type ;   -- guarded
 -- Any Expression followed by a semicolon ; can be used as a statement.
 StmtExpr.       Stmt     ::= Expr ";" ;
 
-StmtDeclV.       Stmt     ::= "var" LExpr Guard ";" ;                      -- Variable declaration.
-StmtVIterDeclV.  Stmt     ::= "var" "[" "]" LExpr  Guard ";" ;             -- Iterable type declaration without dim.
-StmtEIterDeclV.  Stmt     ::= "var" "[" Expr "]" LExpr  Guard ";" ;        -- Iterable type declaration with dim.
-StmtVarInitV.    Stmt     ::= "var" LExpr Guard ":=" Expr ";" ;     -- Constant/variable initialization.
+--StmtDecl.       Stmt     ::= "var" LExpr Guard ";" ;
+--StmtInit.       Stmt     ::= "var" LExpr Guard ":=" Expr ";" ;
+--StmtArrDecl.    Stmt     ::= "def" LExpr Guard ":=" TypeIter ";" ;
 
-StmtDeclD.       Stmt     ::= "def" LExpr Guard ";" ;                      -- Variable declaration.
-StmtVIterDeclD.  Stmt     ::= "def" "[" "]" LExpr  Guard ";" ;             -- Iterable type declaration without dim.
-StmtEIterDeclD.  Stmt     ::= "def" "[" Expr "]" LExpr  Guard ";" ;        -- Iterable type declaration with dim.
-StmtVarInitD.    Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;     -- Constant/variable initialization.
+StmtVarDecl.     Stmt     ::= "var" LExpr Guard ";" ;                      -- Variable declaration.
+StmtIterDecl.    Stmt     ::= "var" "[" LExpr "]" Guard ";" ;              -- Iterable type declaration.
 
-
+StmtVarInit.     Stmt     ::= "var" LExpr Guard ":=" Expr ";" ;     -- Constant/variable initialization.
+StmtDefInit.     Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;
 -- ###
 -- 1 reduce/reduce conflict
-StmtIterInit.   Stmt     ::= "def" LExpr Guard ":=" TypeIter ";" ; -- Constant/variable iterable type initialization.
---DeclModVar.     DeclModality ::= "var" ;
---DeclModDef.     DeclModality ::= "def" ;
+--StmtVarIterInit. Stmt     ::= "var" LExpr Guard ":=" TypeIter ";" ; -- Constant/variable iterable type initialization.
+--StmtDefIterInit. Stmt     ::= "def" LExpr Guard ":=" TypeIter ";" ;
+--DeclModVar.      DeclModality ::= "var" ;
+--DeclModDef.      DeclModality ::= "def" ;
 
 StmtReturn.     Stmt     ::= "return" "(" Expr ")" ";" ;
 StmtNoReturn.   Stmt     ::= "return" ";" ;
 
 StmtBlock.      CompStmt ::= "{" [Decl] "}" ;
-SComp.          Stmt     ::= CompStmt ;
+SComp.          Stmt ::= CompStmt ;
+
 -- ###
 -- 1 shift/reduce conflict
-StmtIfElse.     Stmt     ::= "if" "(" Expr ")" CompStmt "else" Stmt ;
-StmtIfNoElse.   Stmt     ::= "if" "(" Expr ")" CompStmt ;
+StmtIfThenElse. Stmt     ::= "if" "(" Expr ")" CompStmt "else" CompStmt ;
+StmtIfThen.     Stmt     ::= "if" "(" Expr ")" CompStmt ;
 SSwitchCase.    Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
 CaseNormal.     NormCase ::= "match" Expr CompStmt ;
 CaseDefault.    DfltCase ::= "match _" CompStmt ;
 separator NormCase "" ;
 separator DfltCase "" ;
-StmtBreak.      Stmt     ::= "break" ;
-StmtContinue.   Stmt     ::= "continue" ;
+StmtBreak.      Stmt     ::= "break" ";" ;
+StmtContinue.   Stmt     ::= "continue" ";" ;
 
 StmtWhile.      Stmt     ::= "while" "(" Expr ")" CompStmt ;
 StmtFor.        Stmt     ::= "for" PIdent "in" TypeIter CompStmt ;
@@ -83,60 +82,59 @@ StmtAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
 DeclStmt.       Decl ::= Stmt ;
 
 -- (Left) Expressions
-LExprArray.     LExpr ::= LExpr "[" Expr "]" ;
---LExprDeref.     LExpr ::= "*" LExpr ;
 LExprId.        LExpr ::= PIdent ;
---LExprDeref.     LExpr ::= Deref ;
---LExprRef.       LExpr ::= Ref ;
---DerefExpr.      Deref ::= "&" LExpr;
---RefExpr.        Ref   ::= "*" LExpr;
+LExprDeref.     LExpr ::= Deref ;
+LExprRef.       LExpr ::= Ref ;
+DerefExpr.      Deref ::= "&" LExpr;
+RefExpr.        Ref   ::= "*" LExpr;
+coercions LExpr 1;
 
 -- (Right) Expressions
-LeftExpr.       Expr17 ::= LExpr ;
-ExprInt.        Expr16 ::= Integer ;
-ExprDouble.     Expr16 ::= Double ;
-ExprChar.       Expr16 ::= Char ;
-ExprString.     Expr16 ::= String ;
-ExprTrue.       Expr16 ::= "true" ;
-ExprFalse.      Expr16 ::= "false" ;
-  
-ExprFunCall.    Expr15 ::= PIdent "(" [Expr] ")" ;
-  
-ExprBoolNot.    Expr14  ::= "!" Expr15 ;
-ExprRef.        Expr14  ::= "&" LExpr ;
-ExprDeref.      Expr14  ::= "*" LExpr ;
+LeftExpr.     Expr17 ::= LExpr ;
+ExprInt.      Expr16 ::= Integer ;
+ExprDouble.   Expr16 ::= Double ;
+ExprChar.     Expr16 ::= Char ;
+ExprString.   Expr16 ::= String ;
+ExprTrue.     Expr16 ::= "true" ;
+ExprFalse.    Expr16 ::= "false" ;
+
+ExprFunCall.  Expr15 ::= PIdent "(" [Expr] ")" ;
+
+ExprBoolNot.  Expr14  ::= "!" Expr15 ;
+--ExprDeref.    Expr14  ::= "&" LExpr ;
 -- ###
--- 2 shift/reduce conflicts
-ExprNegation.   Expr14  ::= "-" Expr15 ;
-ExprAddition.   Expr14  ::= "+" Expr15 ;
+-- 6 (3+3) shift/reduce conflicts
+ExprNegation. Expr14  ::= "-" Expr15 ;
+ExprAddition. Expr14  ::= "+" Expr15 ;
 
-ExprPower.      Expr13 ::= Expr14 "**"  Expr13 ;
+ExprPower.    Expr13 ::= Expr14 "**"  Expr13 ;
 
 -- ###
--- 1 shift/reduce conflicts
-ExprMul.        Expr12 ::= Expr12 "*"  Expr13 ;
-ExprFloatDiv.   Expr12 ::= Expr12 "/"  Expr13 ;
-ExprIntDiv.     Expr12 ::= Expr12 "//" Expr13 ;
-ExprReminder.   Expr12 ::= Expr12 "%"  Expr13 ;
-ExprModulo.     Expr12 ::= Expr12 "%%" Expr13 ;
+-- 3 shift/reduce conflicts
+ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
+ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
+ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
+ExprReminder. Expr12 ::= Expr12 "%"  Expr13 ;
+ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
 
-ExprPlus.       Expr11 ::= Expr11 "+"  Expr12 ;
-ExprMinus.      Expr11 ::= Expr11 "-"  Expr12 ;
+--ExprReference. Expr11 ::= "&" LExpr ;
+ExprPlus.      Expr11 ::= Expr11 "+"  Expr12 ;
+ExprMinus.     Expr11 ::= Expr11 "-"  Expr12 ;
 
-ExprIntInc.     Expr10 ::= Expr10 ".."  Expr11 ;
-ExprIntExc.     Expr10 ::= Expr10 "..!" Expr11 ;
+ExprIntInc.   Expr10 ::= Expr10 ".."  Expr11 ;
+ExprIntExc.   Expr10 ::= Expr10 "..!" Expr11 ;
 
-ExprLt.         Expr9  ::= Expr9  "<"   Expr10 ;
-ExprGt.         Expr9  ::= Expr9  ">"   Expr10 ;
-ExprLtEq.       Expr9  ::= Expr9  "<="  Expr10 ;
-ExprGtEq.       Expr9  ::= Expr9  ">="  Expr10 ;
+ExprLt.       Expr9  ::= Expr9  "<"   Expr10 ;
+ExprGt.       Expr9  ::= Expr9  ">"   Expr10 ;
+ExprLtEq.     Expr9  ::= Expr9  "<="  Expr10 ;
+ExprGtEq.     Expr9  ::= Expr9  ">="  Expr10 ;
 
-ExprEq.         Expr8  ::= Expr8  "=="  Expr9 ;
-ExprNeq.        Expr8  ::= Expr8  "!="  Expr9 ;
+ExprEq.       Expr8  ::= Expr8  "=="  Expr9 ;
+ExprNeq.      Expr8  ::= Expr8  "!="  Expr9 ;
 
-ExprAnd.        Expr4  ::= Expr4  "&&"  Expr5 ;
+ExprAnd.      Expr4  ::= Expr4  "&&"  Expr5 ;
 
-ExprOr.         Expr3  ::= Expr3  "||"  Expr4 ;
+ExprOr.       Expr3  ::= Expr3  "||"  Expr4 ;
 
 coercions Expr 17 ;
 separator Expr "," ;
@@ -169,8 +167,6 @@ TypePointer.  CompoundType ::= Type "*" ;
 TypeIterable. CompoundType ::= TypeIter ;
 TypeIterInterval. TypeIter ::= Expr10 ;           -- Iterable interval.
 TypeIterArray.    TypeIter ::= "[" [Expr] "]" ;   -- Iterable array.
---TypeIterMultiA.   TypeIter ::= "[" [TypeIter] "]" ;   -- Iterable array of array.
--- separator TypeIter "," ;
 
 
 -- End statement character.
@@ -178,6 +174,4 @@ TypeIterArray.    TypeIter ::= "[" [Expr] "]" ;   -- Iterable array.
 --NewLine.   EndLine ::= "\n" ;
 
 -- The entry point is the program.
-entrypoints Program;
-
-
+entrypoints Program ;
