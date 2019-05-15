@@ -52,7 +52,7 @@ StmtVarInitD.    Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;     -- Constant/
 
 -- ###
 -- 1 reduce/reduce conflict
--- StmtIterInit.   Stmt     ::= DeclModality LExpr Guard ":=" TypeIter ";" ; -- Constant/variable iterable type initialization.
+StmtIterInit.   Stmt     ::= "def" LExpr Guard ":=" TypeIter ";" ; -- Constant/variable iterable type initialization.
 --DeclModVar.     DeclModality ::= "var" ;
 --DeclModDef.     DeclModality ::= "def" ;
 

@@ -1,5 +1,7 @@
 module AbsETAC where
 
+import AbsE
+
 newtype Label = Label (String,Integer)
   deriving (Eq, Ord, Show, Read)
 
@@ -41,7 +43,7 @@ data TAC
     | IfNot Temp Label
     | L Label
     | Noop
-  deriving (Data, Typeable, Show, Eq)
+  deriving (Eq, Ord, Show, Read)
 
 
 data Op
@@ -66,19 +68,4 @@ data UnaryOp
   = UOpMinus
 -- Logical
   | UOpNegate
-deriving (Eq, Ord, Show, Read)
-
-instance Show Op where
-  show op = case op of
-                BOpSub -> "-"
-                BOpAdd -> "+"
-                BOpMul -> "*"
-                BOpLTE -> "<="
-                BOpEq  -> "=="
-                BOpAnd -> "&&"
-                BOpOR  -> "||"
-
-instance Show UnaryOp where
-    show op = case op of
-                  UOpMinus -> "-"
-                  UOpNegate -> "!"
+  deriving (Eq, Ord, Show, Read)

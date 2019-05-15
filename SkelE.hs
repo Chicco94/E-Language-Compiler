@@ -19,10 +19,10 @@ transProgram x = case x of
 transAnnotatedDecl :: AnnotatedDecl -> Result
 transAnnotatedDecl x = case x of
   UntypedDecl decl -> failure x
-  TypedDecl type_ decl -> failure x
+  ADecl type_ decl -> failure x
 transDecl :: Decl -> Result
 transDecl x = case x of
-  DeclFun lexpr args guard stmts -> failure x
+  DeclFun lexpr args guard compstmt -> failure x
   DeclStmt stmt -> failure x
 transArg :: Arg -> Result
 transArg x = case x of
@@ -39,25 +39,34 @@ transGuard x = case x of
 transStmt :: Stmt -> Result
 transStmt x = case x of
   StmtExpr expr -> failure x
-  StmtDecl lexpr guard -> failure x
-  StmtIterDecl lexpr guard -> failure x
-  StmtVarInit lexpr guard expr -> failure x
-  StmtDefInit lexpr guard expr -> failure x
-  StmtReturn exprs -> failure x
-  StmtBlock decls -> failure x
-  StmtIfElse expr stmt1 stmt2 -> failure x
-  StmtIfNoElse expr stmt -> failure x
+  StmtDeclV lexpr guard -> failure x
+  StmtVIterDeclV lexpr guard -> failure x
+  StmtEIterDeclV expr lexpr guard -> failure x
+  StmtVarInitV lexpr guard expr -> failure x
+  StmtDeclD lexpr guard -> failure x
+  StmtVIterDeclD lexpr guard -> failure x
+  StmtEIterDeclD expr lexpr guard -> failure x
+  StmtVarInitD lexpr guard expr -> failure x
+  StmtIterInit lexpr guard typeiter -> failure x
+  StmtReturn expr -> failure x
+  StmtNoReturn -> failure x
+  SComp compstmt -> failure x
+  StmtIfElse expr compstmt stmt -> failure x
+  StmtIfNoElse expr compstmt -> failure x
   SSwitchCase expr normcases dfltcases -> failure x
   StmtBreak -> failure x
   StmtContinue -> failure x
-  StmtWhile expr stmt -> failure x
-  StmtFor pident typeiter stmt -> failure x
+  StmtWhile expr compstmt -> failure x
+  StmtFor pident typeiter compstmt -> failure x
+transCompStmt :: CompStmt -> Result
+transCompStmt x = case x of
+  StmtBlock decls -> failure x
 transNormCase :: NormCase -> Result
 transNormCase x = case x of
-  CaseNormal expr stmt -> failure x
+  CaseNormal expr compstmt -> failure x
 transDfltCase :: DfltCase -> Result
 transDfltCase x = case x of
-  CaseDefault stmt -> failure x
+  CaseDefault compstmt -> failure x
 transExpr :: Expr -> Result
 transExpr x = case x of
   StmtAssign lexpr assignoperator expr -> failure x
@@ -70,6 +79,7 @@ transExpr x = case x of
   ExprFalse -> failure x
   ExprFunCall pident exprs -> failure x
   ExprBoolNot expr -> failure x
+  ExprRef lexpr -> failure x
   ExprDeref lexpr -> failure x
   ExprNegation expr -> failure x
   ExprAddition expr -> failure x
@@ -93,11 +103,8 @@ transExpr x = case x of
   ExprOr expr1 expr2 -> failure x
 transLExpr :: LExpr -> Result
 transLExpr x = case x of
+  LExprArray lexpr expr -> failure x
   LExprId pident -> failure x
-  LExprRef ref -> failure x
-transRef :: Ref -> Result
-transRef x = case x of
-  RefExpr lexpr -> failure x
 transAssignOperator :: AssignOperator -> Result
 transAssignOperator x = case x of
   OpAssign -> failure x

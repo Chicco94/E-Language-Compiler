@@ -12,10 +12,10 @@ newtype PIdent = PIdent ((Int,Int),String)
 data Program = PDefs [Decl] | PTDefs [AnnotatedDecl]
   deriving (Eq, Ord, Show, Read)
 
-data AnnotatedDecl = UntypedDecl Decl | TypedDecl Type Decl
+data AnnotatedDecl = UntypedDecl Decl | ADecl Type Decl
   deriving (Eq, Ord, Show, Read)
 
-data Decl = DeclFun LExpr [Arg] Guard [Stmt] | DeclStmt Stmt
+data Decl = DeclFun LExpr [Arg] Guard CompStmt | DeclStmt Stmt
   deriving (Eq, Ord, Show, Read)
 
 data Arg = ArgDecl Modality PIdent Guard
@@ -29,25 +29,34 @@ data Guard = GuardVoid | GuardType Type
 
 data Stmt
     = StmtExpr Expr
-    | StmtDecl LExpr Guard
-    | StmtIterDecl LExpr Guard
-    | StmtVarInit LExpr Guard Expr
-    | StmtDefInit LExpr Guard Expr
-    | StmtReturn [Expr]
-    | StmtBlock [Decl]
-    | StmtIfElse Expr Stmt Stmt
-    | StmtIfNoElse Expr Stmt
+    | StmtDeclV LExpr Guard
+    | StmtVIterDeclV LExpr Guard
+    | StmtEIterDeclV Expr LExpr Guard
+    | StmtVarInitV LExpr Guard Expr
+    | StmtDeclD LExpr Guard
+    | StmtVIterDeclD LExpr Guard
+    | StmtEIterDeclD Expr LExpr Guard
+    | StmtVarInitD LExpr Guard Expr
+    | StmtIterInit LExpr Guard TypeIter
+    | StmtReturn Expr
+    | StmtNoReturn
+    | SComp CompStmt
+    | StmtIfElse Expr CompStmt Stmt
+    | StmtIfNoElse Expr CompStmt
     | SSwitchCase Expr [NormCase] [DfltCase]
     | StmtBreak
     | StmtContinue
-    | StmtWhile Expr Stmt
-    | StmtFor PIdent TypeIter Stmt
+    | StmtWhile Expr CompStmt
+    | StmtFor PIdent TypeIter CompStmt
   deriving (Eq, Ord, Show, Read)
 
-data NormCase = CaseNormal Expr Stmt
+data CompStmt = StmtBlock [Decl]
   deriving (Eq, Ord, Show, Read)
 
-data DfltCase = CaseDefault Stmt
+data NormCase = CaseNormal Expr CompStmt
+  deriving (Eq, Ord, Show, Read)
+
+data DfltCase = CaseDefault CompStmt
   deriving (Eq, Ord, Show, Read)
 
 data Expr
@@ -61,6 +70,7 @@ data Expr
     | ExprFalse
     | ExprFunCall PIdent [Expr]
     | ExprBoolNot Expr
+    | ExprRef LExpr
     | ExprDeref LExpr
     | ExprNegation Expr
     | ExprAddition Expr
@@ -84,10 +94,7 @@ data Expr
     | ExprOr Expr Expr
   deriving (Eq, Ord, Show, Read)
 
-data LExpr = LExprId PIdent | LExprRef Ref
-  deriving (Eq, Ord, Show, Read)
-
-data Ref = RefExpr LExpr
+data LExpr = LExprArray LExpr Expr | LExprId PIdent
   deriving (Eq, Ord, Show, Read)
 
 data AssignOperator

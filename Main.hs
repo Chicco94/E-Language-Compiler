@@ -13,6 +13,7 @@ import PrintE
 import AbsE
 
 import TypeChecker
+import ThreeAddressCode
 
 
 import ErrM
@@ -45,7 +46,7 @@ run v p s = let ts = myLLexer s in case p ts of
                               Ok (env,prog) -> do putStrLn "Correct Typing"
                                                   showAnnotatedTree v prog
                                                   --putStrV v $ printTree prog 
-                                                  exitSuccess
+                                                                        exitSuccess
 
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()
