@@ -12,8 +12,8 @@ import SkelE
 import PrintE
 import AbsE
 
-import TypeChecker
-import ThreeAddressCode
+-- import TypeChecker
+-- import ThreeAddressCode
 
 
 import ErrM

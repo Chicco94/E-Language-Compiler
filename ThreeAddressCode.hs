@@ -29,7 +29,7 @@ generateInstruction context instruction =
 generateDeclStmt :: Context -> Stmt -> Context
 generateDeclStmt context stmt =
     case stmt of
-        StmtVarInitD lexpr@(LExprId (PIdent (pos,name))) guard expr -> do 
+        StmtVarInit lexpr@(LExprId (PIdent (pos,name))) guard expr -> do 
             case guard of
                 _ -> context
         

@@ -20,11 +20,13 @@ def test_function(array_of_tests, function) :bool{
 }
 
 def main() :int{
-    var test_start :int := 20;
+    var test_start :int := 0;
     var test_end :int := 20;
     test_function(test_start..test_end, factorial);
 
-    //var matrix :int := [1..2,2+3,3+tests];//,[test,2,3]];
+    var pointer := &test_start;
+    **pointer;
+    var matrix :int := [[1..2,2+3,3+tests],[test,2,3]];
     test[1][2] := 3;
     for i in 0..test {
         false ;

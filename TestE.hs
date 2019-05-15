@@ -5,7 +5,6 @@ module Main where
 import System.IO ( stdin, hGetContents )
 import System.Environment ( getArgs, getProgName )
 import System.Exit ( exitFailure, exitSuccess )
-import Control.Monad (when)
 
 import LexE
 import ParE
@@ -14,7 +13,7 @@ import PrintE
 import AbsE
 
 
-import ThreeAddressCode
+
 
 import ErrM
 
@@ -32,21 +31,15 @@ runFile v p f = putStrLn f >> readFile f >>= run v p
 
 run :: (Print a, Show a) => Verbosity -> ParseFun a -> String -> IO ()
 run v p s = let ts = myLLexer s in case p ts of
-          Bad s    -> do  putStrLn "\nParse              Failed...\n"
+           Bad s    -> do putStrLn "\nParse              Failed...\n"
                           putStrV v "Tokens:"
                           putStrV v $ show ts
                           putStrLn s
                           exitFailure
-          Ok  tree -> do  putStrLn "\nParse Successful!"
+           Ok  tree -> do putStrLn "\nParse Successful!"
                           showTree v tree
-                          putStrLn "[Three Address Code]"
-                          case generateTAC tree of
-                              Bad err -> do putStrLn err
-                                            exitFailure
-                              Ok context -> do  putStrLn "Correct Typing"
-                                                showTree v context
-                                                  --putStrV v $ printTree prog 
-                                                exitSuccess
+
+                          exitSuccess
 
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()

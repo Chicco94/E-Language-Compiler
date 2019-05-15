@@ -39,15 +39,16 @@ transGuard x = case x of
 transStmt :: Stmt -> Result
 transStmt x = case x of
   StmtExpr expr -> failure x
-  StmtDeclV lexpr guard -> failure x
-  StmtVIterDeclV lexpr guard -> failure x
-  StmtEIterDeclV expr lexpr guard -> failure x
-  StmtVarInitV lexpr guard expr -> failure x
+  StmtDecl lexpr guard -> failure x
+  StmtVIterDecl lexpr guard -> failure x
+  StmtEIterDecl expr lexpr guard -> failure x
+  StmtVarInit lexpr guard expr -> failure x
+  StmtIterInit lexpr guard typeiter -> failure x
   StmtDeclD lexpr guard -> failure x
   StmtVIterDeclD lexpr guard -> failure x
   StmtEIterDeclD expr lexpr guard -> failure x
   StmtVarInitD lexpr guard expr -> failure x
-  StmtIterInit lexpr guard typeiter -> failure x
+  StmtIterInitD lexpr guard typeiter -> failure x
   StmtReturn expr -> failure x
   StmtNoReturn -> failure x
   SComp compstmt -> failure x
@@ -58,6 +59,10 @@ transStmt x = case x of
   StmtContinue -> failure x
   StmtWhile expr compstmt -> failure x
   StmtFor pident typeiter compstmt -> failure x
+transDeclModality :: DeclModality -> Result
+transDeclModality x = case x of
+  DeclModVar -> failure x
+  DeclModDef -> failure x
 transCompStmt :: CompStmt -> Result
 transCompStmt x = case x of
   StmtBlock decls -> failure x
@@ -79,8 +84,6 @@ transExpr x = case x of
   ExprFalse -> failure x
   ExprFunCall pident exprs -> failure x
   ExprBoolNot expr -> failure x
-  ExprRef lexpr -> failure x
-  ExprDeref lexpr -> failure x
   ExprNegation expr -> failure x
   ExprAddition expr -> failure x
   ExprPower expr1 expr2 -> failure x
@@ -103,8 +106,15 @@ transExpr x = case x of
   ExprOr expr1 expr2 -> failure x
 transLExpr :: LExpr -> Result
 transLExpr x = case x of
-  LExprArray lexpr expr -> failure x
   LExprId pident -> failure x
+  LExprDeref deref -> failure x
+  LExprRef ref -> failure x
+transDeref :: Deref -> Result
+transDeref x = case x of
+  DerefExpr lexpr -> failure x
+transRef :: Ref -> Result
+transRef x = case x of
+  RefExpr lexpr -> failure x
 transAssignOperator :: AssignOperator -> Result
 transAssignOperator x = case x of
   OpAssign -> failure x

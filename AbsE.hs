@@ -29,15 +29,16 @@ data Guard = GuardVoid | GuardType Type
 
 data Stmt
     = StmtExpr Expr
-    | StmtDeclV LExpr Guard
-    | StmtVIterDeclV LExpr Guard
-    | StmtEIterDeclV Expr LExpr Guard
-    | StmtVarInitV LExpr Guard Expr
+    | StmtDecl LExpr Guard
+    | StmtVIterDecl LExpr Guard
+    | StmtEIterDecl Expr LExpr Guard
+    | StmtVarInit LExpr Guard Expr
+    | StmtIterInit LExpr Guard TypeIter
     | StmtDeclD LExpr Guard
     | StmtVIterDeclD LExpr Guard
     | StmtEIterDeclD Expr LExpr Guard
     | StmtVarInitD LExpr Guard Expr
-    | StmtIterInit LExpr Guard TypeIter
+    | StmtIterInitD LExpr Guard TypeIter
     | StmtReturn Expr
     | StmtNoReturn
     | SComp CompStmt
@@ -48,6 +49,9 @@ data Stmt
     | StmtContinue
     | StmtWhile Expr CompStmt
     | StmtFor PIdent TypeIter CompStmt
+  deriving (Eq, Ord, Show, Read)
+
+data DeclModality = DeclModVar | DeclModDef
   deriving (Eq, Ord, Show, Read)
 
 data CompStmt = StmtBlock [Decl]
@@ -70,8 +74,6 @@ data Expr
     | ExprFalse
     | ExprFunCall PIdent [Expr]
     | ExprBoolNot Expr
-    | ExprRef LExpr
-    | ExprDeref LExpr
     | ExprNegation Expr
     | ExprAddition Expr
     | ExprPower Expr Expr
@@ -94,7 +96,13 @@ data Expr
     | ExprOr Expr Expr
   deriving (Eq, Ord, Show, Read)
 
-data LExpr = LExprArray LExpr Expr | LExprId PIdent
+data LExpr = LExprId PIdent | LExprDeref Deref | LExprRef Ref
+  deriving (Eq, Ord, Show, Read)
+
+data Deref = DerefExpr LExpr
+  deriving (Eq, Ord, Show, Read)
+
+data Ref = RefExpr LExpr
   deriving (Eq, Ord, Show, Read)
 
 data AssignOperator
