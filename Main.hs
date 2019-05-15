@@ -12,7 +12,7 @@ import SkelE
 import PrintE
 import AbsE
 
-import TypeChecker
+import ThreeAddressCode
 
 
 import ErrM
@@ -29,7 +29,7 @@ putStrV v s = when (v > 1) $ putStrLn s
 runFile :: Verbosity -> ParseFun Program -> FilePath -> IO ()
 runFile v p f = putStrLn f >> readFile f >>= run v p
 
-run :: Verbosity -> ParseFun Program -> String -> IO ()
+run :: (Print a, Show a) => Verbosity -> ParseFun a -> String -> IO ()
 run v p s = let ts = myLLexer s in case p ts of
            Bad s    -> do putStrLn "\nParse              Failed...\n"
                           putStrV v "Tokens:"
@@ -37,15 +37,13 @@ run v p s = let ts = myLLexer s in case p ts of
                           putStrLn s
                           exitFailure
            Ok  tree -> do putStrLn "\nParse Successful!"
-                          showTree v tree
-                          putStrLn "[Type Checker]"
-                          case typeCheck tree of
-                              Bad err -> do putStrLn err
-                                            exitFailure
-                              Ok (env,prog) -> do putStrLn "Correct Typing"
-                                                  showAnnotatedTree v prog
-                                                  --putStrV v $ printTree prog 
-                                                  exitSuccess
+                          putStrLn "\nThree Address Code!"
+                          case generateTAC tree of
+                            Bad err -> do putStrLn err
+                                          exitFailure
+                            Ok res -> do showTree v tree
+                                                --putStrV v $ printTree prog 
+                                                exitSuccess
 
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()

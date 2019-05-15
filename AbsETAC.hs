@@ -8,11 +8,12 @@ module AbsETAC where
   -- temporal variables: 't'id_numeber
   data Temp = Temp (String,(Int,Int),Type)
     deriving (Eq, Ord, Show, Read)
+
   -- user variables: var_name@line_number
   data Var = Var (String,(Int,Int),Type)
     deriving (Eq, Ord, Show, Read)
   
-  type TACProgram = [TAC]
+  type ProgramTAC = [TAC]
   
   -- presenti in AbsE
   -- data Type
@@ -40,9 +41,7 @@ module AbsETAC where
       | BinOp Op Temp Temp Temp
       | UnaryOp UnaryOp Temp Temp
       | Goto Label
-      | IfNot Temp Label
       | L Label
-      | Noop
     deriving (Eq, Ord, Show, Read)
   
   
@@ -64,8 +63,9 @@ module AbsETAC where
     deriving (Eq, Ord, Show, Read)
   
   data UnaryOp
-  -- Assign
+  -- Arithmetic
     = UOpMinus
+    | UOpPlus
   -- Logical
     | UOpNegate
     deriving (Eq, Ord, Show, Read)

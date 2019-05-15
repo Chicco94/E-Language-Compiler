@@ -36,26 +36,26 @@ GuardVoid.  Guard ::= {-empty-} ;  -- empty guard
 GuardType.  Guard ::= ":" Type ;   -- guarded
 
 -- Any Expression followed by a semicolon ; can be used as a statement.
-StmtExpr.       Stmt     ::= Expr EndLine ;
+StmtExpr.       Stmt     ::= Expr ";" ;
 
---StmtDecl.       Stmt     ::= "var" LExpr Guard EndLine ;
---StmtInit.       Stmt     ::= "var" LExpr Guard ":=" Expr EndLine ;
---StmtArrDecl.    Stmt     ::= "def" LExpr Guard ":=" TypeIter EndLine ;
+--StmtDecl.       Stmt     ::= "var" LExpr Guard ";" ;
+--StmtInit.       Stmt     ::= "var" LExpr Guard ":=" Expr ";" ;
+--StmtArrDecl.    Stmt     ::= "def" LExpr Guard ":=" TypeIter ";" ;
 
-StmtDecl.        Stmt     ::= "var" LExpr Guard EndLine ;                      -- Variable declaration.
-StmtIterDecl.    Stmt     ::= "var" "[" LExpr "]" Guard EndLine ;              -- Iterable type declaration.
+StmtDecl.        Stmt     ::= "var" LExpr Guard ";" ;                      -- Variable declaration.
+StmtIterDecl.    Stmt     ::= "var" "[" LExpr "]" Guard ";" ;              -- Iterable type declaration.
 
-StmtVarInit.     Stmt     ::= "var" LExpr Guard ":=" Expr EndLine ;     -- Constant/variable initialization.
-StmtDefInit.     Stmt     ::= "def" LExpr Guard ":=" Expr EndLine ;
+StmtVarInit.     Stmt     ::= "var" LExpr Guard ":=" Expr ";" ;     -- Constant/variable initialization.
+StmtDefInit.     Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;
 
 -- ###
 -- 1 reduce/reduce conflict
---StmtVarIterInit. Stmt     ::= "var" LExpr Guard ":=" TypeIter EndLine ; -- Constant/variable iterable type initialization.
---StmtDefIterInit. Stmt     ::= "def" LExpr Guard ":=" TypeIter EndLine ;
+--StmtVarIterInit. Stmt     ::= "var" LExpr Guard ":=" TypeIter ";" ; -- Constant/variable iterable type initialization.
+--StmtDefIterInit. Stmt     ::= "def" LExpr Guard ":=" TypeIter ";" ;
 --DeclModVar.      DeclModality ::= "var" ;
 --DeclModDef.      DeclModality ::= "def" ;
 
-StmtReturn.     Stmt     ::= "return" [Expr] EndLine ;
+StmtReturn.     Stmt     ::= "return" [Expr] ";" ;
 
 StmtBlock.      Stmt     ::= "{" [Decl] "}" ;
 
@@ -168,7 +168,7 @@ TypeIterArray.    TypeIter ::= "[" [Expr] "]" ;   -- Iterable array.
 
 
 -- End statement character.
-Semicolon. EndLine ::= ";" ;
+--Semicolon. EndLine ::= ";" ;
 --NewLine.   EndLine ::= "\\n" ;
 
 -- The entry point is the program.
