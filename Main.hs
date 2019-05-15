@@ -45,18 +45,20 @@ run v p s = let ts = myLLexer s in case p ts of
                               Ok (env,prog) -> do putStrLn "\nType checking successful!"
                                                   showAnnotatedTree v prog
                                                   exitSuccess
+                                               --where
+                                               --   rev = foldl (flip (:)) []
 
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()
 showTree v tree
  = do
-      putStrV v $ "\n### [Syntax tree]\n\n" ++ show tree
-      putStrV v $ "\n### [Linearized syntax tree]\n\n" ++ printTree tree
+      putStrV v $ "\n### [SYNTAX TREE]\n\n" ++ show tree
+      putStrV v $ "\n### [LINEARIZED TREE]\n\n" ++ printTree tree
 
 showAnnotatedTree :: (Show a, Print a) => Int -> a -> IO()
 showAnnotatedTree v prog = do
-  putStrV v $ "\n### [Annotated syntax tree]\n\n" ++ show prog
-  putStrV v $ "\n### [Linearized annotated syntax tree]\n\n" ++ printTree prog
+  putStrV v $ "\n### [ANNOTATED SYNTAX TREE]\n\n" ++ show prog
+  putStrV v $ "\n### [ANNOTATED LINEARIZED TREE]\n\n" ++ printTree prog
 
 usage :: IO ()
 usage = do

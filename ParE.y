@@ -59,6 +59,7 @@ import ErrM
   'continue' { PT _ (TS _ 41) }
   'def' { PT _ (TS _ 42) }
   'double' { PT _ (TS _ 43) }
+<<<<<<< HEAD
   'else' { PT _ (TS _ 44) }
   'false' { PT _ (TS _ 45) }
   'for' { PT _ (TS _ 46) }
@@ -78,6 +79,25 @@ import ErrM
   '|=' { PT _ (TS _ 60) }
   '||' { PT _ (TS _ 61) }
   '}' { PT _ (TS _ 62) }
+=======
+  'false' { PT _ (TS _ 44) }
+  'for' { PT _ (TS _ 45) }
+  'in' { PT _ (TS _ 46) }
+  'int' { PT _ (TS _ 47) }
+  'match' { PT _ (TS _ 48) }
+  'match _' { PT _ (TS _ 49) }
+  'return' { PT _ (TS _ 50) }
+  'string' { PT _ (TS _ 51) }
+  'switch' { PT _ (TS _ 52) }
+  'true' { PT _ (TS _ 53) }
+  'var' { PT _ (TS _ 54) }
+  'void' { PT _ (TS _ 55) }
+  'while' { PT _ (TS _ 56) }
+  '{' { PT _ (TS _ 57) }
+  '|=' { PT _ (TS _ 58) }
+  '||' { PT _ (TS _ 59) }
+  '}' { PT _ (TS _ 60) }
+>>>>>>> d776251cb588553880f5209d74cb8552b7ee84eb
 
 L_integ  { PT _ (TI $$) }
 L_doubl  { PT _ (TD $$) }
@@ -98,15 +118,11 @@ Program :: { Program }
 Program : ListDecl { AbsE.PDefs (reverse $1) }
 ListDecl :: { [Decl] }
 ListDecl : {- empty -} { [] } | ListDecl Decl { flip (:) $1 $2 }
-ListAnnotatedDecl :: { [AnnotatedDecl] }
-ListAnnotatedDecl : {- empty -} { [] }
-                  | ListAnnotatedDecl AnnotatedDecl { flip (:) $1 $2 }
-AnnotatedDecl :: { AnnotatedDecl }
-AnnotatedDecl : Decl { AbsE.UntypedDecl $1 }
-              | '[' Type ':]' Decl { AbsE.TypedDecl $2 $4 }
 Decl :: { Decl }
-Decl : 'def' LExpr '(' ListArg ')' Guard '{' ListStmt '}' { AbsE.DeclFun $2 $4 $6 (reverse $8) }
+Decl : 'def' LExpr '(' ListArg ')' Guard CompStmt { AbsE.DeclFun $2 $4 $6 $7 }
      | Stmt { AbsE.DeclStmt $1 }
+AnnotatedDecl :: { AnnotatedDecl }
+AnnotatedDecl : '[' Type ':]' Decl { AbsE.ADecl $2 $4 }
 ListArg :: { [Arg] }
 ListArg : {- empty -} { [] }
         | Arg { (:[]) $1 }
@@ -124,6 +140,7 @@ Guard : {- empty -} { AbsE.GuardVoid }
       | ':' Type { AbsE.GuardType $2 }
 Stmt :: { Stmt }
 Stmt : Expr ';' { AbsE.StmtExpr $1 }
+<<<<<<< HEAD
      | 'var' LExpr Guard ';' { AbsE.StmtDecl $2 $3 }
      | 'var' '[' LExpr ']' Guard ';' { AbsE.StmtIterDecl $3 $5 }
      | 'var' LExpr Guard ':=' Expr ';' { AbsE.StmtVarInit $2 $3 $5 }
@@ -132,15 +149,26 @@ Stmt : Expr ';' { AbsE.StmtExpr $1 }
      | '{' ListDecl '}' { AbsE.StmtBlock (reverse $2) }
      | 'if' '(' Expr ')' Stmt 'else' Stmt { AbsE.StmtIfElse $3 $5 $7 }
      | 'if' '(' Expr ')' Stmt { AbsE.StmtIfNoElse $3 $5 }
+=======
+     | 'var' LExpr Guard ';' { AbsE.StmtVarDecl $2 $3 }
+     | 'var' '[' LExpr ']' Guard ';' { AbsE.StmtIterDecl $3 $5 }
+     | 'var' LExpr Guard ':=' Expr ';' { AbsE.StmtVarInit $2 $3 $5 }
+     | 'def' LExpr Guard ':=' Expr ';' { AbsE.StmtDefInit $2 $3 $5 }
+     | 'return' '(' Expr ')' ';' { AbsE.StmtReturn $3 }
+     | 'return' ';' { AbsE.StmtNoReturn }
+     | CompStmt { AbsE.SComp $1 }
+>>>>>>> d776251cb588553880f5209d74cb8552b7ee84eb
      | 'switch' '(' Expr ')' '{' ListNormCase ListDfltCase '}' { AbsE.SSwitchCase $3 (reverse $6) (reverse $7) }
      | 'break' { AbsE.StmtBreak }
      | 'continue' { AbsE.StmtContinue }
-     | 'while' '(' Expr ')' Stmt { AbsE.StmtWhile $3 $5 }
-     | 'for' PIdent 'in' TypeIter Stmt { AbsE.StmtFor $2 $4 $5 }
+     | 'while' '(' Expr ')' CompStmt { AbsE.StmtWhile $3 $5 }
+     | 'for' PIdent 'in' TypeIter CompStmt { AbsE.StmtFor $2 $4 $5 }
+CompStmt :: { CompStmt }
+CompStmt : '{' ListDecl '}' { AbsE.StmtBlock (reverse $2) }
 NormCase :: { NormCase }
-NormCase : 'match' Expr Stmt { AbsE.CaseNormal $2 $3 }
+NormCase : 'match' Expr CompStmt { AbsE.CaseNormal $2 $3 }
 DfltCase :: { DfltCase }
-DfltCase : 'match _' Stmt { AbsE.CaseDefault $2 }
+DfltCase : 'match _' CompStmt { AbsE.CaseDefault $2 }
 ListNormCase :: { [NormCase] }
 ListNormCase : {- empty -} { [] }
              | ListNormCase NormCase { flip (:) $1 $2 }
@@ -165,7 +193,7 @@ Expr16 : Integer { AbsE.ExprInt $1 }
        | 'false' { AbsE.ExprFalse }
        | Expr17 { $1 }
 Expr15 :: { Expr }
-Expr15 : PIdent '(' ListArg ')' { AbsE.ExprFunCall $1 $3 }
+Expr15 : PIdent '(' ListExpr ')' { AbsE.ExprFunCall $1 $3 }
        | Expr16 { $1 }
 Expr14 :: { Expr }
 Expr14 : '!' Expr15 { AbsE.ExprBoolNot $2 }

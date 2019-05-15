@@ -9,13 +9,16 @@ module AbsE where
 
 newtype PIdent = PIdent ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
-data Program = PDefs [Decl] | PTDefs [AnnotatedDecl]
+data Program = PDefs [Decl]
   deriving (Eq, Ord, Show, Read)
 
-data AnnotatedDecl = UntypedDecl Decl | TypedDecl Type Decl
+data Decl
+    = TypedDecl AnnotatedDecl
+    | DeclFun LExpr [Arg] Guard CompStmt
+    | DeclStmt Stmt
   deriving (Eq, Ord, Show, Read)
 
-data Decl = DeclFun LExpr [Arg] Guard [Stmt] | DeclStmt Stmt
+data AnnotatedDecl = ADecl Type Decl
   deriving (Eq, Ord, Show, Read)
 
 data Arg = ArgDecl Modality PIdent Guard
@@ -29,25 +32,31 @@ data Guard = GuardVoid | GuardType Type
 
 data Stmt
     = StmtExpr Expr
+<<<<<<< HEAD
     | StmtDecl LExpr Guard
+=======
+    | StmtVarDecl LExpr Guard
+>>>>>>> d776251cb588553880f5209d74cb8552b7ee84eb
     | StmtIterDecl LExpr Guard
     | StmtVarInit LExpr Guard Expr
     | StmtDefInit LExpr Guard Expr
-    | StmtReturn [Expr]
-    | StmtBlock [Decl]
-    | StmtIfElse Expr Stmt Stmt
-    | StmtIfNoElse Expr Stmt
+    | StmtReturn Expr
+    | StmtNoReturn
+    | SComp CompStmt
     | SSwitchCase Expr [NormCase] [DfltCase]
     | StmtBreak
     | StmtContinue
-    | StmtWhile Expr Stmt
-    | StmtFor PIdent TypeIter Stmt
+    | StmtWhile Expr CompStmt
+    | StmtFor PIdent TypeIter CompStmt
   deriving (Eq, Ord, Show, Read)
 
-data NormCase = CaseNormal Expr Stmt
+data CompStmt = StmtBlock [Decl]
   deriving (Eq, Ord, Show, Read)
 
-data DfltCase = CaseDefault Stmt
+data NormCase = CaseNormal Expr CompStmt
+  deriving (Eq, Ord, Show, Read)
+
+data DfltCase = CaseDefault CompStmt
   deriving (Eq, Ord, Show, Read)
 
 data Expr
@@ -59,7 +68,11 @@ data Expr
     | ExprString String
     | ExprTrue
     | ExprFalse
+<<<<<<< HEAD
     | ExprFunCall PIdent [Arg]
+=======
+    | ExprFunCall PIdent [Expr]
+>>>>>>> d776251cb588553880f5209d74cb8552b7ee84eb
     | ExprBoolNot Expr
     | ExprDeref LExpr
     | ExprNegation Expr

@@ -1,0 +1,6 @@
+ASSUMPTIONS:
+	- every expression ends with ";"
+	- every iteration block and selection block must start with "{" and end with "}"
+	- function args are expressions
+    - arrays are defined as iterable object
+    - up to now we don't use the type :any

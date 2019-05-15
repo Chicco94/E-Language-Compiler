@@ -41,15 +41,15 @@ The set of reserved words is the set of terminals appearing in the grammar. Thos
 
 The reserved words used in E are the following:
   | ``bool`` | ``break`` | ``char`` | ``continue``
-  | ``def`` | ``double`` | ``else`` | ``false``
-  | ``for`` | ``if`` | ``in`` | ``int``
-  | ``match`` | ``return`` | ``string`` | ``switch``
-  | ``true`` | ``var`` | ``void`` | ``while``
+  | ``def`` | ``double`` | ``false`` | ``for``
+  | ``in`` | ``int`` | ``match`` | ``return``
+  | ``string`` | ``switch`` | ``true`` | ``var``
+  | ``void`` | ``while`` |  | 
 
 The symbols used in E are the following:
-  | ( | ) | { | }
-  | [ | :] | , | :
-  | ; | ] | := | match _
+  | ( | ) | [ | :]
+  | , | : | ; | ]
+  | := | { | } | match _
   | * | ! | & | -
   | + | ** | / | //
   | % | %% | .. | ..!
@@ -71,12 +71,9 @@ All other symbols are terminals.
   | //Program// | -> | //[Decl]// 
   | //[Decl]// | -> | **eps**
   |  |  **|**  | //Decl// //[Decl]// 
-  | //[AnnotatedDecl]// | -> | **eps**
-  |  |  **|**  | //AnnotatedDecl// //[AnnotatedDecl]// 
-  | //AnnotatedDecl// | -> | //Decl// 
-  |  |  **|**  | ``[`` //Type// ``:]`` //Decl// 
-  | //Decl// | -> | ``def`` //LExpr// ``(`` //[Arg]// ``)`` //Guard// ``{`` //[Stmt]// ``}`` 
+  | //Decl// | -> | ``def`` //LExpr// ``(`` //[Arg]// ``)`` //Guard// //CompStmt// 
   |  |  **|**  | //Stmt// 
+  | //AnnotatedDecl// | -> | ``[`` //Type// ``:]`` //Decl// 
   | //[Arg]// | -> | **eps**
   |  |  **|**  | //Arg// 
   |  |  **|**  | //Arg// ``,`` //[Arg]// 
@@ -93,17 +90,17 @@ All other symbols are terminals.
   |  |  **|**  | ``var`` ``[`` //LExpr// ``]`` //Guard// ``;`` 
   |  |  **|**  | ``var`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
   |  |  **|**  | ``def`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
-  |  |  **|**  | ``return`` //[Expr]// ``;`` 
-  |  |  **|**  | ``{`` //[Decl]// ``}`` 
-  |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// ``else`` //Stmt// 
-  |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// 
+  |  |  **|**  | ``return`` ``(`` //Expr// ``)`` ``;`` 
+  |  |  **|**  | ``return`` ``;`` 
+  |  |  **|**  | //CompStmt// 
   |  |  **|**  | ``switch`` ``(`` //Expr// ``)`` ``{`` //[NormCase]// //[DfltCase]// ``}`` 
   |  |  **|**  | ``break`` 
   |  |  **|**  | ``continue`` 
-  |  |  **|**  | ``while`` ``(`` //Expr// ``)`` //Stmt// 
-  |  |  **|**  | ``for`` //PIdent// ``in`` //TypeIter// //Stmt// 
-  | //NormCase// | -> | ``match`` //Expr// //Stmt// 
-  | //DfltCase// | -> | ``match _`` //Stmt// 
+  |  |  **|**  | ``while`` ``(`` //Expr// ``)`` //CompStmt// 
+  |  |  **|**  | ``for`` //PIdent// ``in`` //TypeIter// //CompStmt// 
+  | //CompStmt// | -> | ``{`` //[Decl]// ``}`` 
+  | //NormCase// | -> | ``match`` //Expr// //CompStmt// 
+  | //DfltCase// | -> | ``match _`` //CompStmt// 
   | //[NormCase]// | -> | **eps**
   |  |  **|**  | //NormCase// //[NormCase]// 
   | //[DfltCase]// | -> | **eps**
@@ -122,7 +119,7 @@ All other symbols are terminals.
   |  |  **|**  | ``true`` 
   |  |  **|**  | ``false`` 
   |  |  **|**  | //Expr17// 
-  | //Expr15// | -> | //PIdent// ``(`` //[Arg]// ``)`` 
+  | //Expr15// | -> | //PIdent// ``(`` //[Expr]// ``)`` 
   |  |  **|**  | //Expr16// 
   | //Expr14// | -> | ``!`` //Expr15// 
   |  |  **|**  | ``&`` //LExpr// 

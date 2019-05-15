@@ -1,13 +1,13 @@
 type Environment = ([Signature],[(BlockType, Context)])
 
-				// ([],		[(genBl, empty)])
-void main () { 			// ([main],	[(funBl, empty), 	(genBl, empty)])
-	int i; 			// ([main],	[(funBl, i:int)], 	(genBl, empty))
-	double j;		// ([main],	[(funBl, i:int,j:dbl)], (genBl, empty))
-	int foo (j) { 		// ([foo,main],	[(funBl, j:dbl), 	(funBl, i:int)], 	(genBl, empty))
+					// ([],			[(genBl, empty)])
+void main () { 		// ([main],		[(funBl, empty), 		(genBl, empty)])
+	int i; 			// ([main],		[(funBl, i:int)], 		(genBl, empty))
+	double j;		// ([main],		[(funBl, i:int,j:dbl)], (genBl, empty))
+	int foo (j) { 	// ([foo,main],	[(funBl, j:dbl), 		(funBl, i:int)], 	(genBl, empty))
 		double i; 	// ([foo,main],	[(funBl, i:dbl,j:dbl), 	(funBl, i:int)], 	(genBl, empty))
-	}			// ([main],	[(funBl, int:i)], 	(genBl, empty))
-}				// ([],		[(genBl, empty)])
+	}				// ([main],		[(funBl, int:i)], 		(genBl, empty))
+}					// ([],			[(genBl, empty)])
 
 void main () {
 	int i;
