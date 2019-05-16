@@ -51,16 +51,17 @@ GuardType.  Guard ::= ":" Type ;   -- guarded
 -- Any Expression followed by a semicolon ; can be used as a statement.
 StmtExpr.       Stmt     ::= Expr ";" ;
 
-StmtDecl.          Stmt     ::= "var" LExpr Guard ";" ;                      -- Variable declaration.
-StmtInit.          Stmt     ::= "var" LExpr Guard ":=" Expr ";" ;            -- Constant/variable initialization.
-StmtVoidIterDecl.  Stmt     ::= "var" "[" "]" LExpr Guard ";" ;              -- Iterable type declaration.
-StmtIterDecl.      Stmt     ::= "var" "[" Expr "]" LExpr Guard ";" ;         -- Iterable type declaration.
-StmtArrDecl.       Stmt     ::= "var" LExpr Guard ":=" Array ";" ;
-StmtDeclD.         Stmt     ::= "def" LExpr Guard ";" ;                      -- Variable declaration.
-StmtInitD.         Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;            -- Constant/variable initialization.
-StmtVoidIterDeclD. Stmt     ::= "def" "[" "]" LExpr Guard ";" ;              -- Iterable type declaration.
-StmtIterDeclD.     Stmt     ::= "def" "[" Expr "]" LExpr Guard ";" ;         -- Iterable type declaration.
-StmtArrDeclD.      Stmt     ::= "def" LExpr Guard ":=" Array ";" ;
+StmtVarDecl.         Stmt     ::= "var" LExpr Guard ";" ;                   -- Variable declaration.
+StmtVarInit.         Stmt     ::= "var" LExpr Guard ":=" Expr ";" ;         -- Variable initialization.
+StmtVarArrDeclNoDim. Stmt     ::= "var" "[" "]" LExpr Guard ";" ;           -- Variable array without dimension declaration.
+StmtVarArrDecl.      Stmt     ::= "var" "[" Expr "]" LExpr Guard ";" ;     	-- Variable array with dimension declaration.
+StmtVarArrInit.      Stmt     ::= "var" LExpr Guard ":=" Array ";" ;		-- Variable array initialization.
+
+StmtDefDecl.         Stmt     ::= "def" LExpr Guard ";" ;                   -- Constant declaration.
+StmtDefInit.         Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;         -- Constant initialization.
+StmtDefArrDeclNoDim. Stmt     ::= "def" "[" "]" LExpr Guard ";" ;           -- Constant array without dimension declaration.
+StmtDefArrDecl.      Stmt     ::= "def" "[" Expr "]" LExpr Guard ";" ;      -- Constant array with dimension declaration.
+StmtDefArrInit.      Stmt     ::= "def" LExpr Guard ":=" Array ";" ;		-- Constant array initialization.
 
 
 StmtReturn.     Stmt     ::= PReturn "(" Expr ")" ";" ;
