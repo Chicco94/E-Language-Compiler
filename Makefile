@@ -1,7 +1,7 @@
 all:
 	happy -gca ParE.y
 	alex -g LexE.x
-	ghc --make TestE.hs -o TestE
+	ghc --make Main.hs -o Main
 
 clean:
 	-rm -f *.log *.aux *.hi *.o *.dvi

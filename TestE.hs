@@ -12,8 +12,8 @@ import SkelE
 import PrintE
 import AbsE
 
-import AbsETAC
-import ThreeAddressCode
+
+
 
 import ErrM
 
@@ -31,19 +31,15 @@ runFile v p f = putStrLn f >> readFile f >>= run v p
 
 run :: (Print a, Show a) => Verbosity -> ParseFun a -> String -> IO ()
 run v p s = let ts = myLLexer s in case p ts of
-          Bad s    -> do putStrLn "\nParse              Failed...\n"
+           Bad s    -> do putStrLn "\nParse              Failed...\n"
                           putStrV v "Tokens:"
                           putStrV v $ show ts
                           putStrLn s
                           exitFailure
-          Ok  tree -> do  putStrLn "\nParse Successful!"
-                          putStrLn "\nThree Address Code!"
-                          case generateTAC tree of
-                            Bad err -> do putStrLn err
-                                          exitFailure
-                            Ok res -> do  showTree v tree
-                                          --putStrV v $ printTree prog 
-                                          exitSuccess
+           Ok  tree -> do putStrLn "\nParse Successful!"
+                          showTree v tree
+
+                          exitSuccess
 
 
 showTree :: (Show a, Print a) => Int -> a -> IO ()

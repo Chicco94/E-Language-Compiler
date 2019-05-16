@@ -87,20 +87,18 @@ instance Print PIdent where
 instance Print Program where
   prt i e = case e of
     PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
-    PTDefs anndecls -> prPrec i 0 (concatD [prt 0 anndecls])
 
-instance Print AnnDecl where
-  prt i e = case e of
-    LabeledDecl decl -> prPrec i 0 (concatD [prt 0 decl])
-    AnnotatedDecl type_ decl -> prPrec i 0 (concatD [doc (showString "["), prt 0 type_, doc (showString ":]"), prt 0 decl])
-  prtList _ [] = (concatD [])
-  prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
 instance Print Decl where
   prt i e = case e of
-    DeclFun lexpr args guard stmts -> prPrec i 0 (concatD [doc (showString "def"), prt 0 lexpr, doc (showString "("), prt 0 args, doc (showString ")"), prt 0 guard, doc (showString "{"), prt 0 stmts, doc (showString "}")])
+    TypedDecl annotateddecl -> prPrec i 0 (concatD [prt 0 annotateddecl])
+    DeclFun lexpr args guard compstmt -> prPrec i 0 (concatD [doc (showString "def"), prt 0 lexpr, doc (showString "("), prt 0 args, doc (showString ")"), prt 0 guard, prt 0 compstmt])
     DeclStmt stmt -> prPrec i 0 (concatD [prt 0 stmt])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
+instance Print AnnotatedDecl where
+  prt i e = case e of
+    ADecl type_ decl -> prPrec i 0 (concatD [doc (showString "["), prt 0 type_, doc (showString ":]"), prt 0 decl])
+
 instance Print Arg where
   prt i e = case e of
     ArgDecl modality pident guard -> prPrec i 0 (concatD [prt 0 modality, prt 0 pident, prt 0 guard])
@@ -121,29 +119,32 @@ instance Print Guard where
 instance Print Stmt where
   prt i e = case e of
     StmtExpr expr -> prPrec i 0 (concatD [prt 0 expr, doc (showString ";")])
-    StmtDecl lexpr guard -> prPrec i 0 (concatD [doc (showString "var"), prt 0 lexpr, prt 0 guard, doc (showString ";")])
+    StmtVarDecl lexpr guard -> prPrec i 0 (concatD [doc (showString "var"), prt 0 lexpr, prt 0 guard, doc (showString ";")])
     StmtIterDecl lexpr guard -> prPrec i 0 (concatD [doc (showString "var"), doc (showString "["), prt 0 lexpr, doc (showString "]"), prt 0 guard, doc (showString ";")])
     StmtVarInit lexpr guard expr -> prPrec i 0 (concatD [doc (showString "var"), prt 0 lexpr, prt 0 guard, doc (showString ":="), prt 0 expr, doc (showString ";")])
     StmtDefInit lexpr guard expr -> prPrec i 0 (concatD [doc (showString "def"), prt 0 lexpr, prt 0 guard, doc (showString ":="), prt 0 expr, doc (showString ";")])
-    StmtReturn exprs -> prPrec i 0 (concatD [doc (showString "return"), prt 0 exprs, doc (showString ";")])
-    StmtBlock decls -> prPrec i 0 (concatD [doc (showString "{"), prt 0 decls, doc (showString "}")])
-    StmtIfElse expr stmt1 stmt2 -> prPrec i 0 (concatD [doc (showString "if"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 stmt1, doc (showString "else"), prt 0 stmt2])
-    StmtIfNoElse expr stmt -> prPrec i 0 (concatD [doc (showString "if"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 stmt])
+    StmtReturn expr -> prPrec i 0 (concatD [doc (showString "return"), doc (showString "("), prt 0 expr, doc (showString ")"), doc (showString ";")])
+    StmtNoReturn -> prPrec i 0 (concatD [doc (showString "return"), doc (showString ";")])
+    SComp compstmt -> prPrec i 0 (concatD [prt 0 compstmt])
     SSwitchCase expr normcases dfltcases -> prPrec i 0 (concatD [doc (showString "switch"), doc (showString "("), prt 0 expr, doc (showString ")"), doc (showString "{"), prt 0 normcases, prt 0 dfltcases, doc (showString "}")])
     StmtBreak -> prPrec i 0 (concatD [doc (showString "break")])
     StmtContinue -> prPrec i 0 (concatD [doc (showString "continue")])
-    StmtWhile expr stmt -> prPrec i 0 (concatD [doc (showString "while"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 stmt])
-    StmtFor pident typeiter stmt -> prPrec i 0 (concatD [doc (showString "for"), prt 0 pident, doc (showString "in"), prt 0 typeiter, prt 0 stmt])
+    StmtWhile expr compstmt -> prPrec i 0 (concatD [doc (showString "while"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 compstmt])
+    StmtFor pident typeiter compstmt -> prPrec i 0 (concatD [doc (showString "for"), prt 0 pident, doc (showString "in"), prt 0 typeiter, prt 0 compstmt])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
+instance Print CompStmt where
+  prt i e = case e of
+    StmtBlock decls -> prPrec i 0 (concatD [doc (showString "{"), prt 0 decls, doc (showString "}")])
+
 instance Print NormCase where
   prt i e = case e of
-    CaseNormal expr stmt -> prPrec i 0 (concatD [doc (showString "match"), prt 0 expr, prt 0 stmt])
+    CaseNormal expr compstmt -> prPrec i 0 (concatD [doc (showString "match"), prt 0 expr, prt 0 compstmt])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
 instance Print DfltCase where
   prt i e = case e of
-    CaseDefault stmt -> prPrec i 0 (concatD [doc (showString "match _"), prt 0 stmt])
+    CaseDefault compstmt -> prPrec i 0 (concatD [doc (showString "match _"), prt 0 compstmt])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
 instance Print Expr where
@@ -156,11 +157,12 @@ instance Print Expr where
     ExprString str -> prPrec i 16 (concatD [prt 0 str])
     ExprTrue -> prPrec i 16 (concatD [doc (showString "true")])
     ExprFalse -> prPrec i 16 (concatD [doc (showString "false")])
-    ExprFunCall pident args -> prPrec i 15 (concatD [prt 0 pident, doc (showString "("), prt 0 args, doc (showString ")")])
+    ExprFunCall pident exprs -> prPrec i 15 (concatD [prt 0 pident, doc (showString "("), prt 0 exprs, doc (showString ")")])
     ExprBoolNot expr -> prPrec i 14 (concatD [doc (showString "!"), prt 15 expr])
     ExprDeref lexpr -> prPrec i 14 (concatD [doc (showString "&"), prt 0 lexpr])
     ExprNegation expr -> prPrec i 14 (concatD [doc (showString "-"), prt 15 expr])
     ExprAddition expr -> prPrec i 14 (concatD [doc (showString "+"), prt 15 expr])
+    ExprPower expr1 expr2 -> prPrec i 13 (concatD [prt 14 expr1, doc (showString "**"), prt 13 expr2])
     ExprMul expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "*"), prt 13 expr2])
     ExprFloatDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "/"), prt 13 expr2])
     ExprIntDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "//"), prt 13 expr2])

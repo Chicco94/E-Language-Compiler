@@ -21,7 +21,7 @@ $i = [$l $d _ ']          -- identifier character
 $u = [\0-\255]          -- universal: any character
 
 @rsyms =    -- symbols and non-identifier-like reserved words
-   \( | \) | \{ | \} | \[ | \: \] | \, | \: | \] | \: \= | "match" \  \_ | \* | \! | \& | \- | \+ | \/ | \/ \/ | \% | \% \% | \. \. | \. \. \! | \< | \> | \< \= | \> \= | \= \= | \! \= | \& \& | \| \| | \| \= | \& \= | \+ \= | \- \= | \* \= | \/ \/ \= | \/ \= | \% \= | \% \% \= | \* \* \= | \;
+   \( | \) | \[ | \: \] | \, | \: | \; | \] | \: \= | \{ | \} | "match" \  \_ | \* | \! | \& | \- | \+ | \* \* | \/ | \/ \/ | \% | \% \% | \. \. | \. \. \! | \< | \> | \< \= | \> \= | \= \= | \! \= | \& \& | \| \| | \| \= | \& \= | \+ \= | \- \= | \* \= | \/ \/ \= | \/ \= | \% \= | \% \% \= | \* \* \=
 
 :-
 "//" [.]* ; -- Toss single line comments
@@ -101,7 +101,7 @@ eitherResIdent tv s = treeFind resWords
                               | s == a = t
 
 resWords :: BTree
-resWords = b "<=" 31 (b "+=" 16 (b "&&" 8 (b "%%" 4 (b "!=" 2 (b "!" 1 N N) (b "%" 3 N N)) (b "%=" 6 (b "%%=" 5 N N) (b "&" 7 N N))) (b "*" 12 (b "(" 10 (b "&=" 9 N N) (b ")" 11 N N)) (b "*=" 14 (b "**=" 13 N N) (b "+" 15 N N)))) (b "//=" 24 (b ".." 20 (b "-" 18 (b "," 17 N N) (b "-=" 19 N N)) (b "/" 22 (b "..!" 21 N N) (b "//" 23 N N))) (b ":]" 28 (b ":" 26 (b "/=" 25 N N) (b ":=" 27 N N)) (b "<" 30 (b ";" 29 N N) N)))) (b "in" 47 (b "char" 39 (b "[" 35 (b ">" 33 (b "==" 32 N N) (b ">=" 34 N N)) (b "bool" 37 (b "]" 36 N N) (b "break" 38 N N))) (b "else" 43 (b "def" 41 (b "continue" 40 N N) (b "double" 42 N N)) (b "for" 45 (b "false" 44 N N) (b "if" 46 N N)))) (b "var" 55 (b "return" 51 (b "match" 49 (b "int" 48 N N) (b "match _" 50 N N)) (b "switch" 53 (b "string" 52 N N) (b "true" 54 N N))) (b "|=" 59 (b "while" 57 (b "void" 56 N N) (b "{" 58 N N)) (b "}" 61 (b "||" 60 N N) N))))
+resWords = b "<" 31 (b "+" 16 (b "&&" 8 (b "%%" 4 (b "!=" 2 (b "!" 1 N N) (b "%" 3 N N)) (b "%=" 6 (b "%%=" 5 N N) (b "&" 7 N N))) (b "*" 12 (b "(" 10 (b "&=" 9 N N) (b ")" 11 N N)) (b "**=" 14 (b "**" 13 N N) (b "*=" 15 N N)))) (b "//" 24 (b "-=" 20 (b "," 18 (b "+=" 17 N N) (b "-" 19 N N)) (b "..!" 22 (b ".." 21 N N) (b "/" 23 N N))) (b ":=" 28 (b "/=" 26 (b "//=" 25 N N) (b ":" 27 N N)) (b ";" 30 (b ":]" 29 N N) N)))) (b "in" 46 (b "break" 39 (b ">=" 35 (b "==" 33 (b "<=" 32 N N) (b ">" 34 N N)) (b "]" 37 (b "[" 36 N N) (b "bool" 38 N N))) (b "double" 43 (b "continue" 41 (b "char" 40 N N) (b "def" 42 N N)) (b "for" 45 (b "false" 44 N N) N))) (b "var" 54 (b "return" 50 (b "match" 48 (b "int" 47 N N) (b "match _" 49 N N)) (b "switch" 52 (b "string" 51 N N) (b "true" 53 N N))) (b "|=" 58 (b "while" 56 (b "void" 55 N N) (b "{" 57 N N)) (b "}" 60 (b "||" 59 N N) N))))
    where b s n = let bs = id s
                   in B bs (TS bs n)
 

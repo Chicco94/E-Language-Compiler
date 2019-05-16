@@ -15,15 +15,14 @@ transPIdent x = case x of
 transProgram :: Program -> Result
 transProgram x = case x of
   PDefs decls -> failure x
-  PTDefs anndecls -> failure x
-transAnnDecl :: AnnDecl -> Result
-transAnnDecl x = case x of
-  LabeledDecl decl -> failure x
-  AnnotatedDecl type_ decl -> failure x
 transDecl :: Decl -> Result
 transDecl x = case x of
-  DeclFun lexpr args guard stmts -> failure x
+  TypedDecl annotateddecl -> failure x
+  DeclFun lexpr args guard compstmt -> failure x
   DeclStmt stmt -> failure x
+transAnnotatedDecl :: AnnotatedDecl -> Result
+transAnnotatedDecl x = case x of
+  ADecl type_ decl -> failure x
 transArg :: Arg -> Result
 transArg x = case x of
   ArgDecl modality pident guard -> failure x
@@ -39,25 +38,27 @@ transGuard x = case x of
 transStmt :: Stmt -> Result
 transStmt x = case x of
   StmtExpr expr -> failure x
-  StmtDecl lexpr guard -> failure x
+  StmtVarDecl lexpr guard -> failure x
   StmtIterDecl lexpr guard -> failure x
   StmtVarInit lexpr guard expr -> failure x
   StmtDefInit lexpr guard expr -> failure x
-  StmtReturn exprs -> failure x
-  StmtBlock decls -> failure x
-  StmtIfElse expr stmt1 stmt2 -> failure x
-  StmtIfNoElse expr stmt -> failure x
+  StmtReturn expr -> failure x
+  StmtNoReturn -> failure x
+  SComp compstmt -> failure x
   SSwitchCase expr normcases dfltcases -> failure x
   StmtBreak -> failure x
   StmtContinue -> failure x
-  StmtWhile expr stmt -> failure x
-  StmtFor pident typeiter stmt -> failure x
+  StmtWhile expr compstmt -> failure x
+  StmtFor pident typeiter compstmt -> failure x
+transCompStmt :: CompStmt -> Result
+transCompStmt x = case x of
+  StmtBlock decls -> failure x
 transNormCase :: NormCase -> Result
 transNormCase x = case x of
-  CaseNormal expr stmt -> failure x
+  CaseNormal expr compstmt -> failure x
 transDfltCase :: DfltCase -> Result
 transDfltCase x = case x of
-  CaseDefault stmt -> failure x
+  CaseDefault compstmt -> failure x
 transExpr :: Expr -> Result
 transExpr x = case x of
   StmtAssign lexpr assignoperator expr -> failure x
@@ -68,11 +69,12 @@ transExpr x = case x of
   ExprString string -> failure x
   ExprTrue -> failure x
   ExprFalse -> failure x
-  ExprFunCall pident args -> failure x
+  ExprFunCall pident exprs -> failure x
   ExprBoolNot expr -> failure x
   ExprDeref lexpr -> failure x
   ExprNegation expr -> failure x
   ExprAddition expr -> failure x
+  ExprPower expr1 expr2 -> failure x
   ExprMul expr1 expr2 -> failure x
   ExprFloatDiv expr1 expr2 -> failure x
   ExprIntDiv expr1 expr2 -> failure x
