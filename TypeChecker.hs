@@ -68,19 +68,7 @@ checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId pident@(P
                                Ok (e', p') -> Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))]) prog)
                                Bad s -> Bad s
                   Bad s -> Bad s
-    GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " has to have a type to be well defined!"
-
-getDecls :: [Program] -> [Decl]
-getDecls [] = []
-getDecls (prog:progs) = case prog of
-  PDefs [TypedDecl (ADecl t s)] -> (TypedDecl (ADecl t s)) : getDecls progs
-  PDefs [DeclStmt stmt] -> (DeclStmt stmt) : getDecls progs 
-  _ -> []
-
-extendEnv :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
-extendEnv (env@(s, y), prog) (StmtBlock decls) = do 
-  (e@((sig:sigs), b@(block:blocks)), p) <- foldM checkDecl (env, prog) decls
-  Ok ((sigs,blocks), p List.\\ prog) -- pop & list difference    
+    GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " has to have a type to be well defined" 
 
 -- Check argument(s) declaration.
 checkArgDecl :: (Env, [Program]) -> [Arg] -> Err (Env, [Program])  
@@ -213,27 +201,38 @@ checkAssign (env, prog) lexpr op expr = do
     OpPlus        -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpMinus       -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpMul         -> do checkAssignOp (env, prog)  t1 lexpr op expr
-    --OpIntDiv      -> do checkAssignIntOp (env, prog)  t1 lexpr op expr
-    --OpFloatDiv    -> do checkAssignOp (env, prog)  t1 lexpr op expr
+    OpIntDiv      -> do checkAssignDiv (env, prog)  t1 TypeInt lexpr op expr
+    OpDoubleDiv    -> do checkAssignDiv (env, prog)  t1 TypeDouble lexpr op expr
     OpRemainder   -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpModulo      -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpPower       -> do checkAssignOp (env, prog)  t1 lexpr op expr  
 
 -- Check assignment with boolean operator.
+-- TODO: position
 checkAssignBoolOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignBoolOp (env, prog) t1 lexpr op expr = do
   t2 <- inferExpr env expr
-  if (t2 `isCompatibleWith` t1)
+  if (t2 `isCompatibleWith` t1) -- t2 has to be compatible with t1 (i.e., the r-expr with the l-expr)
     then Ok (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (StmtAssign lexpr op expr))))]) prog)
     else fail $ printTree t2 ++ " is not compatible with " ++ printTree t1
 
 -- Check assignment operator.
+-- TODO: position
 checkAssignOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignOp (env, prog) t1 lexpr op expr = do
   t2 <- inferExpr env expr
   if (t2 `isCompatibleWith` t1)
     then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (StmtAssign lexpr op expr))))]) prog)
     else fail $ printTree t2 ++ " is not compatible with " ++ printTree t1
+
+-- Check assignment operator.
+-- TODO: position
+checkAssignDiv :: (Env, [Program]) -> Type -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
+checkAssignDiv (env, prog) t1 top lexpr op expr = do
+  t2 <- inferExpr env expr
+  if (t1 `isCompatibleWith` top) && (t2 `isCompatibleWith` top)
+    then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (StmtAssign lexpr op expr))))]) prog)
+    else fail $ "(0,0): the type of " ++ printTree lexpr ++ " is " ++ show t1 ++ " and the type of " ++ printTree expr ++ " is " ++ show t2 ++ ", but they must be both " ++ show top
 
 -- Check function call.
 checkFunCall :: (Env, [Program]) -> Expr -> Err (Env, [Program])
@@ -281,10 +280,10 @@ checkExpr (env, prog) expr = do
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
     ExprMul e1 e2      -> do t <- inferArithBinOp env expr e1 e2
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
-    --ExprFloatDiv e1 e2 -> do t <- inferArithBinDoubleOp env expr e1 e2
-    --                         return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
-    --ExprIntDiv e1 e2 -> do t <- inferArithBinIntOp env expr e1 e2
-    --                            return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+    ExprDoubleDiv e1 e2 -> do t <- inferArithBinOpDiv env TypeDouble expr e1 e2
+                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+    ExprIntDiv e1 e2   -> do t <- inferArithBinOpDiv env TypeInt expr e1 e2
+                             return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
     ExprReminder e1 e2 -> do t <- inferArithBinOp env expr e1 e2
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
     ExprModulo e1 e2   -> do t <- inferArithBinOp env expr e1 e2
@@ -383,8 +382,8 @@ inferExpr env expr =
     -- Arithmetic binary operators.
     ExprPower e1 e2    -> inferArithBinOp env expr e1 e2
     ExprMul e1 e2      -> inferArithBinOp env expr e1 e2
-    --ExprFloatDiv e1 e2 -> inferArithBinDoubleOp env expr e1 e2
-    --ExprIntDiv e1 e2   -> inferArithBinIntOp env expr e1 e2
+    ExprDoubleDiv e1 e2 -> inferArithBinOpDiv env TypeDouble expr e1 e2
+    ExprIntDiv e1 e2   -> inferArithBinOpDiv env TypeInt expr e1 e2
     ExprReminder e1 e2 -> inferArithBinOp env expr e1 e2
     ExprModulo e1 e2   -> inferArithBinOp env expr e1 e2
     ExprPlus e1 e2     -> inferArithBinOp env expr e1 e2
@@ -441,6 +440,17 @@ inferArithBinOp env expr e1 e2 = do
      then getMostGeneric t1 t2
      else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
 
+-- Infer arithmetic integer division or float division operator.
+inferArithBinOpDiv :: Env -> Type -> Expr -> Expr -> Expr -> Err Type
+inferArithBinOpDiv env top expr e1 e2 = do
+  t1 <- inferExpr env e1
+  t2 <- inferExpr env e2
+  if (t1 `isCompatibleWithAny` [TypeInt, TypeDouble]) && -- only ints and floats in divisions
+     (t2 `isCompatibleWithAny` [TypeInt, TypeDouble]) &&
+     areCompatible t1 t2
+     then Ok top
+     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
+
 -- Infer relational binary operator.
 inferRelBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
 inferRelBinOp env expr e1 e2 = do
@@ -467,7 +477,7 @@ inferBoolBinOp env expr e1 e2 = do
   t2 <- inferExpr env e2
   if (t1 == TypeBool) && (t2 == TypeBool) -- only booleans are allowed
     then Ok TypeBool  
-    else fail $ "invalid type operands: " ++ filter (/= '\n') (printTree e1) ++ " " ++ show (getExprPosition e1) ++ " has type " ++ show t1 ++ " and " ++ filter (/= '\n') (printTree e2) ++ " " ++ show (getExprPosition e2)  ++ " has type " ++ show t2
+    else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
 
 -- Type compatibilities:
 -- bool < char < int < float
@@ -498,7 +508,6 @@ getMostGeneric t1 t2
   | TypeInt `elem` [t1,t2]    = Ok TypeInt
   | TypeString `elem` [t1,t2] = Ok TypeString
   | TypeChar `elem` [t1,t2]   = Ok TypeChar
-  | otherwise                 = fail $ "getMostGeneric: fatal error!"
 
 -- MOD is compatible with mutability MUT?
 isCompatibleWithMutability :: Modality -> Mutability -> Bool
@@ -509,6 +518,13 @@ mod `isCompatibleWithMutability` mut
   | mod == ModDef && mut == MutVar   = True  -- if the argument is a constant that is defined as variable, then it is ok
   | otherwise                        = False -- otherwise, not compatible
 
+getDecls :: [Program] -> [Decl]
+getDecls [] = []
+getDecls (prog:progs) = case prog of
+  PDefs [TypedDecl (ADecl t s)] -> (TypedDecl (ADecl t s)) : getDecls progs
+  PDefs [DeclStmt stmt] -> (DeclStmt stmt) : getDecls progs 
+  _ -> []
+
 getExprPosition :: Expr -> (Int, Int)
 getExprPosition e =
   case e of
@@ -518,3 +534,8 @@ getExprPosition e =
     ExprString (PString (p, _)) -> p
     ExprTrue (PTrue (p, _))     -> p
     ExprFalse (PFalse (p, _))   -> p
+
+extendEnv :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
+extendEnv (env@(s, y), prog) (StmtBlock decls) = do 
+  (e@((sig:sigs), b@(block:blocks)), p) <- foldM checkDecl (env, prog) decls
+  Ok ((sigs,blocks), p List.\\ prog) -- pop & list difference   

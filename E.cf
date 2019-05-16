@@ -1,16 +1,12 @@
-position token PTrue 't' 'r' 'u' 'e' ;
-position token PFalse 'f' 'a' 'l' 's' 'e' ;
-
--- Position to "return" statement.
-position token PReturn 'r' 'e' 't' 'u' 'r' 'n' ;
-
--- Position to ident.
-position token PIdent (letter (letter | digit | '_' | '\'')*) ;
-
-position token PInteger digit+ ;
-position token PDouble digit+ '.' digit+ ;
-position token PChar '\'' char '\'' ;
-position token PString '"' char+ '"' ;
+-- Position tokens, that is, ((Int,Int), Token)
+position token PTrue 't' 'r' 'u' 'e' ;							-- true
+position token PFalse 'f' 'a' 'l' 's' 'e' ;						-- false
+position token PReturn 'r' 'e' 't' 'u' 'r' 'n' ;				-- return
+position token PIdent (letter (letter | digit | '_' | '\'')*) ;	-- function and variable names
+position token PInteger digit+ ;								-- integer
+position token PDouble digit+ '.' digit+ ;						-- double
+position token PChar '\'' char '\'' ;							-- char
+position token PString '"' char+ '"' ;							-- string
 
 -- A program is a sequence of declarations.
 PDefs.     Program ::= [Decl] ;
@@ -28,7 +24,7 @@ internal TypedDecl. Decl ::= AnnotatedDecl ;
 
 
 -- A program may containt (C-like) comments, which are ignored by the parser.
-comment "//" ;
+comment "#" ;
 comment "/*" "*/" ;
 
 
@@ -129,11 +125,11 @@ ExprAddition. Expr14  ::= "+" Expr15 ;
 
 ExprPower.    Expr13 ::= Expr14 "^"  Expr13 ;
 
-ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
-ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
-ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
-ExprReminder. Expr12 ::= Expr12 "%"  Expr13 ;
-ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
+ExprMul.       Expr12 ::= Expr12 "*"  Expr13 ;
+ExprDoubleDiv. Expr12 ::= Expr12 "/"  Expr13 ;
+ExprIntDiv.    Expr12 ::= Expr12 "//" Expr13 ;
+ExprReminder.  Expr12 ::= Expr12 "%"  Expr13 ;
+ExprModulo.    Expr12 ::= Expr12 "%%" Expr13 ;
 
 --ExprReference. Expr11 ::= "&" LExpr ;
 ExprPlus.      Expr11 ::= Expr11 "+"  Expr12 ;
@@ -169,7 +165,7 @@ OpPlus.       AssignOperator ::= "+=" ;
 OpMinus.      AssignOperator ::= "-=" ;
 OpMul.        AssignOperator ::= "*=" ;
 OpIntDiv.     AssignOperator ::= "//=" ;
-OpFloatDiv.   AssignOperator ::= "/=" ;
+OpDoubleDiv.  AssignOperator ::= "/=" ;
 OpRemainder.  AssignOperator ::= "%=" ;
 OpModulo.     AssignOperator ::= "%%=" ;
 OpPower.      AssignOperator ::= "^=" ;
