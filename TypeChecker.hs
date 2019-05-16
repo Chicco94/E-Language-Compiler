@@ -18,7 +18,7 @@ type Context   = Map.Map String (Mutability, Type)         -- Variables context:
 data Mutability = MutConst | MutVar
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
-data BlockType = NormBlock | FunBlock PIdent Type | IterBlock
+data BlockType = NormBlock | FunBlock PIdent Type | IterBlock | SelBlock
   deriving(Eq, Ord, Show, Read)
 
 -- Default given primitives.
@@ -52,6 +52,7 @@ checkDecl (env@(sig@(x:xs), (block:_)), prog) def =
   case def of
     DeclFun lexpr args guard compstmt -> checkFunDecl (env, prog) lexpr args guard compstmt
     DeclStmt stmt -> checkDeclStmt (env, prog) stmt
+    _ -> Ok (env, prog)
 
 -- Check function declaration.
 checkFunDecl :: (Env, [Program]) -> LExpr -> [Arg] -> Guard -> CompStmt -> Err (Env, [Program])
@@ -97,15 +98,6 @@ checkArgDecl (env@(sig@(x:xs), blocks), prog) (arg@(ArgDecl mod (PIdent pident@(
                                          else fail $ show p ++ ": the modality of " ++ printTree ident ++ " (" ++ show mod ++ ") is not compatible with " ++ show mut
                      _           -> fail $ show p ++ ": argument " ++ printTree ident ++ " is not declared!"
 
--- MOD is compatible with mutability MUT?
-isCompatibleWithMutability :: Modality -> Mutability -> Bool
-mod `isCompatibleWithMutability` mut
-  | mod == ModEmpty                  = True  -- if the argument has no modality, then it can be anything
-  | mod == ModVar                    = True  -- if the argument is a variable, then it can be anything
-  | mod == ModDef && mut == MutConst = True  -- if the argument is a constant defined as constant, then it is ok
-  | mod == ModDef && mut == MutVar   = True  -- if the argument is a constant that is defined as variable, then it is ok
-  | otherwise                        = False -- otherwise, not compatible
-
 -- Check statement declaration.
 checkDeclStmt :: (Env, [Program]) -> Stmt -> Err (Env, [Program])
 checkDeclStmt (env, prog) stmt =
@@ -113,8 +105,8 @@ checkDeclStmt (env, prog) stmt =
     StmtExpr expr                -> checkExpr (env, prog) expr
 
     --StmtVarDecl lexpr guard      -> checkStmtVarDecl (env, prog) lexpr guard
-    StmtVarInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutVar
-    StmtDefInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutConst
+    --StmtVarInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutVar
+    --StmtDefInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutConst
 
     StmtReturn expr              -> checkReturn (env, prog) expr
     StmtNoReturn                 -> checkNoReturn (env, prog)
@@ -124,8 +116,32 @@ checkDeclStmt (env, prog) stmt =
     
     SComp compstmt               -> checkSComp (env, prog) compstmt
 
-    StmtWhile expr compstmt      -> checkWhile (env, prog) expr compstmt
+    StmtIfThenElse expr cstmt1 cstmt2 -> checkIfThenElse (env, prog) expr cstmt1 cstmt2
+    StmtIfThen expr cstmt -> checkIfThen (env, prog) expr cstmt
+
+    StmtWhile expr cstmt         -> checkWhile (env, prog) expr cstmt
     _ -> Bad "checkStmt: fatal error!"
+
+checkIfThenElse :: (Env, [Program]) -> Expr -> CompStmt -> CompStmt -> Err (Env, [Program]) 
+checkIfThenElse (env@(sig@(x:xs), blocks), prog) expr cstmt1 cstmt2 = do
+  texpr <- inferExpr env expr
+  if texpr == TypeBool 
+    then do
+      (env1, p1) <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), prog) cstmt1
+      (env2, p2) <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), p1) cstmt2
+      Ok (env, postAttach (PDefs [DeclStmt (StmtIfThenElse expr (StmtBlock (getDecls p1)) (StmtBlock (getDecls p2)))]) prog)
+    else
+      fail $ "checkIfThenElse: texpr != TypeBool"
+
+checkIfThen :: (Env, [Program]) -> Expr -> CompStmt -> Err (Env, [Program]) 
+checkIfThen (env@(sig@(x:xs), blocks), prog) expr cstmt = do
+  texpr <- inferExpr env expr
+  if texpr == TypeBool 
+    then do
+      (env1, p1) <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), prog) cstmt
+      Ok (env, postAttach (PDefs [DeclStmt (StmtIfThen expr (StmtBlock (getDecls p1)))]) prog)
+    else
+      fail $ "checkIfThen: texpr != TypeBool"
 
 checkReturn :: (Env, [Program]) -> Expr -> Err (Env, [Program])
 checkReturn (env@(sigs, blocks), prog) expr = do
@@ -171,21 +187,14 @@ checkWhile (env@(xs, blocks@((blockType, context):ys)), prog) expr compstmt = do
            Bad s       -> Bad s
     else fail $ "the expression type in the while statement must be boolean"
 
-extendEnv2 :: (Env, [Program]) -> Stmt -> Err (Env, [Program])
-extendEnv2 (env@(s, y), prog) stmt = do
-  case stmt of
-    StmtExpr expr -> do (e@((sig:sigs), b@(block:blocks)), p) <- checkExpr (env, prog) expr
-                        Ok ((sigs,blocks), p List.\\ prog) -- list difference
-    _ -> fail $ "extendEnv2: fatal error!"
-
-checkStmtInit :: (Env, [Program]) -> LExpr -> Guard -> Expr -> Mutability -> Err (Env, [Program])
+{- checkStmtInit :: (Env, [Program]) -> LExpr -> Guard -> Expr -> Mutability -> Err (Env, [Program])
 checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard expr mut = do
   case guard of
     GuardType t ->
       case lookupVar blocks ident of
         Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
         _        -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtVarInit lexpr guard expr)))]) prog)
-    GuardVoid -> fail $ show p ++ ": variable " ++ printTree ident ++ " declared as void! this is not allowed!"
+    GuardVoid -> fail $ show p ++ ": variable " ++ printTree ident ++ " declared as void! this is not allowed!" -}
   
 
 -- Check assignment.
@@ -286,8 +295,8 @@ checkExpr (env, prog) expr = do
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
 
     -- Interval creation. (Recall that an interval is an iterable.)
-    ExprIntInc e1 e2   -> checkInterval (env, prog) expr e1 e2
-    ExprIntExc e1 e2   -> checkInterval (env, prog) expr e1 e2
+    --ExprIntInc e1 e2   -> checkInterval (env, prog) expr e1 e2
+    --ExprIntExc e1 e2   -> checkInterval (env, prog) expr e1 e2
 
     -- Relational binary operators.
     ExprLt e1 e2       -> do t <- inferRelBinOp env expr e1 e2
@@ -311,13 +320,13 @@ checkExpr (env, prog) expr = do
     _ -> return (env, prog)
 
 -- Check interval creation.
-checkInterval :: (Env, [Program]) -> Expr -> Expr -> Expr -> Err (Env, [Program])
+{- checkInterval :: (Env, [Program]) -> Expr -> Expr -> Expr -> Err (Env, [Program])
 checkInterval (env, prog) expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
   if (t1 == TypeInt) && (t2 == TypeInt) -- only ints are allowed.
     then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr expr)))]) prog)
-    else fail $ "only integer intervals allowed!"
+    else fail $ "only integer intervals allowed!" -}
   
 -- Look for function in signature.
 lookupFun :: [Sig] -> String -> Err ([(Modality, Type)], Type)
@@ -440,7 +449,7 @@ inferRelBinOp env expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
   if (t1 `isCompatibleWithAny` [TypeInt, TypeDouble, TypeChar, TypeString]) &&  -- only ints, floats, chars and strings are allowed
-     (t2 `isCompatibleWithAny` [TypeInt, TypeDouble, TypeChar, TypeString]) &&
+     (t2 `isCompatibleWithAny` [TypeInt, TypeDouble, TypeChar, TypeString]) &&  -- the same as above
      areCompatible t1 t2
      then Ok TypeBool
      else fail $ "\n\t- invalid operands in expressions (" ++ filter (/= '\n') (printTree e1) ++
@@ -497,3 +506,11 @@ getMostGeneric t1 t2
   | TypeChar `elem` [t1,t2]   = Ok TypeChar
   | otherwise                 = fail $ "getMostGeneric: fatal error!"
 
+-- MOD is compatible with mutability MUT?
+isCompatibleWithMutability :: Modality -> Mutability -> Bool
+mod `isCompatibleWithMutability` mut
+  | mod == ModEmpty                  = True  -- if the argument has no modality, then it can be anything
+  | mod == ModVar                    = True  -- if the argument is a variable, then it can be anything
+  | mod == ModDef && mut == MutConst = True  -- if the argument is a constant defined as constant, then it is ok
+  | mod == ModDef && mut == MutVar   = True  -- if the argument is a constant that is defined as variable, then it is ok
+  | otherwise                        = False -- otherwise, not compatible
