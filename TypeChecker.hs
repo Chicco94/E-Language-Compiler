@@ -213,7 +213,7 @@ checkAssignBoolOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr
 checkAssignBoolOp (env, prog) t1 lexpr op expr = do
   t2 <- inferExpr env expr
   if (t2 `isCompatibleWith` t1) -- t2 has to be compatible with t1 (i.e., the r-expr with the l-expr)
-    then Ok (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (StmtAssign lexpr op expr))))]) prog)
+    then Ok (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
     else fail $ printTree t2 ++ " is not compatible with " ++ printTree t1
 
 -- Check assignment operator.
@@ -222,7 +222,7 @@ checkAssignOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> 
 checkAssignOp (env, prog) t1 lexpr op expr = do
   t2 <- inferExpr env expr
   if (t2 `isCompatibleWith` t1)
-    then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (StmtAssign lexpr op expr))))]) prog)
+    then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
     else fail $ printTree t2 ++ " is not compatible with " ++ printTree t1
 
 -- Check assignment operator.
@@ -231,7 +231,7 @@ checkAssignDiv :: (Env, [Program]) -> Type -> Type -> LExpr -> AssignOperator ->
 checkAssignDiv (env, prog) t1 top lexpr op expr = do
   t2 <- inferExpr env expr
   if (t1 `isCompatibleWith` top) && (t2 `isCompatibleWith` top)
-    then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (StmtAssign lexpr op expr))))]) prog)
+    then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
     else fail $ "(0,0): the type of " ++ printTree lexpr ++ " is " ++ show t1 ++ " and the type of " ++ printTree expr ++ " is " ++ show t2 ++ ", but they must be both " ++ show top
 
 -- Check function call.
@@ -248,7 +248,7 @@ checkExpr :: (Env, [Program]) -> Expr -> Err (Env, [Program])
 checkExpr (env, prog) expr = do
   case expr of
     -- Assignment statement (i.e., lexpr operator expr).
-    StmtAssign lexpr op expr -> do checkAssign (env, prog) lexpr op expr
+    ExprAssign lexpr op expr -> do checkAssign (env, prog) lexpr op expr
 
     -- Left expressions.
     LeftExpr lexpr           -> do t <- inferLExpr env lexpr

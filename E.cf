@@ -73,7 +73,7 @@ SComp.          Stmt ::= CompStmt ;
 
 StmtIfThenElse. Stmt     ::= "if" "(" Expr ")" CompStmt "else" CompStmt ;
 StmtIfThen.     Stmt     ::= "if" "(" Expr ")" CompStmt ;
-SSwitchCase.    Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
+StmtSwitchCase.    Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
 CaseNormal.     NormCase ::= "match" Expr CompStmt ;
 CaseDefault.    DfltCase ::= "match _" CompStmt ;
 separator NormCase "" ;
@@ -84,7 +84,7 @@ StmtContinue.   Stmt     ::= "continue" ";" ;
 StmtWhile.      Stmt     ::= "while" "(" Expr ")" CompStmt ;
 StmtFor.        Stmt     ::= "for" PIdent "in" Array CompStmt ;
 
-StmtAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
+ExprAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
 
 
 -- A statement is a declaration.
