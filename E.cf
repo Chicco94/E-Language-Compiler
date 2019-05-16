@@ -57,13 +57,13 @@ StmtVarDecl.         Stmt     ::= "var" LExpr Guard ";" ;                   -- V
 StmtVarInit.         Stmt     ::= "var" LExpr Guard ":=" Expr ";" ;         -- Variable initialization.
 StmtVarArrDeclNoDim. Stmt     ::= "var" "[" "]" LExpr Guard ";" ;           -- Variable array without dimension declaration.
 StmtVarArrDecl.      Stmt     ::= "var" "[" Expr "]" LExpr Guard ";" ;     	-- Variable array with dimension declaration.
-StmtVarArrInit.      Stmt     ::= "var" LExpr Guard ":=" Array ";" ;		-- Variable array initialization.
+StmtVarArrInit.      Stmt     ::= "var" "[" "]" LExpr Guard ":=" Array ";" ;		-- Variable array initialization.
 
 StmtDefDecl.         Stmt     ::= "def" LExpr Guard ";" ;                   -- Constant declaration.
 StmtDefInit.         Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;         -- Constant initialization.
 StmtDefArrDeclNoDim. Stmt     ::= "def" "[" "]" LExpr Guard ";" ;           -- Constant array without dimension declaration.
 StmtDefArrDecl.      Stmt     ::= "def" "[" Expr "]" LExpr Guard ";" ;      -- Constant array with dimension declaration.
-StmtDefArrInit.      Stmt     ::= "def" LExpr Guard ":=" Array ";" ;		-- Constant array initialization.
+StmtDefArrInit.      Stmt     ::= "def" "[" "]" LExpr Guard ":=" Array ";" ;		-- Constant array initialization.
 
 
 StmtReturn.     Stmt     ::= PReturn "(" Expr ")" ";" ;
@@ -188,8 +188,8 @@ TypeString. Type ::= "string" ;
 TypeCompound. Type ::= CompoundType ;
 TypePointer.  CompoundType ::= Type "*" ; 
 TypeArray. CompoundType ::= Array ;
--- TypeArrayInterval. Array ::= Expr10 ;           -- Iterable interval.
--- TypeArrayArray.    Array ::= "[" [Expr] "]" ;   -- Iterable array.
+TypeExprArray. Array ::= Expr ;           -- Iterable interval.
+--TypeArrayArray.    Array ::= "[" [Expr] "]" ;   -- Iterable array.
 TypeMultiArray.   Array ::= "[" [Array] "]" ;   -- Iterable array.
 separator Array "," ;
 

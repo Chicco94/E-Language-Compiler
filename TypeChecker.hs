@@ -2,7 +2,6 @@ module TypeChecker where
 
 import Control.Monad
 
---import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Data.List as List
 
@@ -21,30 +20,17 @@ data Mutability = MutConst | MutVar
 data BlockType = NormBlock | FunBlock PIdent Type | IterBlock | SelBlock
   deriving(Eq, Ord, Show, Read)
 
--- Default given primitives.
-defaultPrimitives :: Sig
-defaultPrimitives = 
-  Map.insert "writeInt"    ([(ModEmpty, TypeInt)], TypeVoid) $     -- void writeInt(int i)
-  Map.insert "writeFloat"  ([(ModEmpty, TypeDouble)], TypeVoid) $  -- void writeFloat(double d)
-  Map.insert "writeChar"   ([(ModEmpty, TypeChar)], TypeVoid) $    -- void writeChar(char c)
-  Map.insert "writeString" ([(ModEmpty, TypeString)], TypeVoid) $  -- void writeString(string s)
-  Map.insert "readInt"     ([], TypeInt) $                         -- int readInt()
-  Map.insert "readDouble"  ([], TypeDouble) $                      -- double readFloat()
-  Map.insert "readChar"    ([], TypeChar) $                        -- char readChar()
-  Map.insert "readString"  ([], TypeString) Map.empty              -- string readString()
-
--- Initialize the environment with the default primitives.
-initEnv :: Env
-initEnv = ([defaultPrimitives], [(NormBlock, Map.empty)])
-
--- Given an element 'a' and a list, add this element at the end of the list.
-postAttach :: a -> [a] -> [a]
-postAttach a [] = [a]
-postAttach a (x:xs) = x : postAttach a xs
+-- #######################################
+-- 					Core function:
+-- #######################################
 
 -- Type checking function.
 typeCheck :: Program -> Err (Env, [Program])
 typeCheck prog@(PDefs def) = foldM checkDecl (initEnv, []) def
+
+-- #######################################
+-- 					Check functions:
+-- #######################################
 
 -- Check declaration. 
 checkDecl :: (Env, [Program]) -> Decl -> Err (Env,[Program])
@@ -68,9 +54,10 @@ checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId pident@(P
                                Ok (e', p') -> Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))]) prog)
                                Bad s -> Bad s
                   Bad s -> Bad s
-    GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " has to have a type to be well defined" 
+    GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " must have a type to be well defined" 
 
 -- Check argument(s) declaration.
+-- TODO: check that each expression is declared only once.
 checkArgDecl :: (Env, [Program]) -> [Arg] -> Err (Env, [Program])  
 checkArgDecl (env, prog) [] = Ok (env, prog) 
 checkArgDecl (env@(sig@(x:xs), blocks), prog) (arg@(ArgDecl mod (PIdent pident@(p,ident)) guard):args) = do
@@ -92,17 +79,22 @@ checkDeclStmt (env, prog) stmt =
   case stmt of
     StmtExpr expr                -> checkExpr (env, prog) expr
 
-    --StmtVarDecl lexpr guard      -> checkStmtVarDecl (env, prog) lexpr guard
-    --StmtVarInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutVar
-    --StmtDefInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutConst
+    StmtVarDecl lexpr guard         -> checkStmtDecl (env, prog) lexpr guard MutVar
+    StmtDefDecl lexpr guard         -> checkStmtDecl (env, prog) lexpr guard MutConst
+    StmtVarInit lexpr guard expr    -> checkStmtInit (env, prog) lexpr guard expr MutVar
+    StmtDefInit lexpr guard expr    -> checkStmtInit (env, prog) lexpr guard expr MutConst
+    StmtVarArrDeclNoDim lexpr guard -> checkStmtArrDeclNoDim (env, prog) lexpr guard MutVar
+    StmtDefArrDeclNoDim lexpr guard -> checkStmtArrDeclNoDim (env, prog) lexpr guard MutConst  
+    StmtVarArrDecl expr lexpr guard -> checkStmtArrDecl (env, prog) expr lexpr guard MutVar
+    StmtDefArrDecl expr lexpr guard -> checkStmtArrDecl (env, prog) expr lexpr guard MutConst  
+    --StmtVarArrInit lexpr guard arr  -> checkStmtArrInit (env, prog) lexpr guard arr MutVar
+    --StmtDefArrInit lexpr guard arr  -> checkStmtArrInit (env, prog) lexpr guard arr MutConst
 
     StmtReturn preturn expr      -> checkReturn (env, prog) preturn expr
     StmtNoReturn preturn         -> checkNoReturn (env, prog) preturn
 
     StmtBreak pbreak             -> checkBreak (env, prog) pbreak
---Ok (env, postAttach (PDefs [DeclStmt StmtBreak]) prog)
     StmtContinue pcontinue       -> checkContinue (env, prog) pcontinue
---Ok (env, postAttach (PDefs [DeclStmt StmtContinue]) prog)
     
     SComp compstmt               -> checkSComp (env, prog) compstmt
 
@@ -112,6 +104,7 @@ checkDeclStmt (env, prog) stmt =
     StmtWhile expr cstmt         -> checkWhile (env, prog) expr cstmt
     _ -> Bad "checkStmt: fatal error!"
 
+-- Check if-then-else statement.
 checkIfThenElse :: (Env, [Program]) -> Expr -> CompStmt -> CompStmt -> Err (Env, [Program]) 
 checkIfThenElse (env@(sig@(x:xs), blocks), prog) expr cstmt1 cstmt2 = do
   texpr <- inferExpr env expr
@@ -121,8 +114,9 @@ checkIfThenElse (env@(sig@(x:xs), blocks), prog) expr cstmt1 cstmt2 = do
       (env2, p2) <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), p1) cstmt2
       Ok (env, postAttach (PDefs [DeclStmt (StmtIfThenElse expr (StmtBlock (getDecls p1)) (StmtBlock (getDecls p2)))]) prog)
     else
-      fail $ "checkIfThenElse: texpr != TypeBool"
+      fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
 
+-- Check if-then statement.
 checkIfThen :: (Env, [Program]) -> Expr -> CompStmt -> Err (Env, [Program]) 
 checkIfThen (env@(sig@(x:xs), blocks), prog) expr cstmt = do
   texpr <- inferExpr env expr
@@ -131,20 +125,22 @@ checkIfThen (env@(sig@(x:xs), blocks), prog) expr cstmt = do
       (env1, p1) <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), prog) cstmt
       Ok (env, postAttach (PDefs [DeclStmt (StmtIfThen expr (StmtBlock (getDecls p1)))]) prog)
     else
-      fail $ "checkIfThen: texpr != TypeBool"
+      fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
 
+-- Check return with expression statement.
 checkReturn :: (Env, [Program]) -> PReturn -> Expr -> Err (Env, [Program])
 checkReturn (env@(sigs, blocks), prog) preturn@(PReturn (pr, _)) expr = do
   texpr <- inferExpr env expr
   case findFunBlockAndType blocks of
     Ok(PIdent (pf, fname), tfun) -> 
       if (texpr `isCompatibleWith` tfun) 
-        -- If the type of the expression (texpr) is compatible with the type of the function (tfun), 
+        -- If the type of the returned expression (texpr) is compatible with the type of the function (tfun), 
         -- then the returned type is tfun 
         then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtReturn preturn expr)))]) prog)
         else fail $ show pr ++ ": the returned type is " ++ show texpr ++ ", but function " ++ printTree fname ++ " (declared at " ++ show pf ++ ") has return type " ++ show tfun
     _                            -> fail $ show pr ++ ": the return statement must be inside a function block"
 
+-- Check return without expression statement.
 checkNoReturn :: (Env, [Program]) -> PReturn -> Err (Env, [Program])
 checkNoReturn (env@(sigs, blocks), prog) preturn@(PReturn (pr, _)) = do
   case findFunBlockAndType blocks of
@@ -154,39 +150,28 @@ checkNoReturn (env@(sigs, blocks), prog) preturn@(PReturn (pr, _)) = do
         else fail $ show pr ++ ": the returned type is " ++ show TypeVoid ++ ", but function " ++ printTree fname ++ " (declared at " ++ show pf ++ ") has return type " ++ show tfun
     _                            -> fail $ show pr ++ ": the return statement must be inside a function declaration"
 
--- Find function and type, if exists
-findFunBlockAndType :: [(BlockType, Context)] -> Err (PIdent, Type)
-findFunBlockAndType [] = fail $ "there is no function block declared"
-findFunBlockAndType (block@(blockType, context):blocks) = 
-  case blockType of
-    FunBlock pident t -> Ok (pident, t)
-    _                 -> findFunBlockAndType blocks
-
+-- Check break statement.
 checkBreak :: (Env, [Program]) -> PBreak -> Err (Env, [Program])
 checkBreak (env@(sigs, blocks), prog) pbreak@(PBreak (pb, _)) = do
   case findIterBlock blocks of
     Ok _ -> Ok (env, postAttach (PDefs [DeclStmt (StmtBreak pbreak)]) prog)
     _    -> fail $ show pb ++ ": the break statement must be inside an iteration block"
 
+-- Check continue statement.
 checkContinue :: (Env, [Program]) -> PContinue -> Err (Env, [Program])
 checkContinue (env@(sigs, blocks), prog) pcontinue@(PContinue (pc, _)) = do
   case findIterBlock blocks of
     Ok _ -> Ok (env, postAttach (PDefs [DeclStmt (StmtContinue pcontinue)]) prog)
     _    -> fail $ show pc ++ ": the continue statement must be inside an iteration block"
 
-findIterBlock :: [(BlockType, Context)] -> Err ()
-findIterBlock [] = fail $ "there is no iteration block declared"
-findIterBlock (block@(blockType, context):blocks) = 
-  case blockType of
-    IterBlock -> Ok ()
-    _         -> findIterBlock blocks
-
+-- Check compound statement.
 checkSComp :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
 checkSComp (env@(sigs, blocks), prog) compstmt =
   case extendEnv (((Map.empty:sigs), ((NormBlock, Map.empty):blocks)), prog) compstmt of
     Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (SComp (StmtBlock (getDecls p')))]) prog)
     Bad s       -> Bad s
 
+-- Check while statement.
 checkWhile :: (Env, [Program]) -> Expr -> CompStmt -> Err (Env, [Program])
 checkWhile (env@(xs, blocks@((blockType, context):ys)), prog) expr compstmt = do
   t <- inferExpr env expr
@@ -194,17 +179,75 @@ checkWhile (env@(xs, blocks@((blockType, context):ys)), prog) expr compstmt = do
     then case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
            Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtWhile expr (StmtBlock (getDecls p')))]) prog)
            Bad s       -> Bad s
-    else fail $ "the expression type in the while statement must be boolean"
+    else fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
 
-{- checkStmtInit :: (Env, [Program]) -> LExpr -> Guard -> Expr -> Mutability -> Err (Env, [Program])
+-- Check constant/variable declaration statement.
+checkStmtDecl :: (Env, [Program]) -> LExpr -> Guard -> Mutability -> Err (Env, [Program])
+checkStmtDecl (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard mut = do
+  case guard of
+    GuardType t -> do
+      if t == TypeVoid
+        then fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+        else
+          case lookupVar blocks ident of
+            Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
+            _        -> do case mut of
+                             MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtVarDecl lexpr guard)))]) prog)
+                             MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtDefDecl lexpr guard)))]) prog)
+    GuardVoid -> fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+
+-- Check constant/variable initialization statement.
+checkStmtInit :: (Env, [Program]) -> LExpr -> Guard -> Expr -> Mutability -> Err (Env, [Program])
 checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard expr mut = do
   case guard of
-    GuardType t ->
-      case lookupVar blocks ident of
-        Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
-        _        -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtVarInit lexpr guard expr)))]) prog)
-    GuardVoid -> fail $ show p ++ ": variable " ++ printTree ident ++ " declared as void! this is not allowed!" -}
-  
+    GuardType t -> do
+      if t == TypeVoid
+        then fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+        else 
+          case lookupVar blocks ident of
+            Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
+            _        -> do case mut of
+                             MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtVarInit lexpr guard expr)))]) prog)
+                             MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtDefInit lexpr guard expr)))]) prog)
+    GuardVoid -> fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+
+-- Check constant/variable array without dimension declaration statement.
+checkStmtArrDeclNoDim :: (Env, [Program]) -> LExpr -> Guard -> Mutability -> Err (Env, [Program])
+checkStmtArrDeclNoDim (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard mut = do
+  case guard of
+    GuardType t -> do
+      if t == TypeVoid 
+        then fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+        else
+          case lookupVar blocks ident of
+            Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
+            _        -> do case mut of
+                             MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtVarArrDeclNoDim lexpr guard)))]) prog)
+                             MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtDefArrDeclNoDim lexpr guard)))]) prog)
+    GuardVoid -> fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+
+-- Check constant/variable array with dimension declaration statement.
+checkStmtArrDecl :: (Env, [Program]) -> Expr -> LExpr -> Guard -> Mutability -> Err (Env, [Program])
+checkStmtArrDecl (env@(sig, blocks@((blockType, context):xs)), prog) expr lexpr@(LExprId (PIdent (p, ident))) guard mut = do
+  case inferExpr env expr of
+    Ok TypeInt -> do 
+      case guard of
+        GuardType t -> do
+          if t == TypeVoid 
+            then fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+            else
+              case lookupVar blocks ident of
+                Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
+                _        -> do case mut of
+                                 MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtVarArrDecl expr lexpr guard)))]) prog)
+                                 MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtDefArrDecl expr lexpr guard)))]) prog)
+        GuardVoid -> fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+    _ -> fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must have type " ++ show TypeInt
+
+--checkStmtArrInit (env, prog) lexpr guard arr MutConst
+--checkStmtArrInit :: (Env, [Program]) -> LExpr -> Guard -> Array -> Mutability -> Err (Env, [Program])
+--checkStmtArrInit (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard arr mut = do
+
 
 -- Check assignment.
 checkAssign :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
@@ -229,31 +272,30 @@ checkAssign (env, prog) lexpr op expr = do
     OpPower       -> do checkAssignOp (env, prog)  t1 lexpr op expr  
 
 -- Check assignment with boolean operator.
--- TODO: position
 checkAssignBoolOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignBoolOp (env, prog) t1 lexpr op expr = do
   t2 <- inferExpr env expr
   if (t2 `isCompatibleWith` t1) -- t2 has to be compatible with t1 (i.e., the r-expr with the l-expr)
     then Ok (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-    else fail $ printTree t2 ++ " is not compatible with " ++ printTree t1
+    else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
 
 -- Check assignment operator.
--- TODO: position
 checkAssignOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignOp (env, prog) t1 lexpr op expr = do
   t2 <- inferExpr env expr
   if (t2 `isCompatibleWith` t1)
     then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-    else fail $ printTree t2 ++ " is not compatible with " ++ printTree t1
+    else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
 
 -- Check assignment operator.
--- TODO: position
 checkAssignDiv :: (Env, [Program]) -> Type -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignDiv (env, prog) t1 top lexpr op expr = do
   t2 <- inferExpr env expr
-  if (t1 `isCompatibleWith` top) && (t2 `isCompatibleWith` top)
+  if (t1 `isCompatibleWith` top) && 
+     (t2 `isCompatibleWith` top) && 
+     areCompatible t1 t2 -- it is necessary?
     then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-    else fail $ "(0,0): the type of " ++ printTree lexpr ++ " is " ++ show t1 ++ " and the type of " ++ printTree expr ++ " is " ++ show t2 ++ ", but they must be both " ++ show top
+    else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
 
 -- Check function call.
 checkFunCall :: (Env, [Program]) -> Expr -> Err (Env, [Program])
@@ -337,7 +379,6 @@ checkExpr (env, prog) expr = do
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
     ExprOr e1 e2       -> do t <- inferBoolBinOp env expr e1 e2
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
-    _ -> return (env, prog)
 
 -- Check interval creation.
 {- checkInterval :: (Env, [Program]) -> Expr -> Expr -> Expr -> Err (Env, [Program])
@@ -347,33 +388,10 @@ checkInterval (env, prog) expr e1 e2 = do
   if (t1 == TypeInt) && (t2 == TypeInt) -- only ints are allowed.
     then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr expr)))]) prog)
     else fail $ "only integer intervals allowed!" -}
-  
--- Look for function in signature.
-lookupFun :: [Sig] -> String -> Err ([(Modality, Type)], Type)
-lookupFun [] _ = Bad "function is not declared!"
-lookupFun sig@(x:xs) ident =
-  case Map.lookup ident x of
-    Just t -> Ok t
-    Nothing -> lookupFun xs ident
 
--- Look for variable/constant in blocks.
-lookupVar :: [(BlockType, Context)] -> String -> Err (Mutability, Type)
-lookupVar [] _ = Bad "variable is not declared!"
-lookupVar ((blockType, context):xs) ident = 
-  case Map.lookup ident context of
-    Just (m,t) -> Ok (m,t)
-    Nothing -> lookupVar xs ident
-
--- Add function to signature.
-addFun :: Sig -> String -> [Arg] -> Guard -> Sig
-addFun sig fname args guard = 
-  case guard of
-    GuardType retType -> Map.insert fname ([(mod, t) | (ArgDecl mod _ (GuardType t)) <- args], retType) sig 
-    GuardVoid -> Map.insert fname ([(mod, t) | (ArgDecl mod _ (GuardType t)) <- args], TypeVoid) sig -- procedures
-
--- Add variable/constant to signature.
-addVar :: Context -> (Mutability, String) -> Guard -> Context
-addVar context (m,ident) (GuardType t) = Map.insert ident (m,t) context
+-- #######################################
+-- 					Inference functions:
+-- #######################################
 
 -- Infer (right) expression.
 inferExpr :: Env -> Expr -> Err Type
@@ -385,10 +403,10 @@ inferExpr env expr =
     -- Base expressions (i.e., integers, floats, chars, strings, booleans) 
     ExprTrue _    -> Ok TypeBool
     ExprFalse _   -> Ok TypeBool
-    ExprInt _   -> Ok TypeInt
-    ExprDouble _ -> Ok TypeDouble
-    ExprChar _  -> Ok TypeChar
-    ExprString _ -> Ok TypeString
+    ExprInt _     -> Ok TypeInt
+    ExprDouble _  -> Ok TypeDouble
+    ExprChar _    -> Ok TypeChar
+    ExprString _  -> Ok TypeString
     
     -- Function call.
     ExprFunCall pident args -> inferFunCall env expr
@@ -440,7 +458,15 @@ inferLExpr env@(sig, blocks) lexpr = do
       case lookupVar blocks ident of
         Ok (_,t) -> Ok t
         _ -> fail $ show p ++ ": variable " ++ printTree ident ++ " non defined!"
-    _ -> fail $ "inferLEXpr: fatal error"
+
+    LExprDeref (LDerefExpr le)   -> inferLExpr env le
+    LExprRef (LRefExpr le)       -> inferLExpr env le
+    LExprArr (LArrExpr le re)    -> do tle <- inferLExpr env le
+                                       tre <- inferExpr env re
+                                       if (tre == TypeInt)
+                                         then Ok tle
+                                         else fail $ show (getLExprPosition le) ++ ": the type of the array " ++ printTree le ++ " is " ++ show tle ++ " but the inner expression " ++ printTree re ++ " has type " ++ show tre
+   -- _                                  -> fail $ "inferLEXpr: fatal error"
 
 -- Infer arithmetic unary operator.
 inferArithUnOp :: Env -> Expr -> Expr -> Err Type
@@ -500,6 +526,59 @@ inferBoolBinOp env expr e1 e2 = do
     then Ok TypeBool  
     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
 
+
+-- #######################################
+-- 					Auxiliary functions:
+-- #######################################
+
+-- Default given primitives.
+defaultPrimitives :: Sig
+defaultPrimitives = 
+  Map.insert "writeInt"    ([(ModEmpty, TypeInt)], TypeVoid) $     -- void writeInt(int i)
+  Map.insert "writeFloat"  ([(ModEmpty, TypeDouble)], TypeVoid) $  -- void writeFloat(double d)
+  Map.insert "writeChar"   ([(ModEmpty, TypeChar)], TypeVoid) $    -- void writeChar(char c)
+  Map.insert "writeString" ([(ModEmpty, TypeString)], TypeVoid) $  -- void writeString(string s)
+  Map.insert "readInt"     ([], TypeInt) $                         -- int readInt()
+  Map.insert "readDouble"  ([], TypeDouble) $                      -- double readFloat()
+  Map.insert "readChar"    ([], TypeChar) $                        -- char readChar()
+  Map.insert "readString"  ([], TypeString) Map.empty              -- string readString()
+
+-- Initialize the environment with the default primitives.
+initEnv :: Env
+initEnv = ([defaultPrimitives], [(NormBlock, Map.empty)])
+
+-- Given an element 'a' and a list, add this element at the end of the list.
+postAttach :: a -> [a] -> [a]
+postAttach a [] = [a]
+postAttach a (x:xs) = x : postAttach a xs
+
+-- Look for function in signature.
+lookupFun :: [Sig] -> String -> Err ([(Modality, Type)], Type)
+lookupFun [] _ = Bad "function is not declared!"
+lookupFun sig@(x:xs) ident =
+  case Map.lookup ident x of
+    Just t -> Ok t
+    Nothing -> lookupFun xs ident
+
+-- Look for variable/constant in blocks.
+lookupVar :: [(BlockType, Context)] -> String -> Err (Mutability, Type)
+lookupVar [] _ = Bad "variable is not declared!"
+lookupVar ((blockType, context):xs) ident = 
+  case Map.lookup ident context of
+    Just (m,t) -> Ok (m,t)
+    Nothing -> lookupVar xs ident
+
+-- Add function to signature.
+addFun :: Sig -> String -> [Arg] -> Guard -> Sig
+addFun sig fname args guard = 
+  case guard of
+    GuardType retType -> Map.insert fname ([(mod, t) | (ArgDecl mod _ (GuardType t)) <- args], retType) sig 
+    GuardVoid -> Map.insert fname ([(mod, t) | (ArgDecl mod _ (GuardType t)) <- args], TypeVoid) sig -- procedures
+
+-- Add variable/constant to signature.
+addVar :: Context -> (Mutability, String) -> Guard -> Context
+addVar context (m,ident) (GuardType t) = Map.insert ident (m,t) context
+
 -- Type compatibilities:
 -- bool < char < int < float
 --             < string
@@ -555,6 +634,58 @@ getExprPosition e =
     ExprString (PString (p, _)) -> p
     ExprTrue (PTrue (p, _))     -> p
     ExprFalse (PFalse (p, _))   -> p
+
+    ExprAssign lexpr op rexpr -> getLExprPosition lexpr
+    LeftExpr lexpr            -> getLExprPosition lexpr
+
+    ExprBoolNot rexpr         -> getExprPosition rexpr
+    ExprNegation rexpr        -> getExprPosition rexpr
+    ExprAddition rexpr        -> getExprPosition rexpr
+    
+    ExprPower e1 e2           -> getExprPosition e1
+    ExprMul e1 e2             -> getExprPosition e1
+    ExprDoubleDiv e1 e2       -> getExprPosition e1
+    ExprIntDiv e1 e2          -> getExprPosition e1
+    ExprReminder e1 e2        -> getExprPosition e1
+    ExprModulo e1 e2          -> getExprPosition e1
+
+    ExprPlus e1 e2            -> getExprPosition e1
+    ExprMinus e1 e2           -> getExprPosition e1
+ 
+    ExprLt e1 e2              -> getExprPosition e1
+    ExprGt e1 e2              -> getExprPosition e1
+    ExprLtEq e1 e2            -> getExprPosition e1
+    ExprGtEq e1 e2            -> getExprPosition e1
+
+    ExprEq e1 e2              -> getExprPosition e1
+    ExprNeq e1 e2             -> getExprPosition e1
+
+    ExprAnd e1 e2             -> getExprPosition e1
+    ExprOr e1 e2              -> getExprPosition e1
+ 
+getLExprPosition :: LExpr -> (Int, Int)
+getLExprPosition e =
+  case e of
+    LExprId (PIdent (p, ident)) -> p
+    LExprDeref (LDerefExpr le)  -> getLExprPosition le
+    LExprRef (LRefExpr le)      -> getLExprPosition le
+    LExprArr (LArrExpr le re)   -> getLExprPosition le    
+
+-- Find function block and its type, if exists.
+findFunBlockAndType :: [(BlockType, Context)] -> Err (PIdent, Type)
+findFunBlockAndType [] = fail $ "there is no function block declared"
+findFunBlockAndType (block@(blockType, context):blocks) = 
+  case blockType of
+    FunBlock pident t -> Ok (pident, t)
+    _                 -> findFunBlockAndType blocks
+
+-- Find iteration block, if exists.
+findIterBlock :: [(BlockType, Context)] -> Err ()
+findIterBlock [] = fail $ "there is no iteration block declared"
+findIterBlock (block@(blockType, context):blocks) = 
+  case blockType of
+    IterBlock -> Ok ()
+    _         -> findIterBlock blocks
 
 extendEnv :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
 extendEnv (env@(s, y), prog) (StmtBlock decls) = do 
