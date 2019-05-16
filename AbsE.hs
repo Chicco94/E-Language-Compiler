@@ -9,7 +9,8 @@ module AbsE where
 
 newtype PIdent = PIdent ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
-data Program = PDefs [Decl]
+
+data Program = PDefs [Decl] | TACProgram [TAC]
   deriving (Eq, Ord, Show, Read)
 
 data Decl
@@ -137,3 +138,42 @@ data CompoundType = TypePointer Type | TypeArray Array
 data Array = TypeMultiArray [Array]
   deriving (Eq, Ord, Show, Read)
 
+data Label = Label (String,Integer)
+  deriving (Eq, Ord, Show, Read)
+
+-- temporal variables: 't'id_numeber
+data Temp = Temp (String,(Int,Int),Type)
+  deriving (Eq, Ord, Show, Read)
+-- user variables: var_name@line_number
+data Var  = Var  (String,(Int,Int),Type)
+  deriving (Eq, Ord, Show, Read)
+
+data TAC 
+  = AssignIntTemp   Temp Integer
+  | AssignChrTemp   Temp Char
+  | AssignBoolTemp  Temp Bool
+  | AssignFloatTemp Temp Float
+
+  | AssignIntVar    Var  Integer
+  | AssignChrVar    Var  Char
+  | AssignBoolVar   Var  Bool
+  | AssignFloatVar  Var  Float
+
+  | AssignT2V Var Temp
+  | AssignT2T Temp Temp
+  | AssignV2T Temp Var
+
+  | BinOp AssignOperator Temp Temp Temp
+  | UnaryOp UnaryOp Temp Temp
+  | Goto Label
+  | IfNot Temp Label
+  | L Label
+  | Noop
+  deriving (Eq, Ord, Show, Read)
+
+data UnaryOp
+-- Assign
+  = UOpMinus
+-- Logical
+  | UOpNegate
+  deriving (Eq, Ord, Show, Read)

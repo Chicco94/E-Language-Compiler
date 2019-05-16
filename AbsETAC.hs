@@ -9,10 +9,11 @@ newtype Label = Label (String,Integer)
 data Temp = Temp (String,(Int,Int),Type)
   deriving (Eq, Ord, Show, Read)
 -- user variables: var_name@line_number
-data Var = Var (String,(Int,Int),Type)
+data Var  = Var  (String,(Int,Int),Type)
   deriving (Eq, Ord, Show, Read)
 
-type TACProgram = [TAC]
+data TACProgram = TACProgram [TAC]
+  deriving (Eq, Ord, Show, Read)
 
 -- presenti in AbsE
 -- data Type
@@ -30,13 +31,20 @@ type TACProgram = [TAC]
 -- deriving (Eq, Ord, Show, Read)
 
 data TAC 
-    = AssignInt   Temp Integer
-    | AssignChr   Temp Char
-    | AssignBool  Temp Bool
-    | AssignFloat Temp Float
-    | AssignVar Var Temp
-    | AssignTemp Temp Temp
+    = AssignIntTemp   Temp Integer
+    | AssignChrTemp   Temp Char
+    | AssignBoolTemp  Temp Bool
+    | AssignFloatTemp Temp Float
+
+    | AssignIntVar    Var  Integer
+    | AssignChrVar    Var  Char
+    | AssignBoolVar   Var  Bool
+    | AssignFloatVar  Var  Float
+
+    | AssignT2V Var Temp
+    | AssignT2T Temp Temp
     | AssignV2T Temp Var
+
     | BinOp Op Temp Temp Temp
     | UnaryOp UnaryOp Temp Temp
     | Goto Label

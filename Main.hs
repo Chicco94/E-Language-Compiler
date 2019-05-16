@@ -12,8 +12,8 @@ import SkelE
 import PrintE
 import AbsE
 
--- import TypeChecker
--- import ThreeAddressCode
+import TypeChecker
+import ThreeAddressCode
 
 
 import ErrM
@@ -38,26 +38,29 @@ run v p s = let ts = myLLexer s in case p ts of
                           putStrLn s
                           exitFailure
            Ok  tree -> do putStrLn "\nParse Successful!"
-                          showTree v tree
+                          showProgram v "\n[Abstract Syntax]\n\n" tree
+                          showTree v "\n[Abstract Tree]\n\n" tree
                           putStrLn "[Type Checker]"
                           case typeCheck tree of
                               Bad err -> do putStrLn err
                                             exitFailure
-                              Ok (env,prog) -> do putStrLn "Correct Typing"
-                                                  showAnnotatedTree v prog
-                                                  --putStrV v $ printTree prog 
+                              Ok (env,prog) -> do putStrLn "\nCorrect Typing!"
+                                                  showProgram v "\n[Annotated Program]\n\n" prog
+                                                  showTree v "\n[Annotated tree]\n\n" prog
+                                                  putStrLn "[Three Address Code]"
+                                                  case generateTAC prog of
+                                                      Bad err -> do putStrLn err
+                                                                    exitFailure
+                                                      Ok tacprog -> do  showProgram v "\n[TAC]\n\n" tacprog
+                                                                        --showTree v "\n[TAC]\n\n" tacprog
                                                                         exitSuccess
 
 
-showTree :: (Show a, Print a) => Int -> a -> IO ()
-showTree v tree
- = do
-      putStrV v $ "\n[Abstract Syntax]\n\n" ++ show tree
-      putStrV v $ "\n[Linearized tree]\n\n" ++ printTree tree
+showTree :: (Show a, Print a) => Int -> String -> a -> IO ()
+showTree v string tree = putStrV v $ string ++ printTree tree
 
-showAnnotatedTree :: (Show a, Print a) => Int -> a -> IO()
-showAnnotatedTree v prog = do
-  putStrV v $ "\n[Annotated tree]\n\n" ++ printTree prog
+showProgram :: (Show a, Print a) => Int -> String -> a -> IO()
+showProgram v string prog = putStrV v $ string ++ show prog
 
 usage :: IO ()
 usage = do

@@ -5,36 +5,45 @@ import Control.Monad
 import qualified Data.Map as Map
 
 import AbsE
-import AbsETAC
 import PrintE
 import ErrM
 
--- contiene cosa ho valorizzato finora
--- test 1, solo interi
-type Context   = Map.Map String Integer
+  -- Given an element 'a' and a list, add this element at the end of the list.
+postAttach :: a -> [a] -> [a]
+postAttach a [] = [a]
+postAttach a (x:xs) = x : postAttach a xs
 
- -- Initialize the context with an empty map.
-generateTAC :: Program -> Err Context
-generateTAC prog@(PDefs def) = foldM generateInstruction(Integer) def
+ -- Initialize the tacprogram with an empty list.
+generateTAC :: [Program] -> Err [Program]
+generateTAC progs = generateTAC_int (PDefs (initTAC progs))
 
-
-generateInstruction :: Context -> Decl -> Context
-generateInstruction context instruction = 
-    case instruction of
-        --DeclFun fun -> generateDeclFunc context fun
-        --DeclStmt stmt -> generateDeclStmt context stmt
-        _ -> context-- TODO
+initTAC :: [Program] -> [Decl]
+initTAC [] = []
+initTAC (prog@(PDefs defs):progs) = defs ++ initTAC progs 
 
 
-generateDeclStmt :: Context -> Stmt -> Context
-generateDeclStmt context stmt =
-    case stmt of
-        StmtVarInit lexpr@(LExprId (PIdent (pos,name))) guard expr -> do 
-            case guard of
-                _ -> context
-        
+generateTAC_int :: Program -> Err [Program]
+generateTAC_int prog@(PDefs defs) = Ok $ [prog] --foldM generateInstruction [] defs
+
+
+
+{-
+generateInstruction :: [Program] -> Decl -> Err [Program]
+generateInstruction program ins = 
+    case ins of
+        TypedDecl adecl@(ADecl type_ decl) -> generateDeclStmt program type_ decl
+        --DeclFun   fdecl@(ADecl t decl) -> generateDeclStmt program t decl
+        --DeclStmt  sdecl@(ADecl t decl) -> generateDeclStmt program t decl
+        _ -> fail "generateInstruction" -- TODO
+
+generateDeclStmt :: [Program] -> Type -> Decl -> Err [Program]
+generateDeclStmt program type_ decl =
+    case decl of
+        DeclStmt(StmtInit lexpr@(LExprId (PIdent (pos,name))) guard e@(ExprInt val)) -> Ok $ (ProgramTAC [ (AssignIntVar (Var (name,pos,type_)) val)]) ++ program
+        _ -> fail "generateDeclStmt"
 
 
 -- TODO? define function declaretion more efficiently
 generateDeclFunc :: Context -> LExpr -> [Arg] -> Guard -> [Stmt] -> Context
 generateDeclFunc context lexpr@(LExprId (PIdent (pos, fname))) args guard@(GuardType t) stmts = context
+-}

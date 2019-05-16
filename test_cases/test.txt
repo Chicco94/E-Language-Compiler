@@ -12,13 +12,13 @@ def factorial(n :int) :int{
         }
     }
 }
-
+/**
 def test_function(array_of_tests, function) :bool{
     for test in array_of_tests{
         print( function(test) );
     }
     return (True);
-}
+}*/
 
 def main() :int{
     var test_start :int := 0;

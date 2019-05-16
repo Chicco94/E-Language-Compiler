@@ -112,9 +112,9 @@ module TypeChecker where
     case stmt of
       StmtExpr expr                -> checkExpr (env, prog) expr
   
-      --StmtVarDecl lexpr guard      -> checkStmtVarDecl (env, prog) lexpr guard
-      StmtVarInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutVar
-      StmtDefInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutConst
+      --StmtDecl lexpr guard      -> checkStmtDecl (env, prog) lexpr guard
+      StmtInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutVar
+      --StmtDefInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutConst
   
       StmtReturn expr              -> checkReturn (env, prog) expr
       StmtNoReturn                 -> checkNoReturn (env, prog)
@@ -184,7 +184,7 @@ module TypeChecker where
       GuardType t ->
         case lookupVar blocks ident of
           Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
-          _        -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtVarInit lexpr guard expr)))]) prog)
+          _        -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtInit lexpr guard expr)))]) prog)
       GuardVoid -> fail $ show p ++ ": variable " ++ printTree ident ++ " declared as void! this is not allowed!"
     
   
@@ -286,8 +286,8 @@ module TypeChecker where
                                return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
   
       -- Interval creation. (Recall that an interval is an iterable.)
-      ExprIntInc e1 e2   -> checkInterval (env, prog) expr e1 e2
-      ExprIntExc e1 e2   -> checkInterval (env, prog) expr e1 e2
+      --ExprIntInc e1 e2   -> checkInterval (env, prog) expr e1 e2
+      --ExprIntExc e1 e2   -> checkInterval (env, prog) expr e1 e2
   
       -- Relational binary operators.
       ExprLt e1 e2       -> do t <- inferRelBinOp env expr e1 e2

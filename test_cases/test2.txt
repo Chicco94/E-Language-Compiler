@@ -1,0 +1,154 @@
+var a :int := 0;
+var d :bool := true;
+{var b :int := 20;
+    {var c :int := 0;}
+}
+//c := a + b;
+
+/*
+[   var a :int := 0;
+    PDefs [
+        TypedDecl
+        (
+            ADecl 
+            TypeInt 
+            (DeclStmt 
+                (StmtInit 
+                    (LExprId (PIdent ((1,5),"a"))) 
+                    (GuardType TypeInt) 
+                    (ExprInt 0)
+                )
+            )
+        )
+    ],PDefs [
+        TypedDecl (
+            ADecl 
+            TypeBool (
+                DeclStmt (
+                    StmtInit 
+                    (LExprId (PIdent ((2,5),"d")))
+                    (GuardType TypeBool)
+                    ExprTrue
+                )
+            )
+        )
+    ],
+    {
+        var b :int := 20;
+        {
+            var c :int := 0;
+        }
+    }
+    ,PDefs [
+        DeclStmt (
+            SComp (
+                var b :int := 20;
+                {
+                    var c :int := 0;
+                }
+                StmtBlock [
+                    var b :int := 20;
+                    TypedDecl (
+                        ADecl 
+                        TypeInt (
+                            DeclStmt (
+                                StmtInit 
+                                (LExprId (PIdent ((2,6),"b"))) 
+                                (GuardType TypeInt) 
+                                (ExprInt 20)
+                                )
+                            )
+                        )
+                    {
+                        var c :int := 0;
+                    }
+                    ,DeclStmt (
+                        SComp (
+                            var c :int := 0;
+                            StmtBlock [
+                                var c :int := 0;
+                                TypedDecl (
+                                    ADecl 
+                                    TypeInt (
+                                        DeclStmt (
+                                            StmtInit 
+                                            (LExprId (PIdent ((3,10),"c"))) 
+                                            (GuardType TypeInt) 
+                                            (ExprInt 0)
+                                        )
+                                    )
+                                )
+                            ]
+                        )
+                    )
+                ]
+            )
+        )
+    ]
+]
+
+
+[
+    PDefs [
+        TypedDecl 
+            (ADecl 
+            TypeInt 
+                (DeclStmt 
+                    (StmtInit 
+                        (LExprId (PIdent ((1,5),"a"))) 
+                        (GuardType TypeInt) 
+                        (ExprInt 0)
+                    )
+                )
+            )
+        ,TypedDecl 
+            (ADecl 
+            TypeBool 
+                (DeclStmt 
+                    (StmtInit 
+                        (LExprId (PIdent ((2,5),"d")))
+                        (GuardType TypeBool) 
+                        ExprTrue
+                    )
+                )
+            )
+        ,DeclStmt 
+            (SComp 
+                (StmtBlock [
+                    TypedDecl 
+                        (ADecl 
+                        TypeInt 
+                            (DeclStmt 
+                                (StmtInit 
+                                    (LExprId (PIdent ((3,6),"b"))) 
+                                    (GuardType TypeInt) 
+                                    (ExprInt 20)
+                                )
+                            )
+                        )
+                    ,DeclStmt 
+                        (SComp 
+                            (StmtBlock [
+                                TypedDecl 
+                                    (ADecl 
+                                    TypeInt 
+                                        (DeclStmt 
+                                            (StmtInit 
+                                                (LExprId (PIdent ((4,10),"c"))) 
+                                                (GuardType TypeInt) 
+                                                (ExprInt 0)
+                                            )
+                                        )
+                                    )
+                                ]
+                            )
+                        )
+                    ]
+                )
+            )
+        ]
+    ]
+
+
+
+*/
