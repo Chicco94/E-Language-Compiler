@@ -52,7 +52,7 @@ run v p s = let ts = myLLexer s in case p ts of
                                                       Bad err -> do putStrLn err
                                                                     exitFailure
                                                       Ok tacprog -> do  showProgram v "\n[TAC]\n\n" tacprog
-                                                                        --showTree v "\n[TAC]\n\n" tacprog
+                                                                        showTree v "\n[TAC]\n\n" tacprog
                                                                         exitSuccess
 
 

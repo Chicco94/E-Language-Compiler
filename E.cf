@@ -182,7 +182,7 @@ TypeCompound. Type ::= CompoundType ;
 TypePointer.  CompoundType ::= Type "*" ; 
 TypeArray. CompoundType ::= Array ;
 -- TypeArrayInterval. Array ::= Expr10 ;           -- Iterable interval.
--- TypeArrayArray.    Array ::= "[" [Expr] "]" ;   -- Iterable array.
+TypeArrayArray.    Array ::= "[" [Expr] "]" ;   -- Iterable array.
 TypeMultiArray.   Array ::= "[" [Array] "]" ;   -- Iterable array.
 separator Array "," ;
 
