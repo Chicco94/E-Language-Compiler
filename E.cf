@@ -1,16 +1,16 @@
+position token PTrue 't' 'r' 'u' 'e' ;
+position token PFalse 'f' 'a' 'l' 's' 'e' ;
+
 -- Position to "return" statement.
 position token PReturn 'r' 'e' 't' 'u' 'r' 'n' ;
 
 -- Position to ident.
-position token PIdent (letter (letter|digit|'_'|'\'')*) ;
+position token PIdent (letter (letter | digit | '_' | '\'')*) ;
 
--- Position to basic types.
-position token PBool 'b' 'o' 'o' 'l' ;				-- bool
-position token PInt 'i' 'n' 't' ;					-- int
-position token PDouble 'd' 'o' 'u' 'b' 'l' 'e' ;	-- double
-position token PChar 'c' 'h' 'a' 'r' ;				-- char
-position token PString 's' 't' 'r' 'i' 'n' 'g' ;	-- string
-position token PVoid 'v' 'o' 'i' 'd' ;				-- void
+position token PInteger digit+ ;
+position token PDouble digit+ '.' digit+ ;
+position token PChar '\'' char '\'' ;
+position token PString '"' char+ '"' ;
 
 -- A program is a sequence of declarations.
 PDefs.     Program ::= [Decl] ;
@@ -96,7 +96,6 @@ DeclStmt.       Decl ::= Stmt ;
 
 
 -- (Left) Expressions
-
 LExprId.        LExpr ::= PIdent ;
 LExprDeref.     LExpr ::= Deref ;
 LExprRef.       LExpr ::= Ref ;
@@ -112,15 +111,14 @@ LArrExpr.       Arr   ::= LExpr "[" Expr "]";
 --coercions LExpr 1;
 --_. LExpr ::= "(" LExpr ")" ;
 
-
 -- (Right) Expressions
 LeftExpr.     Expr17 ::= LExpr ;
-ExprInt.      Expr16 ::= Integer ;
-ExprDouble.   Expr16 ::= Double ;
-ExprChar.     Expr16 ::= Char ;
-ExprString.   Expr16 ::= String ;
-ExprTrue.     Expr16 ::= "true" ;
-ExprFalse.    Expr16 ::= "false" ;
+ExprInt.      Expr16 ::= PInteger ;
+ExprDouble.   Expr16 ::= PDouble ;
+ExprChar.     Expr16 ::= PChar ;
+ExprString.   Expr16 ::= PString ;
+ExprTrue.     Expr16 ::= PTrue ;
+ExprFalse.    Expr16 ::= PFalse ;
 
 ExprFunCall.  Expr15 ::= PIdent "(" [Expr] ")" ;
 

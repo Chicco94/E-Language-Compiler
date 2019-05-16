@@ -260,8 +260,8 @@ checkExpr (env, prog) expr = do
     ExprDouble dbl           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeDouble (DeclStmt (StmtExpr (ExprDouble dbl))))]) prog)
     ExprChar chr             -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeChar (DeclStmt (StmtExpr (ExprChar chr))))]) prog)
     ExprString str           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeString (DeclStmt (StmtExpr (ExprString str))))]) prog)
-    ExprTrue                 -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr ExprTrue)))]) prog)
-    ExprFalse                -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr ExprFalse)))]) prog)
+    ExprTrue ptrue           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprTrue ptrue))))]) prog)
+    ExprFalse pfalse         -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprFalse pfalse))))]) prog)
 
     -- Function call.
     ExprFunCall pident args  -> do checkFunCall (env, prog) expr
@@ -363,11 +363,11 @@ inferExpr env expr =
     LeftExpr lexpr -> inferLExpr env lexpr 
 
     -- Base expressions (i.e., integers, floats, chars, strings, booleans) 
-    ExprTrue     -> Ok TypeBool
-    ExprFalse    -> Ok TypeBool
-    ExprInt _    -> Ok TypeInt
+    ExprTrue _    -> Ok TypeBool
+    ExprFalse _   -> Ok TypeBool
+    ExprInt _   -> Ok TypeInt
     ExprDouble _ -> Ok TypeDouble
-    ExprChar _   -> Ok TypeChar
+    ExprChar _  -> Ok TypeChar
     ExprString _ -> Ok TypeString
     
     -- Function call.
@@ -409,8 +409,8 @@ inferFunCall env@(sig, blocks) (ExprFunCall (PIdent pident@(p,ident)) args) = do
     Ok (mods,t) -> do
       if length args == length mods
         then Ok t
-        else fail $ show p ++ ": function '" ++ printTree ident ++ "' doesn't match its parameters"
-    _ -> fail $ show p ++ ": function '" ++ printTree ident ++ "' not defined!" 
+        else fail $ show p ++ ": function " ++ printTree ident ++ " doesn't match its parameters"
+    _ -> fail $ show p ++ ": function " ++ printTree ident ++ " not defined!" 
 
 -- Infer left expression.
 inferLExpr :: Env -> LExpr -> Err Type
@@ -419,7 +419,7 @@ inferLExpr env@(sig, blocks) lexpr = do
     LExprId (PIdent (p, ident)) -> 
       case lookupVar blocks ident of
         Ok (_,t) -> Ok t
-        _ -> fail $ show p ++ ": variable '" ++ printTree ident ++ "' non defined!"
+        _ -> fail $ show p ++ ": variable " ++ printTree ident ++ " non defined!"
     _ -> fail $ "inferLEXpr: fatal error"
 
 -- Infer arithmetic unary operator.
@@ -428,7 +428,7 @@ inferArithUnOp env expr e = do
   t <- inferExpr env e
   if (t == TypeInt) || (t == TypeDouble) -- only ints and floats are allowed
     then Ok t
-    else fail $ printTree t ++ " is not " ++ show [TypeInt, TypeDouble]
+    else fail $ show (getExprPosition e) ++ ": " ++ printTree e ++ " has type " ++ show t ++ " which must be " ++ show [TypeInt, TypeDouble]
 
 -- Infer arithmetic binary operator.
 inferArithBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
@@ -439,9 +439,7 @@ inferArithBinOp env expr e1 e2 = do
      (t2 `isCompatibleWithAny` [TypeInt, TypeDouble]) &&
      areCompatible t1 t2
      then getMostGeneric t1 t2
-     else fail $ "\n\t- invalid operands in expressions (" ++ filter (/= '\n') (printTree e1) ++
-       ") and (" ++ filter (/= '\n') (printTree e2) ++ ") of types '" ++ printTree t1 ++ "' and '" ++ printTree t2 ++
-       "'\n\t- in expression: (" ++ filter (/= '\n') (printTree expr) ++ ")" 
+     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
 
 -- Infer relational binary operator.
 inferRelBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
@@ -452,9 +450,7 @@ inferRelBinOp env expr e1 e2 = do
      (t2 `isCompatibleWithAny` [TypeInt, TypeDouble, TypeChar, TypeString]) &&  -- the same as above
      areCompatible t1 t2
      then Ok TypeBool
-     else fail $ "\n\t- invalid operands in expressions (" ++ filter (/= '\n') (printTree e1) ++
-       ") and (" ++ filter (/= '\n') (printTree e2) ++ ") of types '" ++ printTree t1 ++ "' and '" ++ printTree t2 ++
-       "'\n\t- in expression: (" ++ filter (/= '\n') (printTree expr) ++ ")"
+     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
 
 -- Infer boolean unary operator.
 inferBoolUnOp :: Env -> Expr -> Expr -> Err Type
@@ -462,7 +458,7 @@ inferBoolUnOp env expr e = do
   t <- inferExpr env e
   if (t == TypeBool) -- only booleans are allowed
     then Ok t
-    else fail $ printTree t ++ " is not Boolean!"
+    else fail $ show (getExprPosition e) ++ ": " ++ printTree e ++ " has type " ++ show t ++ " which must be boolean"
 
 -- Infer boolean binary operator.
 inferBoolBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
@@ -471,9 +467,7 @@ inferBoolBinOp env expr e1 e2 = do
   t2 <- inferExpr env e2
   if (t1 == TypeBool) && (t2 == TypeBool) -- only booleans are allowed
     then Ok TypeBool  
-    else fail $ "\n\t- invalid operands in expressions (" ++ filter (/= '\n') (printTree e1) ++
-      ") and (" ++ filter (/= '\n') (printTree e2) ++ ") of types '" ++ printTree t1 ++ "' and '" ++ printTree t2 ++
-      "'\n\t- in expression: (" ++ filter (/= '\n') (printTree expr) ++ ")"
+    else fail $ "invalid type operands: " ++ filter (/= '\n') (printTree e1) ++ " " ++ show (getExprPosition e1) ++ " has type " ++ show t1 ++ " and " ++ filter (/= '\n') (printTree e2) ++ " " ++ show (getExprPosition e2)  ++ " has type " ++ show t2
 
 -- Type compatibilities:
 -- bool < char < int < float
@@ -514,3 +508,13 @@ mod `isCompatibleWithMutability` mut
   | mod == ModDef && mut == MutConst = True  -- if the argument is a constant defined as constant, then it is ok
   | mod == ModDef && mut == MutVar   = True  -- if the argument is a constant that is defined as variable, then it is ok
   | otherwise                        = False -- otherwise, not compatible
+
+getExprPosition :: Expr -> (Int, Int)
+getExprPosition e =
+  case e of
+    ExprInt (PInteger (p, _))   -> p
+    ExprDouble (PDouble (p, _)) -> p
+    ExprChar (PChar (p, _))     -> p
+    ExprString (PString (p, _)) -> p
+    ExprTrue (PTrue (p, _))     -> p
+    ExprFalse (PFalse (p, _))   -> p
