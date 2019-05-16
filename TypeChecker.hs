@@ -99,8 +99,10 @@ checkDeclStmt (env, prog) stmt =
     StmtReturn preturn expr      -> checkReturn (env, prog) preturn expr
     StmtNoReturn preturn         -> checkNoReturn (env, prog) preturn
 
-    StmtBreak                    -> Ok (env, postAttach (PDefs [DeclStmt StmtBreak]) prog)
-    StmtContinue                 -> Ok (env, postAttach (PDefs [DeclStmt StmtContinue]) prog)
+    StmtBreak pbreak             -> checkBreak (env, prog) pbreak
+--Ok (env, postAttach (PDefs [DeclStmt StmtBreak]) prog)
+    StmtContinue pcontinue       -> checkContinue (env, prog) pcontinue
+--Ok (env, postAttach (PDefs [DeclStmt StmtContinue]) prog)
     
     SComp compstmt               -> checkSComp (env, prog) compstmt
 
@@ -134,18 +136,18 @@ checkIfThen (env@(sig@(x:xs), blocks), prog) expr cstmt = do
 checkReturn :: (Env, [Program]) -> PReturn -> Expr -> Err (Env, [Program])
 checkReturn (env@(sigs, blocks), prog) preturn@(PReturn (pr, _)) expr = do
   texpr <- inferExpr env expr
-  case findFunType blocks of
+  case findFunBlockAndType blocks of
     Ok(PIdent (pf, fname), tfun) -> 
       if (texpr `isCompatibleWith` tfun) 
         -- If the type of the expression (texpr) is compatible with the type of the function (tfun), 
         -- then the returned type is tfun 
         then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtReturn preturn expr)))]) prog)
         else fail $ show pr ++ ": the returned type is " ++ show texpr ++ ", but function " ++ printTree fname ++ " (declared at " ++ show pf ++ ") has return type " ++ show tfun
-    _                            -> fail $ show pr ++ ": the return statement must be inside a function declaration"
+    _                            -> fail $ show pr ++ ": the return statement must be inside a function block"
 
 checkNoReturn :: (Env, [Program]) -> PReturn -> Err (Env, [Program])
 checkNoReturn (env@(sigs, blocks), prog) preturn@(PReturn (pr, _)) = do
-  case findFunType blocks of
+  case findFunBlockAndType blocks of
     Ok (PIdent (pf, fname), tfun) ->
       if (tfun == TypeVoid)
         then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtNoReturn preturn)))]) prog)
@@ -153,12 +155,31 @@ checkNoReturn (env@(sigs, blocks), prog) preturn@(PReturn (pr, _)) = do
     _                            -> fail $ show pr ++ ": the return statement must be inside a function declaration"
 
 -- Find function and type, if exists
-findFunType :: [(BlockType, Context)] -> Err (PIdent, Type)
-findFunType [] = fail $ "there is no function block declared"
-findFunType (block@(blockType, context):blocks) = 
+findFunBlockAndType :: [(BlockType, Context)] -> Err (PIdent, Type)
+findFunBlockAndType [] = fail $ "there is no function block declared"
+findFunBlockAndType (block@(blockType, context):blocks) = 
   case blockType of
     FunBlock pident t -> Ok (pident, t)
-    _                 -> findFunType blocks
+    _                 -> findFunBlockAndType blocks
+
+checkBreak :: (Env, [Program]) -> PBreak -> Err (Env, [Program])
+checkBreak (env@(sigs, blocks), prog) pbreak@(PBreak (pb, _)) = do
+  case findIterBlock blocks of
+    Ok _ -> Ok (env, postAttach (PDefs [DeclStmt (StmtBreak pbreak)]) prog)
+    _    -> fail $ show pb ++ ": the break statement must be inside an iteration block"
+
+checkContinue :: (Env, [Program]) -> PContinue -> Err (Env, [Program])
+checkContinue (env@(sigs, blocks), prog) pcontinue@(PContinue (pc, _)) = do
+  case findIterBlock blocks of
+    Ok _ -> Ok (env, postAttach (PDefs [DeclStmt (StmtContinue pcontinue)]) prog)
+    _    -> fail $ show pc ++ ": the continue statement must be inside an iteration block"
+
+findIterBlock :: [(BlockType, Context)] -> Err ()
+findIterBlock [] = fail $ "there is no iteration block declared"
+findIterBlock (block@(blockType, context):blocks) = 
+  case blockType of
+    IterBlock -> Ok ()
+    _         -> findIterBlock blocks
 
 checkSComp :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
 checkSComp (env@(sigs, blocks), prog) compstmt =
