@@ -1,5 +1,12 @@
--- Position to ident.
-position token PIdent (letter (letter|digit|'_'|'\'')*) ;
+-- Position tokens, that is, ((Int,Int), Token)
+position token PTrue 't' 'r' 'u' 'e' ;							-- true
+position token PFalse 'f' 'a' 'l' 's' 'e' ;						-- false
+position token PReturn 'r' 'e' 't' 'u' 'r' 'n' ;				-- return
+position token PIdent (letter (letter | digit | '_' | '\'')*) ;	-- function and variable names
+position token PInteger digit+ ;								-- integer
+position token PDouble digit+ '.' digit+ ;						-- double
+position token PChar '\'' char '\'' ;							-- char
+position token PString '"' char+ '"' ;							-- string
 
 -- Position to "return" statement.
 position token PReturn 'r' 'e' 't' 'u' 'r' 'n' ;
@@ -28,7 +35,7 @@ internal TypedDecl. Decl ::= AnnotatedDecl ;
 
 
 -- A program may containt (C-like) comments, which are ignored by the parser.
-comment "//" ;
+comment "#" ;
 comment "/*" "*/" ;
 
 
@@ -68,8 +75,8 @@ StmtIterDeclD.     Stmt     ::= "def" "[" Expr "]" LExpr Guard ";" ;         -- 
 StmtArrDeclD.      Stmt     ::= "def" LExpr Guard ":=" Array ";" ;
 
 
-StmtReturn.     Stmt     ::= "return" "(" Expr ")" ";" ;
-StmtNoReturn.   Stmt     ::= "return" ";" ;
+StmtReturn.     Stmt     ::= PReturn "(" Expr ")" ";" ;
+StmtNoReturn.   Stmt     ::= PReturn ";" ;
 
 
 StmtBlock.      CompStmt ::= "{" [Decl] "}" ;
@@ -78,7 +85,7 @@ SComp.          Stmt ::= CompStmt ;
 
 StmtIfThenElse. Stmt     ::= "if" "(" Expr ")" CompStmt "else" CompStmt ;
 StmtIfThen.     Stmt     ::= "if" "(" Expr ")" CompStmt ;
-SSwitchCase.    Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
+StmtSwitchCase.    Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
 CaseNormal.     NormCase ::= "match" Expr CompStmt ;
 CaseDefault.    DfltCase ::= "match _" CompStmt ;
 separator NormCase "" ;
@@ -89,7 +96,7 @@ StmtContinue.   Stmt     ::= "continue" ";" ;
 StmtWhile.      Stmt     ::= "while" "(" Expr ")" CompStmt ;
 StmtFor.        Stmt     ::= "for" PIdent "in" Array CompStmt ;
 
-StmtAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
+ExprAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
 
 
 -- A statement is a declaration.
@@ -113,15 +120,14 @@ LArrExpr.       Arr   ::= LExpr "[" Expr "]";
 --coercions LExpr 1;
 --_. LExpr ::= "(" LExpr ")" ;
 
-
 -- (Right) Expressions
 LeftExpr.     Expr17 ::= LExpr ;
-ExprInt.      Expr16 ::= Integer ;
-ExprDouble.   Expr16 ::= Double ;
-ExprChar.     Expr16 ::= Char ;
-ExprString.   Expr16 ::= String ;
-ExprTrue.     Expr16 ::= "true" ;
-ExprFalse.    Expr16 ::= "false" ;
+ExprInt.      Expr16 ::= PInteger ;
+ExprDouble.   Expr16 ::= PDouble ;
+ExprChar.     Expr16 ::= PChar ;
+ExprString.   Expr16 ::= PString ;
+ExprTrue.     Expr16 ::= PTrue ;
+ExprFalse.    Expr16 ::= PFalse ;
 
 ExprFunCall.  Expr15 ::= PIdent "(" [Expr] ")" ;
 
@@ -132,11 +138,11 @@ ExprAddition. Expr14  ::= "+" Expr15 ;
 
 ExprPower.    Expr13 ::= Expr14 "^"  Expr13 ;
 
-ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
-ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
-ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
-ExprReminder. Expr12 ::= Expr12 "%"  Expr13 ;
-ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
+ExprMul.       Expr12 ::= Expr12 "*"  Expr13 ;
+ExprDoubleDiv. Expr12 ::= Expr12 "/"  Expr13 ;
+ExprIntDiv.    Expr12 ::= Expr12 "//" Expr13 ;
+ExprReminder.  Expr12 ::= Expr12 "%"  Expr13 ;
+ExprModulo.    Expr12 ::= Expr12 "%%" Expr13 ;
 
 --ExprReference. Expr11 ::= "&" LExpr ;
 ExprPlus.      Expr11 ::= Expr12 "+"  Expr12 ;
@@ -172,7 +178,7 @@ OpPlus.       AssignOperator ::= "+=" ;
 OpMinus.      AssignOperator ::= "-=" ;
 OpMul.        AssignOperator ::= "*=" ;
 OpIntDiv.     AssignOperator ::= "//=" ;
-OpFloatDiv.   AssignOperator ::= "/=" ;
+OpDoubleDiv.  AssignOperator ::= "/=" ;
 OpRemainder.  AssignOperator ::= "%=" ;
 OpModulo.     AssignOperator ::= "%%=" ;
 OpPower.      AssignOperator ::= "^=" ;

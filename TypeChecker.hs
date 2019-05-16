@@ -68,19 +68,7 @@ checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId pident@(P
                                Ok (e', p') -> Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))]) prog)
                                Bad s -> Bad s
                   Bad s -> Bad s
-    GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " has to have a type to be well defined!"
-
-getDecls :: [Program] -> [Decl]
-getDecls [] = []
-getDecls (prog:progs) = case prog of
-  PDefs [TypedDecl (ADecl t s)] -> (TypedDecl (ADecl t s)) : getDecls progs
-  PDefs [DeclStmt stmt] -> (DeclStmt stmt) : getDecls progs 
-  _ -> []
-
-extendEnv :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
-extendEnv (env@(s, y), prog) (StmtBlock decls) = do 
-  (e@((sig:sigs), b@(block:blocks)), p) <- foldM checkDecl (env, prog) decls
-  Ok ((sigs,blocks), p List.\\ prog) -- pop & list difference    
+    GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " has to have a type to be well defined" 
 
 -- Check argument(s) declaration.
 checkArgDecl :: (Env, [Program]) -> [Arg] -> Err (Env, [Program])  
@@ -108,8 +96,8 @@ checkDeclStmt (env, prog) stmt =
     --StmtVarInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutVar
     --StmtDefInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutConst
 
-    StmtReturn expr              -> checkReturn (env, prog) expr
-    StmtNoReturn                 -> checkNoReturn (env, prog)
+    StmtReturn preturn expr      -> checkReturn (env, prog) preturn expr
+    StmtNoReturn preturn         -> checkNoReturn (env, prog) preturn
 
     StmtBreak                    -> Ok (env, postAttach (PDefs [DeclStmt StmtBreak]) prog)
     StmtContinue                 -> Ok (env, postAttach (PDefs [DeclStmt StmtContinue]) prog)
@@ -143,26 +131,26 @@ checkIfThen (env@(sig@(x:xs), blocks), prog) expr cstmt = do
     else
       fail $ "checkIfThen: texpr != TypeBool"
 
-checkReturn :: (Env, [Program]) -> Expr -> Err (Env, [Program])
-checkReturn (env@(sigs, blocks), prog) expr = do
+checkReturn :: (Env, [Program]) -> PReturn -> Expr -> Err (Env, [Program])
+checkReturn (env@(sigs, blocks), prog) preturn@(PReturn (pr, _)) expr = do
   texpr <- inferExpr env expr
   case findFunType blocks of
-    Ok(PIdent (p, fname), tfun) -> 
+    Ok(PIdent (pf, fname), tfun) -> 
       if (texpr `isCompatibleWith` tfun) 
         -- If the type of the expression (texpr) is compatible with the type of the function (tfun), 
         -- then the returned type is tfun 
-        then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtReturn expr)))]) prog)
-        else fail $ show p ++ ": function " ++ printTree fname ++ " has return type " ++ show tfun ++ ", but there is a return statement inside the declaration of the function with type " ++ show texpr
-    _                           -> fail $ "returning something that it is not inside a function?"
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtReturn preturn expr)))]) prog)
+        else fail $ show pr ++ ": the returned type is " ++ show texpr ++ ", but function " ++ printTree fname ++ " (declared at " ++ show pf ++ ") has return type " ++ show tfun
+    _                            -> fail $ show pr ++ ": the return statement must be inside a function declaration"
 
-checkNoReturn :: (Env, [Program]) -> Err (Env, [Program])
-checkNoReturn (env@(sigs, blocks), prog) = do
+checkNoReturn :: (Env, [Program]) -> PReturn -> Err (Env, [Program])
+checkNoReturn (env@(sigs, blocks), prog) preturn@(PReturn (pr, _)) = do
   case findFunType blocks of
-    Ok (PIdent (p, fname), tfun) ->
+    Ok (PIdent (pf, fname), tfun) ->
       if (tfun == TypeVoid)
-        then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt StmtNoReturn))]) prog)
-        else fail $ show p ++ ": function " ++ printTree fname ++ " has return type " ++ show tfun ++ ", but there is a return statement inside the declaration of the function with type " ++ show TypeVoid
-    _                            -> fail $ "returning something that is not inside a function?"
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtNoReturn preturn)))]) prog)
+        else fail $ show pr ++ ": the returned type is " ++ show TypeVoid ++ ", but function " ++ printTree fname ++ " (declared at " ++ show pf ++ ") has return type " ++ show tfun
+    _                            -> fail $ show pr ++ ": the return statement must be inside a function declaration"
 
 -- Find function and type, if exists
 findFunType :: [(BlockType, Context)] -> Err (PIdent, Type)
@@ -213,27 +201,38 @@ checkAssign (env, prog) lexpr op expr = do
     OpPlus        -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpMinus       -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpMul         -> do checkAssignOp (env, prog)  t1 lexpr op expr
-    --OpIntDiv      -> do checkAssignIntOp (env, prog)  t1 lexpr op expr
-    --OpFloatDiv    -> do checkAssignOp (env, prog)  t1 lexpr op expr
+    OpIntDiv      -> do checkAssignDiv (env, prog)  t1 TypeInt lexpr op expr
+    OpDoubleDiv    -> do checkAssignDiv (env, prog)  t1 TypeDouble lexpr op expr
     OpRemainder   -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpModulo      -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpPower       -> do checkAssignOp (env, prog)  t1 lexpr op expr  
 
 -- Check assignment with boolean operator.
+-- TODO: position
 checkAssignBoolOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignBoolOp (env, prog) t1 lexpr op expr = do
   t2 <- inferExpr env expr
-  if (t2 `isCompatibleWith` t1)
-    then Ok (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (StmtAssign lexpr op expr))))]) prog)
+  if (t2 `isCompatibleWith` t1) -- t2 has to be compatible with t1 (i.e., the r-expr with the l-expr)
+    then Ok (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
     else fail $ printTree t2 ++ " is not compatible with " ++ printTree t1
 
 -- Check assignment operator.
+-- TODO: position
 checkAssignOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignOp (env, prog) t1 lexpr op expr = do
   t2 <- inferExpr env expr
   if (t2 `isCompatibleWith` t1)
-    then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (StmtAssign lexpr op expr))))]) prog)
+    then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
     else fail $ printTree t2 ++ " is not compatible with " ++ printTree t1
+
+-- Check assignment operator.
+-- TODO: position
+checkAssignDiv :: (Env, [Program]) -> Type -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
+checkAssignDiv (env, prog) t1 top lexpr op expr = do
+  t2 <- inferExpr env expr
+  if (t1 `isCompatibleWith` top) && (t2 `isCompatibleWith` top)
+    then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+    else fail $ "(0,0): the type of " ++ printTree lexpr ++ " is " ++ show t1 ++ " and the type of " ++ printTree expr ++ " is " ++ show t2 ++ ", but they must be both " ++ show top
 
 -- Check function call.
 checkFunCall :: (Env, [Program]) -> Expr -> Err (Env, [Program])
@@ -249,7 +248,7 @@ checkExpr :: (Env, [Program]) -> Expr -> Err (Env, [Program])
 checkExpr (env, prog) expr = do
   case expr of
     -- Assignment statement (i.e., lexpr operator expr).
-    StmtAssign lexpr op expr -> do checkAssign (env, prog) lexpr op expr
+    ExprAssign lexpr op expr -> do checkAssign (env, prog) lexpr op expr
 
     -- Left expressions.
     LeftExpr lexpr           -> do t <- inferLExpr env lexpr
@@ -260,8 +259,8 @@ checkExpr (env, prog) expr = do
     ExprDouble dbl           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeDouble (DeclStmt (StmtExpr (ExprDouble dbl))))]) prog)
     ExprChar chr             -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeChar (DeclStmt (StmtExpr (ExprChar chr))))]) prog)
     ExprString str           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeString (DeclStmt (StmtExpr (ExprString str))))]) prog)
-    ExprTrue                 -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr ExprTrue)))]) prog)
-    ExprFalse                -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr ExprFalse)))]) prog)
+    ExprTrue ptrue           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprTrue ptrue))))]) prog)
+    ExprFalse pfalse         -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprFalse pfalse))))]) prog)
 
     -- Function call.
     ExprFunCall pident args  -> do checkFunCall (env, prog) expr
@@ -281,10 +280,10 @@ checkExpr (env, prog) expr = do
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
     ExprMul e1 e2      -> do t <- inferArithBinOp env expr e1 e2
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
-    --ExprFloatDiv e1 e2 -> do t <- inferArithBinDoubleOp env expr e1 e2
-    --                         return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
-    --ExprIntDiv e1 e2 -> do t <- inferArithBinIntOp env expr e1 e2
-    --                            return (env, postAttach (PTDefs [TypedDecl t (DeclStmt (StmtExpr expr))]) prog)
+    ExprDoubleDiv e1 e2 -> do t <- inferArithBinOpDiv env TypeDouble expr e1 e2
+                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+    ExprIntDiv e1 e2   -> do t <- inferArithBinOpDiv env TypeInt expr e1 e2
+                             return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
     ExprReminder e1 e2 -> do t <- inferArithBinOp env expr e1 e2
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
     ExprModulo e1 e2   -> do t <- inferArithBinOp env expr e1 e2
@@ -363,11 +362,11 @@ inferExpr env expr =
     LeftExpr lexpr -> inferLExpr env lexpr 
 
     -- Base expressions (i.e., integers, floats, chars, strings, booleans) 
-    ExprTrue     -> Ok TypeBool
-    ExprFalse    -> Ok TypeBool
-    ExprInt _    -> Ok TypeInt
+    ExprTrue _    -> Ok TypeBool
+    ExprFalse _   -> Ok TypeBool
+    ExprInt _   -> Ok TypeInt
     ExprDouble _ -> Ok TypeDouble
-    ExprChar _   -> Ok TypeChar
+    ExprChar _  -> Ok TypeChar
     ExprString _ -> Ok TypeString
     
     -- Function call.
@@ -383,8 +382,8 @@ inferExpr env expr =
     -- Arithmetic binary operators.
     ExprPower e1 e2    -> inferArithBinOp env expr e1 e2
     ExprMul e1 e2      -> inferArithBinOp env expr e1 e2
-    --ExprFloatDiv e1 e2 -> inferArithBinDoubleOp env expr e1 e2
-    --ExprIntDiv e1 e2   -> inferArithBinIntOp env expr e1 e2
+    ExprDoubleDiv e1 e2 -> inferArithBinOpDiv env TypeDouble expr e1 e2
+    ExprIntDiv e1 e2   -> inferArithBinOpDiv env TypeInt expr e1 e2
     ExprReminder e1 e2 -> inferArithBinOp env expr e1 e2
     ExprModulo e1 e2   -> inferArithBinOp env expr e1 e2
     ExprPlus e1 e2     -> inferArithBinOp env expr e1 e2
@@ -409,8 +408,8 @@ inferFunCall env@(sig, blocks) (ExprFunCall (PIdent pident@(p,ident)) args) = do
     Ok (mods,t) -> do
       if length args == length mods
         then Ok t
-        else fail $ show p ++ ": function '" ++ printTree ident ++ "' doesn't match its parameters"
-    _ -> fail $ show p ++ ": function '" ++ printTree ident ++ "' not defined!" 
+        else fail $ show p ++ ": function " ++ printTree ident ++ " doesn't match its parameters"
+    _ -> fail $ show p ++ ": function " ++ printTree ident ++ " not defined!" 
 
 -- Infer left expression.
 inferLExpr :: Env -> LExpr -> Err Type
@@ -419,7 +418,7 @@ inferLExpr env@(sig, blocks) lexpr = do
     LExprId (PIdent (p, ident)) -> 
       case lookupVar blocks ident of
         Ok (_,t) -> Ok t
-        _ -> fail $ show p ++ ": variable '" ++ printTree ident ++ "' non defined!"
+        _ -> fail $ show p ++ ": variable " ++ printTree ident ++ " non defined!"
     _ -> fail $ "inferLEXpr: fatal error"
 
 -- Infer arithmetic unary operator.
@@ -428,7 +427,7 @@ inferArithUnOp env expr e = do
   t <- inferExpr env e
   if (t == TypeInt) || (t == TypeDouble) -- only ints and floats are allowed
     then Ok t
-    else fail $ printTree t ++ " is not " ++ show [TypeInt, TypeDouble]
+    else fail $ show (getExprPosition e) ++ ": " ++ printTree e ++ " has type " ++ show t ++ " which must be " ++ show [TypeInt, TypeDouble]
 
 -- Infer arithmetic binary operator.
 inferArithBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
@@ -439,9 +438,18 @@ inferArithBinOp env expr e1 e2 = do
      (t2 `isCompatibleWithAny` [TypeInt, TypeDouble]) &&
      areCompatible t1 t2
      then getMostGeneric t1 t2
-     else fail $ "\n\t- invalid operands in expressions (" ++ filter (/= '\n') (printTree e1) ++
-       ") and (" ++ filter (/= '\n') (printTree e2) ++ ") of types '" ++ printTree t1 ++ "' and '" ++ printTree t2 ++
-       "'\n\t- in expression: (" ++ filter (/= '\n') (printTree expr) ++ ")" 
+     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
+
+-- Infer arithmetic integer division or float division operator.
+inferArithBinOpDiv :: Env -> Type -> Expr -> Expr -> Expr -> Err Type
+inferArithBinOpDiv env top expr e1 e2 = do
+  t1 <- inferExpr env e1
+  t2 <- inferExpr env e2
+  if (t1 `isCompatibleWithAny` [TypeInt, TypeDouble]) && -- only ints and floats in divisions
+     (t2 `isCompatibleWithAny` [TypeInt, TypeDouble]) &&
+     areCompatible t1 t2
+     then Ok top
+     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
 
 -- Infer relational binary operator.
 inferRelBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
@@ -452,9 +460,7 @@ inferRelBinOp env expr e1 e2 = do
      (t2 `isCompatibleWithAny` [TypeInt, TypeDouble, TypeChar, TypeString]) &&  -- the same as above
      areCompatible t1 t2
      then Ok TypeBool
-     else fail $ "\n\t- invalid operands in expressions (" ++ filter (/= '\n') (printTree e1) ++
-       ") and (" ++ filter (/= '\n') (printTree e2) ++ ") of types '" ++ printTree t1 ++ "' and '" ++ printTree t2 ++
-       "'\n\t- in expression: (" ++ filter (/= '\n') (printTree expr) ++ ")"
+     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
 
 -- Infer boolean unary operator.
 inferBoolUnOp :: Env -> Expr -> Expr -> Err Type
@@ -462,7 +468,7 @@ inferBoolUnOp env expr e = do
   t <- inferExpr env e
   if (t == TypeBool) -- only booleans are allowed
     then Ok t
-    else fail $ printTree t ++ " is not Boolean!"
+    else fail $ show (getExprPosition e) ++ ": " ++ printTree e ++ " has type " ++ show t ++ " which must be boolean"
 
 -- Infer boolean binary operator.
 inferBoolBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
@@ -471,9 +477,7 @@ inferBoolBinOp env expr e1 e2 = do
   t2 <- inferExpr env e2
   if (t1 == TypeBool) && (t2 == TypeBool) -- only booleans are allowed
     then Ok TypeBool  
-    else fail $ "\n\t- invalid operands in expressions (" ++ filter (/= '\n') (printTree e1) ++
-      ") and (" ++ filter (/= '\n') (printTree e2) ++ ") of types '" ++ printTree t1 ++ "' and '" ++ printTree t2 ++
-      "'\n\t- in expression: (" ++ filter (/= '\n') (printTree expr) ++ ")"
+    else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
 
 -- Type compatibilities:
 -- bool < char < int < float
@@ -504,7 +508,6 @@ getMostGeneric t1 t2
   | TypeInt `elem` [t1,t2]    = Ok TypeInt
   | TypeString `elem` [t1,t2] = Ok TypeString
   | TypeChar `elem` [t1,t2]   = Ok TypeChar
-  | otherwise                 = fail $ "getMostGeneric: fatal error!"
 
 -- MOD is compatible with mutability MUT?
 isCompatibleWithMutability :: Modality -> Mutability -> Bool
@@ -514,3 +517,25 @@ mod `isCompatibleWithMutability` mut
   | mod == ModDef && mut == MutConst = True  -- if the argument is a constant defined as constant, then it is ok
   | mod == ModDef && mut == MutVar   = True  -- if the argument is a constant that is defined as variable, then it is ok
   | otherwise                        = False -- otherwise, not compatible
+
+getDecls :: [Program] -> [Decl]
+getDecls [] = []
+getDecls (prog:progs) = case prog of
+  PDefs [TypedDecl (ADecl t s)] -> (TypedDecl (ADecl t s)) : getDecls progs
+  PDefs [DeclStmt stmt] -> (DeclStmt stmt) : getDecls progs 
+  _ -> []
+
+getExprPosition :: Expr -> (Int, Int)
+getExprPosition e =
+  case e of
+    ExprInt (PInteger (p, _))   -> p
+    ExprDouble (PDouble (p, _)) -> p
+    ExprChar (PChar (p, _))     -> p
+    ExprString (PString (p, _)) -> p
+    ExprTrue (PTrue (p, _))     -> p
+    ExprFalse (PFalse (p, _))   -> p
+
+extendEnv :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
+extendEnv (env@(s, y), prog) (StmtBlock decls) = do 
+  (e@((sig:sigs), b@(block:blocks)), p) <- foldM checkDecl (env, prog) decls
+  Ok ((sigs,blocks), p List.\\ prog) -- pop & list difference   
