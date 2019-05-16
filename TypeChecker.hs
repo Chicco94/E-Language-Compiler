@@ -108,8 +108,8 @@ checkDeclStmt (env, prog) stmt =
     --StmtVarInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutVar
     --StmtDefInit lexpr guard expr -> checkStmtInit (env, prog) lexpr guard expr MutConst
 
-    StmtReturn expr              -> checkReturn (env, prog) expr
-    StmtNoReturn                 -> checkNoReturn (env, prog)
+    StmtReturn preturn expr      -> checkReturn (env, prog) preturn expr
+    StmtNoReturn preturn         -> checkNoReturn (env, prog) preturn
 
     StmtBreak                    -> Ok (env, postAttach (PDefs [DeclStmt StmtBreak]) prog)
     StmtContinue                 -> Ok (env, postAttach (PDefs [DeclStmt StmtContinue]) prog)
@@ -143,26 +143,26 @@ checkIfThen (env@(sig@(x:xs), blocks), prog) expr cstmt = do
     else
       fail $ "checkIfThen: texpr != TypeBool"
 
-checkReturn :: (Env, [Program]) -> Expr -> Err (Env, [Program])
-checkReturn (env@(sigs, blocks), prog) expr = do
+checkReturn :: (Env, [Program]) -> PReturn -> Expr -> Err (Env, [Program])
+checkReturn (env@(sigs, blocks), prog) preturn@(PReturn (pr, _)) expr = do
   texpr <- inferExpr env expr
   case findFunType blocks of
-    Ok(PIdent (p, fname), tfun) -> 
+    Ok(PIdent (pf, fname), tfun) -> 
       if (texpr `isCompatibleWith` tfun) 
         -- If the type of the expression (texpr) is compatible with the type of the function (tfun), 
         -- then the returned type is tfun 
-        then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtReturn expr)))]) prog)
-        else fail $ show p ++ ": function " ++ printTree fname ++ " has return type " ++ show tfun ++ ", but there is a return statement inside the declaration of the function with type " ++ show texpr
-    _                           -> fail $ "returning something that it is not inside a function?"
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtReturn preturn expr)))]) prog)
+        else fail $ show pr ++ ": the returned type is " ++ show texpr ++ ", but function " ++ printTree fname ++ " (declared at " ++ show pf ++ ") has return type " ++ show tfun
+    _                            -> fail $ show pr ++ ": the return statement must be inside a function declaration"
 
-checkNoReturn :: (Env, [Program]) -> Err (Env, [Program])
-checkNoReturn (env@(sigs, blocks), prog) = do
+checkNoReturn :: (Env, [Program]) -> PReturn -> Err (Env, [Program])
+checkNoReturn (env@(sigs, blocks), prog) preturn@(PReturn (pr, _)) = do
   case findFunType blocks of
-    Ok (PIdent (p, fname), tfun) ->
+    Ok (PIdent (pf, fname), tfun) ->
       if (tfun == TypeVoid)
-        then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt StmtNoReturn))]) prog)
-        else fail $ show p ++ ": function " ++ printTree fname ++ " has return type " ++ show tfun ++ ", but there is a return statement inside the declaration of the function with type " ++ show TypeVoid
-    _                            -> fail $ "returning something that is not inside a function?"
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtNoReturn preturn)))]) prog)
+        else fail $ show pr ++ ": the returned type is " ++ show TypeVoid ++ ", but function " ++ printTree fname ++ " (declared at " ++ show pf ++ ") has return type " ++ show tfun
+    _                            -> fail $ show pr ++ ": the return statement must be inside a function declaration"
 
 -- Find function and type, if exists
 findFunType :: [(BlockType, Context)] -> Err (PIdent, Type)

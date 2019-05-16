@@ -1,8 +1,8 @@
--- Position to ident.
-position token PIdent (letter (letter|digit|'_'|'\'')*) ;
-
 -- Position to "return" statement.
 position token PReturn 'r' 'e' 't' 'u' 'r' 'n' ;
+
+-- Position to ident.
+position token PIdent (letter (letter|digit|'_'|'\'')*) ;
 
 -- Position to basic types.
 position token PBool 'b' 'o' 'o' 'l' ;				-- bool
@@ -40,7 +40,6 @@ terminator Stmt "" ;
 
 
 -- An argument declaration has a type and an identifier.
--- ArgDecl.   Arg      ::= Stmt ;
 ArgDecl.   Arg      ::= Modality PIdent Guard ;
 ModEmpty.  Modality ::= {-empty-} ;  -- no modality
 ModVar.    Modality ::= "var" ;      -- variable modality
@@ -68,8 +67,8 @@ StmtIterDeclD.     Stmt     ::= "def" "[" Expr "]" LExpr Guard ";" ;         -- 
 StmtArrDeclD.      Stmt     ::= "def" LExpr Guard ":=" Array ";" ;
 
 
-StmtReturn.     Stmt     ::= "return" "(" Expr ")" ";" ;
-StmtNoReturn.   Stmt     ::= "return" ";" ;
+StmtReturn.     Stmt     ::= PReturn "(" Expr ")" ";" ;
+StmtNoReturn.   Stmt     ::= PReturn ";" ;
 
 
 StmtBlock.      CompStmt ::= "{" [Decl] "}" ;
@@ -139,8 +138,8 @@ ExprReminder. Expr12 ::= Expr12 "%"  Expr13 ;
 ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
 
 --ExprReference. Expr11 ::= "&" LExpr ;
-ExprPlus.      Expr11 ::= Expr12 "+"  Expr12 ;
-ExprMinus.     Expr11 ::= Expr12 "-"  Expr12 ;
+ExprPlus.      Expr11 ::= Expr11 "+"  Expr12 ;
+ExprMinus.     Expr11 ::= Expr11 "-"  Expr12 ;
 
 -- Tolti per ridurre i conflitti reduce reduce con Array
 -- Potrebbero essere richiesti
