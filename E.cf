@@ -32,9 +32,9 @@ comment "/*" "*/" ;
 
 -- Function declaration. E.g.: def foo (int x, double y) : int { }
 DeclFun.   Decl          ::= "def" LExpr "(" [Arg] ")" Guard CompStmt ;
-ADecl.     AnnotatedDecl ::= "[" Type ":]" Decl ;
+ADecl.     AnnotatedDecl ::= "["Type ":]" Decl ;
 separator  Arg "," ;
-terminator Stmt "" ;
+--terminator Stmt "" ;
 
 
 -- An argument declaration has a type and an identifier.
@@ -55,16 +55,25 @@ StmtExpr.       Stmt     ::= Expr ";" ;
 
 StmtVarDecl.         Stmt     ::= "var" LExpr Guard ";" ;                   -- Variable declaration.
 StmtVarInit.         Stmt     ::= "var" LExpr Guard ":=" Expr ";" ;         -- Variable initialization.
-StmtVarArrDeclNoDim. Stmt     ::= "var" "[" "]" LExpr Guard ";" ;           -- Variable array without dimension declaration.
-StmtVarArrDecl.      Stmt     ::= "var" "[" Expr "]" LExpr Guard ";" ;     	-- Variable array with dimension declaration.
-StmtVarArrInit.      Stmt     ::= "var" "[" "]" LExpr Guard ":=" Array ";" ;		-- Variable array initialization.
+--StmtVarArrDeclNoDim. Stmt     ::= "var" "[" "]" LExpr Guard ";" ;           -- Variable array without dimension declaration.
+--StmtVarArrDecl.      Stmt     ::= "var" "[" Expr "]" LExpr Guard ";" ;     	-- Variable array with dimension declaration.
+StmtVarArrInit.      Stmt     ::= "var" "[" [Range] "]" LExpr Guard ":=" Array ";" ;		-- Variable array initialization.
+
+-- # TODO: create interval
+-- # 
 
 StmtDefDecl.         Stmt     ::= "def" LExpr Guard ";" ;                   -- Constant declaration.
 StmtDefInit.         Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;         -- Constant initialization.
-StmtDefArrDeclNoDim. Stmt     ::= "def" "[" "]" LExpr Guard ";" ;           -- Constant array without dimension declaration.
-StmtDefArrDecl.      Stmt     ::= "def" "[" Expr "]" LExpr Guard ";" ;      -- Constant array with dimension declaration.
-StmtDefArrInit.      Stmt     ::= "def" "[" "]" LExpr Guard ":=" Array ";" ;		-- Constant array initialization.
+--StmtDefArrDeclNoDim. Stmt     ::= "def" "[" "]" LExpr Guard ";" ;           -- Constant array without dimension declaration.
+--StmtDefArrDecl.      Stmt     ::= "def" "[" Expr "]" LExpr Guard ";" ;      -- Constant array with dimension declaration.
+StmtDefArrInit.      Stmt     ::= "def" "[" [Range] "]" LExpr Guard ":=" Array ";" ;		-- Constant array initialization.
 
+ExprArray.      Array ::= Expr ;
+ExprMultiArray. Array ::= "[" [Array] "]" ;
+separator Array "," ;
+
+ExprRange.           Range ::= PInteger ".." PInteger ;
+separator Range "," ;
 
 StmtReturn.     Stmt     ::= PReturn "(" Expr ")" ";" ;
 StmtNoReturn.   Stmt     ::= PReturn ";" ;
@@ -85,7 +94,10 @@ StmtBreak.      Stmt     ::= PBreak ";" ;
 StmtContinue.   Stmt     ::= PContinue ";" ;
 
 StmtWhile.      Stmt     ::= "while" "(" Expr ")" CompStmt ;
-StmtFor.        Stmt     ::= "for" PIdent "in" Array CompStmt ;
+StmtFor.        Stmt     ::= "for" PIdent "in" ForRange CompStmt ;
+ExprForRange.   ForRange ::= ForId ".." ForId ;
+ForIdent.       ForId    ::= PIdent ;
+ForInteger.     ForId    ::= PInteger ;          
 
 ExprAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
 
@@ -101,17 +113,21 @@ LExprRef.       LExpr ::= Ref ;
 LExprArr.       LExpr ::= Arr ;
 -- # 1 shift/reduce conflict with Arr
 -- # when I read a LExpr followed by a "[" I shift to read a LArrExpr
--- # (The reducing rule is used after read all that rule)
+-- # (The reducing rule is used after reading all that rule)
 LDerefExpr.     Deref ::= "&" LExpr;
 -- # 1 shift/reduce conflict
 -- # same as before
 LRefExpr.       Ref   ::= "*" LExpr;
-LArrExpr.       Arr   ::= LExpr "[" Expr "]";
+--LArrExpr.       Arr   ::= PIdent "[" Expr "]"; -- Changing PIdent with LExpr => +2 s/r conflicts
+LArrExpr. Arr ::= PIdent "[" AExpr "]" ;         -- How we access an array element.
+
+ArrSing. AExpr ::= Expr ;
+ArrMul.  AExpr ::= AExpr "," Expr ;
 --coercions LExpr 1;
 --_. LExpr ::= "(" LExpr ")" ;
 
 -- (Right) Expressions
-LeftExpr.     Expr17 ::= LExpr ;
+ExprLeft.     Expr17 ::= LExpr ;
 ExprInt.      Expr16 ::= PInteger ;
 ExprDouble.   Expr16 ::= PDouble ;
 ExprChar.     Expr16 ::= PChar ;
@@ -185,13 +201,16 @@ TypeString. Type ::= "string" ;
 
 
 -- Compound types.
-TypeCompound. Type ::= CompoundType ;
-TypePointer.  CompoundType ::= Type "*" ; 
-TypeArray. CompoundType ::= Array ;
-TypeExprArray. Array ::= Expr ;           -- Iterable interval.
+TypeCompound. Type  ::= CType ;
+TypePointer.  CType ::= Type "*" ; 					-- Pointer type.
+TypeAddress.  CType ::= Type "&" ;					-- Address type.
+TypeArray.    CType ::= Type "[" [Range] "]" ;		-- Array type.
+
+
+--TypeExprArray. Array ::= Expr ;           -- Iterable interval.
 --TypeArrayArray.    Array ::= "[" [Expr] "]" ;   -- Iterable array.
-TypeMultiArray.   Array ::= "[" [Array] "]" ;   -- Iterable array.
-separator Array "," ;
+--TypeMultiArray.   Array ::= "[" [Array] "]" ;   -- Iterable array.
+--separator Array "," ;
 
 
 -- The entry point is the program.
