@@ -89,14 +89,14 @@ instance Print PIdent where
 instance Print Program where
   prt i e = case e of
     PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
-    TACProgram tacs -> prPrec i 0 (concatD [prt 0 tacs])
-    _ -> prPrec i 0 (concatD [doc (showString "_\n")]) --TODO
 
+{-
 instance Print TAC where
   prt i e = case e of
-    AssignIntVar  var  integer -> prPrec i 0 (concatD [prt 0 var , doc (showString "="),prt 0 integer, doc (showString "\n")])
-    AssignIntTemp temp integer -> prPrec i 0 (concatD [prt 0 temp, doc (showString "="),prt 0 integer, doc (showString "\n")])
-    BinOp BOpPlus tempr temp1 temp2 -> prPrec i 0 (concatD [prt 0 tempr, doc (showString "="),prt 0 temp1,doc (showString "+"),prt 0 temp2, doc (showString "\n")])
+    AssignIntVar   var  integer -> prPrec i 0 (concatD [prt 0 var , doc (showString "="),prt 0 integer, doc (showString "\n")])
+    AssignIntTemp  temp integer -> prPrec i 0 (concatD [prt 0 temp, doc (showString "="),prt 0 integer, doc (showString "\n")])
+    BinOp BOpPlus  tempr temp1 temp2 -> prPrec i 0 (concatD [prt 0 tempr, doc (showString "="),prt 0 temp1,doc (showString "+"),prt 0 temp2, doc (showString "\n")])
+    BinOp BOpMinus tempr temp1 temp2 -> prPrec i 0 (concatD [prt 0 tempr, doc (showString "="),prt 0 temp1,doc (showString "-"),prt 0 temp2, doc (showString "\n")])
     _ -> prPrec i 0 (concatD [doc (showString "_\n")]) --TODO
 
 instance Print Var where --Var = (String,(Int,Int),Type)
@@ -104,25 +104,6 @@ instance Print Var where --Var = (String,(Int,Int),Type)
 
 instance Print Temp where --Var = (String,(Int,Int),Type)
   prt i (Temp (num,type_)) = prPrec i 0 (concatD [prt 0 type_,doc (showString "t"),prt 0 num])
-
-{-
-instance Show Program where
-  prt i e = case e of
-    TACProgram tacs -> show TAC
-      
-instance Show TAC where
-  show t = case t of
-    AssignIntVar var integer -> show "int\t" ++ show var ++ show " = " ++ show integer
-      --prPrec i 0 (concatD [prt 0 var, doc (showString "="),prt 0 integer, doc (showString "\n")])
-    _ -> show "banana" -- prPrec i 0 (concatD [doc (showString "_")]) --TODO
-
-instance Show Var where --Var = (String,(Int,Int),Type)
-  show (Var (name,pos@(row,col),type_)) = show type_ ++ show "\t"++  show name ++ show "@"++ show row ++ show ","++show col ++ show num
-  --prt i (Var (name,pos@(row,col),type_)) = prPrec i 0 (concatD [prt 0 type_,prt 0 name, doc (showString "@"),prt 0 row, doc (showString ","),prt 0 col])
-
-instance Show Temp where --Temp = (Int,Type)
-  show (Temp (num,type_)) = show type_ ++ " t" ++ show num
-  --prt i (Temp (num,type_)) = prPrec i 0 (concatD [prt 0 type_,doc (showString "t"),prt 0 num])
 -}
 instance Print Decl where
   prt i e = case e of

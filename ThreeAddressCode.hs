@@ -4,9 +4,11 @@ import Control.Monad
 -- suppress prelude conflicts
 import qualified Data.Map as Map
 
-import AbsE
+import AbsETAC
 import PrintE
 import ErrM
+
+
 
   -- Given an element 'a' and a list, add this element at the end of the list.
 postAttach :: a -> [a] -> [a]
@@ -57,6 +59,7 @@ generateExpr program type_ expr =
         --ExprTrue    expr        -> Ok $ "true"
         --ExprFalse   expr        -> Ok $ "false"
         ExprPlus    expr1 expr2 -> binaryExpr program type_ expr1 expr2 BOpPlus
+        ExprMinus   expr1 expr2 -> binaryExpr program type_ expr1 expr2 BOpMinus
         _ -> Ok $ program 
         
 --TODO case Type

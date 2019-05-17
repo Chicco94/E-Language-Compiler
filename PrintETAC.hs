@@ -7,13 +7,20 @@ import PrintE
 import AbsETAC
 import Data.Char
 
-instance Print TACProgram where
-  prt i e = case e of
-    _ -> prPrec i 0 (concatD [prt 0 e])
-    --TAC inst -> prPrec i 0 (concatD [prt 0 inst])
+instance Show Program where
+  show p = case p of
+    TACProgram (tac:tacs) -> show tacs ++ show tacs
+      
+instance Show TAC where
+  show t = case t of
+    AssignIntVar var integer -> show "int\t" ++ show var ++ show " = " ++ show integer
+      --prPrec i 0 (concatD [prt 0 var, doc (showString "="),prt 0 integer, doc (showString "\n")])
+    _ -> show "banana" -- prPrec i 0 (concatD [doc (showString "_")]) --TODO
 
-{-
-instance Print TAC where
-    prt i e = case e of
-        AssignIntTemp temp@(name,pos,type_) val -> prPrec i 0 (concatD [prt 0 name, doc (showString "@"), prt 0 pos, doc (showString "="), prt 0 type_, prt 0 val])
-    -}
+instance Show Var where --Var = (String,(Int,Int),Type)
+  show (Var (name,pos@(row,col),type_)) = show type_ ++ show "\t"++  show name ++ show "@"++ show row ++ show ","++show col
+  --prt i (Var (name,pos@(row,col),type_)) = prPrec i 0 (concatD [prt 0 type_,prt 0 name, doc (showString "@"),prt 0 row, doc (showString ","),prt 0 col])
+
+instance Show Temp where --Temp = (Int,Type)
+  show (Temp (num,type_)) = show type_ ++ " t" ++ show num
+  --prt i (Temp (num,type_)) = prPrec i 0 (concatD [prt 0 type_,doc (showString "t"),prt 0 num])

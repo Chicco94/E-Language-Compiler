@@ -10,7 +10,9 @@ import LexE
 import ParE
 import SkelE
 import PrintE
-import AbsE
+import PrintETAC
+import AbsETAC
+
 
 import TypeChecker
 import ThreeAddressCode
