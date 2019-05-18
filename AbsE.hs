@@ -11,7 +11,7 @@ newtype PIdent = PIdent ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
 data Program = PDefs [Decl] | TACProgram [TAC]
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 data Decl
     = TypedDecl AnnotatedDecl
@@ -37,12 +37,10 @@ data Stmt
     | StmtInit LExpr Guard Expr
     | StmtVoidIterDecl LExpr Guard
     | StmtIterDecl Expr LExpr Guard
-    | StmtArrDecl LExpr Guard Array
     | StmtDeclD LExpr Guard
     | StmtInitD LExpr Guard Expr
     | StmtVoidIterDeclD LExpr Guard
     | StmtIterDeclD Expr LExpr Guard
-    | StmtArrDeclD LExpr Guard Array
     | StmtReturn Expr
     | StmtNoReturn
     | SComp CompStmt
@@ -52,7 +50,6 @@ data Stmt
     | StmtBreak
     | StmtContinue
     | StmtWhile Expr CompStmt
-    | StmtFor PIdent Array CompStmt
   deriving (Eq, Ord, Show, Read)
 
 data CompStmt = StmtBlock [Decl]
@@ -143,19 +140,21 @@ data Label = Label (String,Integer)
 
 -- temporal variables: 't'id_numeber
 data Temp = Temp (Int,Type)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 -- user variables: var_name@line_number
 data Var  = Var  (String,(Int,Int),Type)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 data TAC 
   = AssignIntTemp   Temp Integer
   | AssignChrTemp   Temp Char
+  | AssignStrTemp   Temp String
   | AssignBoolTemp  Temp Bool
   | AssignFloatTemp Temp Float
 
   | AssignIntVar    Var  Integer
   | AssignChrVar    Var  Char
+  | AssignStrVar    Var  String
   | AssignBoolVar   Var  Bool
   | AssignFloatVar  Var  Float
 
@@ -165,11 +164,19 @@ data TAC
 
   | BinOp BinaryOperator Temp Temp Temp
   | UnaryOp UnaryOp Temp Temp
+
+  | TACInt Integer
+  | TACDouble Double
+  | TACChar Char
+  | TACString String
+  | TACTrue
+  | TACFalse
+
   | Goto Label
   | IfNot Temp Label
   | L Label
   | Noop
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 data BinaryOperator
   = BOpAssign
@@ -183,7 +190,7 @@ data BinaryOperator
   | BOpRemainder
   | BOpModulo
   | BOpPower
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 data UnaryOp
 -- Assign

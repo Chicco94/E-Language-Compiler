@@ -9,13 +9,17 @@ module AbsE where
 
 newtype PIdent = PIdent ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
-data Program = PDefs [Decl] | PAnnotatedDefs [AnnDecl]
+
+data Program = PDefs [Decl] | TACProgram [TAC]
   deriving (Eq, Ord, Show, Read)
 
-data AnnDecl = LabeledDecl Decl | AnnotatedDecl Type Decl
+data Decl
+    = TypedDecl AnnotatedDecl
+    | DeclFun LExpr [Arg] Guard CompStmt
+    | DeclStmt Stmt
   deriving (Eq, Ord, Show, Read)
 
-data Decl = DeclFun LExpr [Arg] Guard [Stmt] | DeclStmt Stmt
+data AnnotatedDecl = ADecl Type Decl
   deriving (Eq, Ord, Show, Read)
 
 data Arg = ArgDecl Modality PIdent Guard
@@ -28,26 +32,36 @@ data Guard = GuardVoid | GuardType Type
   deriving (Eq, Ord, Show, Read)
 
 data Stmt
-    = StmtExpr Expr EndLine
-    | StmtDecl LExpr Guard EndLine
-    | StmtIterDecl LExpr Guard EndLine
-    | StmtVarInit LExpr Guard Expr EndLine
-    | StmtDefInit LExpr Guard Expr EndLine
-    | StmtReturn [Expr] EndLine
-    | StmtBlock [Decl]
-    | StmtIfElse Expr Stmt Stmt
-    | StmtIfNoElse Expr Stmt
+    = StmtExpr Expr
+    | StmtDecl LExpr Guard
+    | StmtInit LExpr Guard Expr
+    | StmtVoidIterDecl LExpr Guard
+    | StmtIterDecl Expr LExpr Guard
+    | StmtArrDecl LExpr Guard Array
+    | StmtDeclD LExpr Guard
+    | StmtInitD LExpr Guard Expr
+    | StmtVoidIterDeclD LExpr Guard
+    | StmtIterDeclD Expr LExpr Guard
+    | StmtArrDeclD LExpr Guard Array
+    | StmtReturn Expr
+    | StmtNoReturn
+    | SComp CompStmt
+    | StmtIfThenElse Expr CompStmt CompStmt
+    | StmtIfThen Expr CompStmt
     | SSwitchCase Expr [NormCase] [DfltCase]
     | StmtBreak
     | StmtContinue
-    | StmtWhile Expr Stmt
-    | StmtFor PIdent TypeIter Stmt
+    | StmtWhile Expr CompStmt
+    | StmtFor PIdent Array CompStmt
   deriving (Eq, Ord, Show, Read)
 
-data NormCase = CaseNormal Expr Stmt
+data CompStmt = StmtBlock [Decl]
   deriving (Eq, Ord, Show, Read)
 
-data DfltCase = CaseDefault Stmt
+data NormCase = CaseNormal Expr CompStmt
+  deriving (Eq, Ord, Show, Read)
+
+data DfltCase = CaseDefault CompStmt
   deriving (Eq, Ord, Show, Read)
 
 data Expr
@@ -59,11 +73,11 @@ data Expr
     | ExprString String
     | ExprTrue
     | ExprFalse
-    | ExprFunCall PIdent [Arg]
+    | ExprFunCall PIdent [Expr]
     | ExprBoolNot Expr
-    | ExprDeref LExpr
     | ExprNegation Expr
     | ExprAddition Expr
+    | ExprPower Expr Expr
     | ExprMul Expr Expr
     | ExprFloatDiv Expr Expr
     | ExprIntDiv Expr Expr
@@ -71,8 +85,6 @@ data Expr
     | ExprModulo Expr Expr
     | ExprPlus Expr Expr
     | ExprMinus Expr Expr
-    | ExprIntInc Expr Expr
-    | ExprIntExc Expr Expr
     | ExprLt Expr Expr
     | ExprGt Expr Expr
     | ExprLtEq Expr Expr
@@ -83,10 +95,17 @@ data Expr
     | ExprOr Expr Expr
   deriving (Eq, Ord, Show, Read)
 
-data LExpr = LExprId PIdent | LExprRef Ref
+data LExpr
+    = LExprId PIdent | LExprDeref Deref | LExprRef Ref | LExprArr Arr
   deriving (Eq, Ord, Show, Read)
 
-data Ref = RefExpr LExpr
+data Deref = LDerefExpr LExpr
+  deriving (Eq, Ord, Show, Read)
+
+data Ref = LRefExpr LExpr
+  deriving (Eq, Ord, Show, Read)
+
+data Arr = LArrExpr LExpr Expr
   deriving (Eq, Ord, Show, Read)
 
 data AssignOperator
@@ -113,12 +132,62 @@ data Type
     | TypeCompound CompoundType
   deriving (Eq, Ord, Show, Read)
 
-data CompoundType = TypePointer Type | TypeIterable TypeIter
+data CompoundType = TypePointer Type | TypeArray Array
   deriving (Eq, Ord, Show, Read)
 
-data TypeIter = TypeIterInterval Expr | TypeIterArray [Expr]
+data Array = TypeMultiArray [Array]
   deriving (Eq, Ord, Show, Read)
 
-data EndLine = Semicolon
+data Label = Label (String,Integer)
   deriving (Eq, Ord, Show, Read)
 
+-- temporal variables: 't'id_numeber
+data Temp = Temp (Int,Type)
+  deriving (Eq, Ord, Show, Read)
+-- user variables: var_name@line_number
+data Var  = Var  (String,(Int,Int),Type)
+  deriving (Eq, Ord, Show, Read)
+
+data TAC 
+  = AssignIntTemp   Temp Integer
+  | AssignChrTemp   Temp Char
+  | AssignBoolTemp  Temp Bool
+  | AssignFloatTemp Temp Float
+
+  | AssignIntVar    Var  Integer
+  | AssignChrVar    Var  Char
+  | AssignBoolVar   Var  Bool
+  | AssignFloatVar  Var  Float
+
+  | AssignT2V Var Temp
+  | AssignT2T Temp Temp
+  | AssignV2T Temp Var
+
+  | BinOp BinaryOperator Temp Temp Temp
+  | UnaryOp UnaryOp Temp Temp
+  | Goto Label
+  | IfNot Temp Label
+  | L Label
+  | Noop
+  deriving (Eq, Ord, Show, Read)
+
+data BinaryOperator
+  = BOpAssign
+  | BOpOr
+  | BOpAnd
+  | BOpPlus
+  | BOpMinus
+  | BOpMul
+  | BOpIntDiv
+  | BOpFloatDiv
+  | BOpRemainder
+  | BOpModulo
+  | BOpPower
+  deriving (Eq, Ord, Show, Read)
+
+data UnaryOp
+-- Assign
+  = UOpMinus
+-- Logical
+  | UOpNegate
+  deriving (Eq, Ord, Show, Read)

@@ -10,9 +10,7 @@ import LexE
 import ParE
 import SkelE
 import PrintE
-import PrintETAC
-import AbsETAC
-
+import AbsE
 
 import TypeChecker
 import ThreeAddressCode
@@ -40,29 +38,30 @@ run v p s = let ts = myLLexer s in case p ts of
                           putStrLn s
                           exitFailure
            Ok  tree -> do putStrLn "\nParse Successful!"
-                          showProgram v "\n[Abstract Syntax]\n\n" tree
+                          --showProgram v "\n[Abstract Syntax]\n\n" tree
                           showTree v "\n[Abstract Tree]\n\n" tree
                           putStrLn "[Type Checker]"
                           case typeCheck tree of
                               Bad err -> do putStrLn err
                                             exitFailure
                               Ok (env,prog) -> do putStrLn "\nCorrect Typing!"
-                                                  showProgram v "\n[Annotated Program]\n\n" prog
+                                                  --showProgram v "\n[Annotated Program]\n\n" prog
                                                   showTree v "\n[Annotated tree]\n\n" prog
                                                   putStrLn "[Three Address Code]"
                                                   case generateTAC prog of
-                                                      Bad err -> do putStrLn err
-                                                                    exitFailure
-                                                      Ok tacprog -> do  showProgram v "\n[TAC]\n\n" tacprog
-                                                                        showTree v "\n[TAC]\n\n" tacprog
-                                                                        exitSuccess
-
+                                                      env@(tacprog,temp) -> do --show "\n[TAC]\n\n"
+                                                                                   --show tacprog
+                                                                                   showProgram v "\n[TAC]\n\n" (reverse tacprog)
+                                                                                   exitSuccess
+ 
 
 showTree :: (Show a, Print a) => Int -> String -> a -> IO ()
-showTree v string tree = putStrV v $ string ++ printTree tree
+showTree v title tree = putStrV v $ title ++ printTree tree
 
-showProgram :: (Show a, Print a) => Int -> String -> a -> IO()
-showProgram v string prog = putStrV v $ string ++ show prog
+showProgram :: (Show a) => Int -> String -> a -> IO()
+showProgram v title prog = putStrV v $ title ++ filter (/=',') (init (drop 1 (show prog)))
+
+
 
 usage :: IO ()
 usage = do

@@ -4,8 +4,10 @@ module AbsETAC where
   newtype PIdent = PIdent ((Int,Int),String)
     deriving (Eq, Ord, Show, Read)
   
+  {-
   data Program = PDefs [Decl] | TACProgram [TAC]
     deriving (Eq, Ord, Read)
+  -}
   
   data Decl
       = TypedDecl AnnotatedDecl

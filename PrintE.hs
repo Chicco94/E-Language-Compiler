@@ -85,26 +85,45 @@ instance Print PIdent where
   prt _ (PIdent (_,i)) = doc (showString ( i))
 
 
-
 instance Print Program where
   prt i e = case e of
     PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
+    --TACProgram (tac:tacs) -> show tac ++ show tacs
+  
 
-{-
-instance Print TAC where
-  prt i e = case e of
-    AssignIntVar   var  integer -> prPrec i 0 (concatD [prt 0 var , doc (showString "="),prt 0 integer, doc (showString "\n")])
-    AssignIntTemp  temp integer -> prPrec i 0 (concatD [prt 0 temp, doc (showString "="),prt 0 integer, doc (showString "\n")])
-    BinOp BOpPlus  tempr temp1 temp2 -> prPrec i 0 (concatD [prt 0 tempr, doc (showString "="),prt 0 temp1,doc (showString "+"),prt 0 temp2, doc (showString "\n")])
-    BinOp BOpMinus tempr temp1 temp2 -> prPrec i 0 (concatD [prt 0 tempr, doc (showString "="),prt 0 temp1,doc (showString "-"),prt 0 temp2, doc (showString "\n")])
-    _ -> prPrec i 0 (concatD [doc (showString "_\n")]) --TODO
+instance Show Program where
+  show p = case p of
+    --PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
+    TACProgram [] -> ""
+    TACProgram tacs -> (show tacs)
 
-instance Print Var where --Var = (String,(Int,Int),Type)
-  prt i (Var (name,pos@(row,col),type_)) = prPrec i 0 (concatD [prt 0 type_,prt 0 name, doc (showString "@"),prt 0 row, doc (showString ","),prt 0 col])
+instance Show TAC where
+  show t = case t of
+    AssignIntVar  var  integer -> show var  ++ " = " ++ show integer ++ "\n"
+    AssignIntTemp temp integer -> show temp ++ " = " ++ show integer ++ "\n"
+    BinOp BOpOr        tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " || " ++ show temp2 ++ "\n"
+    BinOp BOpAnd       tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " && " ++ show temp2 ++ "\n"
+    BinOp BOpPlus      tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2  ++ "\n"
+    BinOp BOpMinus     tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " - " ++ show temp2  ++ "\n"
+    BinOp BOpMul       tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " * " ++ show temp2  ++ "\n"
+    BinOp BOpIntDiv    tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " // " ++ show temp2 ++ "\n"
+    BinOp BOpFloatDiv  tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " / " ++ show temp2  ++ "\n"
+    BinOp BOpRemainder tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " % " ++ show temp2  ++ "\n"
+    BinOp BOpModulo    tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " %% " ++ show temp2 ++ "\n"
+    BinOp BOpPower     tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " ^ " ++ show temp2  ++ "\n"
+      --prPrec i 0 (concatD [prt 0 var, doc (showString "="),prt 0 integer, doc (showString "\n")])
+    _ -> "banana" -- prPrec i 0 (concatD [doc (showString "_")]) --TODO
 
-instance Print Temp where --Var = (String,(Int,Int),Type)
-  prt i (Temp (num,type_)) = prPrec i 0 (concatD [prt 0 type_,doc (showString "t"),prt 0 num])
--}
+instance Show Var where --Var = (String,(Int,Int),Type)
+  show (Var (name,pos@(row,col),type_)) = show type_ ++ "\t "++   filter (/='\"') (show name) ++ "@"++ show row ++ ","++show col
+  --prt i (Var (name,pos@(row,col),type_)) = prPrec i 0 (concatD [prt 0 type_,prt 0 name, doc (showString "@"),prt 0 row, doc (showString ","),prt 0 col])
+
+instance Show Temp where --Temp = (Int,Type)
+  show (Temp (num,type_)) = show type_ ++ "\t t" ++ show num
+  --prt i (Temp (num,type_)) = prPrec i 0 (concatD [prt 0 type_,doc (showString "t"),prt 0 num])
+    
+      
+
 instance Print Decl where
   prt i e = case e of
     TypedDecl annotateddecl -> prPrec i 0 (concatD [prt 0 annotateddecl])
@@ -140,12 +159,10 @@ instance Print Stmt where
     StmtInit lexpr guard expr -> prPrec i 0 (concatD [doc (showString "var"), prt 0 lexpr, prt 0 guard, doc (showString ":="), prt 0 expr, doc (showString ";")])
     StmtVoidIterDecl lexpr guard -> prPrec i 0 (concatD [doc (showString "var"), doc (showString "["), doc (showString "]"), prt 0 lexpr, prt 0 guard, doc (showString ";")])
     StmtIterDecl expr lexpr guard -> prPrec i 0 (concatD [doc (showString "var"), doc (showString "["), prt 0 expr, doc (showString "]"), prt 0 lexpr, prt 0 guard, doc (showString ";")])
-    StmtArrDecl lexpr guard array -> prPrec i 0 (concatD [doc (showString "var"), prt 0 lexpr, prt 0 guard, doc (showString ":="), prt 0 array, doc (showString ";")])
     StmtDeclD lexpr guard -> prPrec i 0 (concatD [doc (showString "def"), prt 0 lexpr, prt 0 guard, doc (showString ";")])
     StmtInitD lexpr guard expr -> prPrec i 0 (concatD [doc (showString "def"), prt 0 lexpr, prt 0 guard, doc (showString ":="), prt 0 expr, doc (showString ";")])
     StmtVoidIterDeclD lexpr guard -> prPrec i 0 (concatD [doc (showString "def"), doc (showString "["), doc (showString "]"), prt 0 lexpr, prt 0 guard, doc (showString ";")])
     StmtIterDeclD expr lexpr guard -> prPrec i 0 (concatD [doc (showString "def"), doc (showString "["), prt 0 expr, doc (showString "]"), prt 0 lexpr, prt 0 guard, doc (showString ";")])
-    StmtArrDeclD lexpr guard array -> prPrec i 0 (concatD [doc (showString "def"), prt 0 lexpr, prt 0 guard, doc (showString ":="), prt 0 array, doc (showString ";")])
     StmtReturn expr -> prPrec i 0 (concatD [doc (showString "return"), doc (showString "("), prt 0 expr, doc (showString ")"), doc (showString ";")])
     StmtNoReturn -> prPrec i 0 (concatD [doc (showString "return"), doc (showString ";")])
     SComp compstmt -> prPrec i 0 (concatD [prt 0 compstmt])
@@ -155,7 +172,6 @@ instance Print Stmt where
     StmtBreak -> prPrec i 0 (concatD [doc (showString "break"), doc (showString ";")])
     StmtContinue -> prPrec i 0 (concatD [doc (showString "continue"), doc (showString ";")])
     StmtWhile expr compstmt -> prPrec i 0 (concatD [doc (showString "while"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 compstmt])
-    StmtFor pident array compstmt -> prPrec i 0 (concatD [doc (showString "for"), prt 0 pident, doc (showString "in"), prt 0 array, prt 0 compstmt])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
 instance Print CompStmt where
@@ -251,12 +267,5 @@ instance Print Type where
 instance Print CompoundType where
   prt i e = case e of
     TypePointer type_ -> prPrec i 0 (concatD [prt 0 type_, doc (showString "*")])
-    TypeArray array -> prPrec i 0 (concatD [prt 0 array])
 
-instance Print Array where
-  prt i e = case e of
-    TypeMultiArray arrays -> prPrec i 0 (concatD [doc (showString "["), prt 0 arrays, doc (showString "]")])
-  prtList _ [] = (concatD [])
-  prtList _ [x] = (concatD [prt 0 x])
-  prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
 

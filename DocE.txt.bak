@@ -47,17 +47,16 @@ The reserved words used in E are the following:
   | ``true`` | ``var`` | ``void`` | ``while``
 
 The symbols used in E are the following:
-  | ( | ) | { | }
-  | [ | :] | , | :
-  | ] | := | match _ | *
-  | ! | & | - | +
-  | / | // | % | %%
-  | .. | ..! | < | >
+  | ( | ) | [ | :]
+  | , | : | ; | :=
+  | ] | { | } | match _
+  | & | * | ! | -
+  | + | ^ | / | //
+  | % | %% | < | >
   | <= | >= | == | !=
   | && | || | |= | &=
   | += | -= | *= | //=
-  | /= | %= | %%= | **=
-  | ; |  |  | 
+  | /= | %= | %%= | ^=
 
 ===Comments===
 Single-line comments begin with //.Multiple-line comments are  enclosed with /* and */.
@@ -69,15 +68,11 @@ and **eps** (empty rule) belong to the BNF notation.
 All other symbols are terminals.
 
   | //Program// | -> | //[Decl]// 
-  |  |  **|**  | //[AnnDecl]// 
   | //[Decl]// | -> | **eps**
   |  |  **|**  | //Decl// //[Decl]// 
-  | //[AnnDecl]// | -> | **eps**
-  |  |  **|**  | //AnnDecl// //[AnnDecl]// 
-  | //AnnDecl// | -> | //Decl// 
-  |  |  **|**  | ``[`` //Type// ``:]`` //Decl// 
-  | //Decl// | -> | ``def`` //LExpr// ``(`` //[Arg]// ``)`` //Guard// ``{`` //[Stmt]// ``}`` 
+  | //Decl// | -> | ``def`` //LExpr// ``(`` //[Arg]// ``)`` //Guard// //CompStmt// 
   |  |  **|**  | //Stmt// 
+  | //AnnotatedDecl// | -> | ``[`` //Type// ``:]`` //Decl// 
   | //[Arg]// | -> | **eps**
   |  |  **|**  | //Arg// 
   |  |  **|**  | //Arg// ``,`` //[Arg]// 
@@ -89,22 +84,30 @@ All other symbols are terminals.
   |  |  **|**  | ``def`` 
   | //Guard// | -> | **eps**
   |  |  **|**  | ``:`` //Type// 
-  | //Stmt// | -> | //Expr// //EndLine// 
-  |  |  **|**  | ``var`` //LExpr// //Guard// //EndLine// 
-  |  |  **|**  | ``var`` ``[`` //LExpr// ``]`` //Guard// //EndLine// 
-  |  |  **|**  | ``var`` //LExpr// //Guard// ``:=`` //Expr// //EndLine// 
-  |  |  **|**  | ``def`` //LExpr// //Guard// ``:=`` //Expr// //EndLine// 
-  |  |  **|**  | ``return`` //[Expr]// //EndLine// 
-  |  |  **|**  | ``{`` //[Decl]// ``}`` 
-  |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// ``else`` //Stmt// 
-  |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //Stmt// 
+  | //Stmt// | -> | //Expr// ``;`` 
+  |  |  **|**  | ``var`` //LExpr// //Guard// ``;`` 
+  |  |  **|**  | ``var`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
+  |  |  **|**  | ``var`` ``[`` ``]`` //LExpr// //Guard// ``;`` 
+  |  |  **|**  | ``var`` ``[`` //Expr// ``]`` //LExpr// //Guard// ``;`` 
+  |  |  **|**  | ``var`` //LExpr// //Guard// ``:=`` //Array// ``;`` 
+  |  |  **|**  | ``def`` //LExpr// //Guard// ``;`` 
+  |  |  **|**  | ``def`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
+  |  |  **|**  | ``def`` ``[`` ``]`` //LExpr// //Guard// ``;`` 
+  |  |  **|**  | ``def`` ``[`` //Expr// ``]`` //LExpr// //Guard// ``;`` 
+  |  |  **|**  | ``def`` //LExpr// //Guard// ``:=`` //Array// ``;`` 
+  |  |  **|**  | ``return`` ``(`` //Expr// ``)`` ``;`` 
+  |  |  **|**  | ``return`` ``;`` 
+  |  |  **|**  | //CompStmt// 
+  |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //CompStmt// ``else`` //CompStmt// 
+  |  |  **|**  | ``if`` ``(`` //Expr// ``)`` //CompStmt// 
   |  |  **|**  | ``switch`` ``(`` //Expr// ``)`` ``{`` //[NormCase]// //[DfltCase]// ``}`` 
-  |  |  **|**  | ``break`` 
-  |  |  **|**  | ``continue`` 
-  |  |  **|**  | ``while`` ``(`` //Expr// ``)`` //Stmt// 
-  |  |  **|**  | ``for`` //PIdent// ``in`` //TypeIter// //Stmt// 
-  | //NormCase// | -> | ``match`` //Expr// //Stmt// 
-  | //DfltCase// | -> | ``match _`` //Stmt// 
+  |  |  **|**  | ``break`` ``;`` 
+  |  |  **|**  | ``continue`` ``;`` 
+  |  |  **|**  | ``while`` ``(`` //Expr// ``)`` //CompStmt// 
+  |  |  **|**  | ``for`` //PIdent// ``in`` //Array// //CompStmt// 
+  | //CompStmt// | -> | ``{`` //[Decl]// ``}`` 
+  | //NormCase// | -> | ``match`` //Expr// //CompStmt// 
+  | //DfltCase// | -> | ``match _`` //CompStmt// 
   | //[NormCase]// | -> | **eps**
   |  |  **|**  | //NormCase// //[NormCase]// 
   | //[DfltCase]// | -> | **eps**
@@ -112,8 +115,12 @@ All other symbols are terminals.
   | //Expr// | -> | //LExpr// //AssignOperator// //Expr1// 
   |  |  **|**  | //Expr1// 
   | //LExpr// | -> | //PIdent// 
+  |  |  **|**  | //Deref// 
   |  |  **|**  | //Ref// 
+  |  |  **|**  | //Arr// 
+  | //Deref// | -> | ``&`` //LExpr// 
   | //Ref// | -> | ``*`` //LExpr// 
+  | //Arr// | -> | //LExpr// ``[`` //Expr// ``]`` 
   | //Expr17// | -> | //LExpr// 
   |  |  **|**  | ``(`` //Expr// ``)`` 
   | //Expr16// | -> | //Integer// 
@@ -123,13 +130,14 @@ All other symbols are terminals.
   |  |  **|**  | ``true`` 
   |  |  **|**  | ``false`` 
   |  |  **|**  | //Expr17// 
-  | //Expr15// | -> | //PIdent// ``(`` //[Arg]// ``)`` 
+  | //Expr15// | -> | //PIdent// ``(`` //[Expr]// ``)`` 
   |  |  **|**  | //Expr16// 
   | //Expr14// | -> | ``!`` //Expr15// 
-  |  |  **|**  | ``&`` //LExpr// 
   |  |  **|**  | ``-`` //Expr15// 
   |  |  **|**  | ``+`` //Expr15// 
   |  |  **|**  | //Expr15// 
+  | //Expr13// | -> | //Expr14// ``^`` //Expr13// 
+  |  |  **|**  | //Expr14// 
   | //Expr12// | -> | //Expr12// ``*`` //Expr13// 
   |  |  **|**  | //Expr12// ``/`` //Expr13// 
   |  |  **|**  | //Expr12// ``//`` //Expr13// 
@@ -139,9 +147,6 @@ All other symbols are terminals.
   | //Expr11// | -> | //Expr11// ``+`` //Expr12// 
   |  |  **|**  | //Expr11// ``-`` //Expr12// 
   |  |  **|**  | //Expr12// 
-  | //Expr10// | -> | //Expr10// ``..`` //Expr11// 
-  |  |  **|**  | //Expr10// ``..!`` //Expr11// 
-  |  |  **|**  | //Expr11// 
   | //Expr9// | -> | //Expr9// ``<`` //Expr10// 
   |  |  **|**  | //Expr9// ``>`` //Expr10// 
   |  |  **|**  | //Expr9// ``<=`` //Expr10// 
@@ -159,7 +164,7 @@ All other symbols are terminals.
   | //Expr5// | -> | //Expr6// 
   | //Expr6// | -> | //Expr7// 
   | //Expr7// | -> | //Expr8// 
-  | //Expr13// | -> | //Expr14// 
+  | //Expr10// | -> | //Expr11// 
   | //[Expr]// | -> | **eps**
   |  |  **|**  | //Expr// 
   |  |  **|**  | //Expr// ``,`` //[Expr]// 
@@ -173,7 +178,7 @@ All other symbols are terminals.
   |  |  **|**  | ``/=`` 
   |  |  **|**  | ``%=`` 
   |  |  **|**  | ``%%=`` 
-  |  |  **|**  | ``**=`` 
+  |  |  **|**  | ``^=`` 
   | //Type// | -> | ``bool`` 
   |  |  **|**  | ``double`` 
   |  |  **|**  | ``int`` 
@@ -182,9 +187,11 @@ All other symbols are terminals.
   |  |  **|**  | ``string`` 
   |  |  **|**  | //CompoundType// 
   | //CompoundType// | -> | //Type// ``*`` 
-  |  |  **|**  | //TypeIter// 
-  | //TypeIter// | -> | //Expr10// 
-  |  |  **|**  | ``[`` //[Expr]// ``]`` 
-  | //EndLine// | -> | ``;`` 
+  |  |  **|**  | //Array// 
+  | //Array// | -> | ``[`` //[Expr]// ``]`` 
+  |  |  **|**  | ``[`` //[Array]// ``]`` 
+  | //[Array]// | -> | **eps**
+  |  |  **|**  | //Array// 
+  |  |  **|**  | //Array// ``,`` //[Array]// 
 
 

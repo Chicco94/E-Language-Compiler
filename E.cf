@@ -49,12 +49,12 @@ StmtDecl.          Stmt     ::= "var" LExpr Guard ";" ;                      -- 
 StmtInit.          Stmt     ::= "var" LExpr Guard ":=" Expr ";" ;            -- Constant/variable initialization.
 StmtVoidIterDecl.  Stmt     ::= "var" "[" "]" LExpr Guard ";" ;              -- Iterable type declaration.
 StmtIterDecl.      Stmt     ::= "var" "[" Expr "]" LExpr Guard ";" ;         -- Iterable type declaration.
-StmtArrDecl.       Stmt     ::= "var" LExpr Guard ":=" Array ";" ;
+--;StmtArrDecl.       Stmt     ::= "var" LExpr Guard ":=" Array ";" ;
 StmtDeclD.         Stmt     ::= "def" LExpr Guard ";" ;                      -- Variable declaration.
 StmtInitD.         Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;            -- Constant/variable initialization.
 StmtVoidIterDeclD. Stmt     ::= "def" "[" "]" LExpr Guard ";" ;              -- Iterable type declaration.
 StmtIterDeclD.     Stmt     ::= "def" "[" Expr "]" LExpr Guard ";" ;         -- Iterable type declaration.
-StmtArrDeclD.      Stmt     ::= "def" LExpr Guard ":=" Array ";" ;
+--;StmtArrDeclD.      Stmt     ::= "def" LExpr Guard ":=" Array ";" ;
 
 
 StmtReturn.     Stmt     ::= "return" "(" Expr ")" ";" ;
@@ -76,7 +76,7 @@ StmtBreak.      Stmt     ::= "break" ";" ;
 StmtContinue.   Stmt     ::= "continue" ";" ;
 
 StmtWhile.      Stmt     ::= "while" "(" Expr ")" CompStmt ;
-StmtFor.        Stmt     ::= "for" PIdent "in" Array CompStmt ;
+--;StmtFor.        Stmt     ::= "for" PIdent "in" Array CompStmt ;
 
 StmtAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
 
@@ -180,11 +180,11 @@ TypeString. Type ::= "string" ;
 -- Compound types.
 TypeCompound. Type ::= CompoundType ;
 TypePointer.  CompoundType ::= Type "*" ; 
-TypeArray. CompoundType ::= Array ;
--- TypeArrayInterval. Array ::= Expr10 ;           -- Iterable interval.
-TypeArrayArray.    Array ::= "[" [Expr] "]" ;   -- Iterable array.
-TypeMultiArray.   Array ::= "[" [Array] "]" ;   -- Iterable array.
-separator Array "," ;
+--;TypeArray. CompoundType ::= Array ;
+--; TypeArrayInterval. Array ::= Expr10 ;           -- Iterable interval.
+--;TypeArrayArray.    Array ::= "[" [Expr] "]" ;   -- Iterable array.
+--;TypeMultiArray.   Array ::= "[" [Array] "]" ;   -- Iterable array.
+--;separator Array "," ;
 
 
 -- The entry point is the program.
