@@ -7,7 +7,25 @@ module AbsE where
 
 
 
+newtype PTrue = PTrue ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype PFalse = PFalse ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype PReturn = PReturn ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype PContinue = PContinue ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype PBreak = PBreak ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
 newtype PIdent = PIdent ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype PInteger = PInteger ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype PFloat = PFloat ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype PChar = PChar ((Int,Int),String)
+  deriving (Eq, Ord, Show, Read)
+newtype PString = PString ((Int,Int),String)
   deriving (Eq, Ord, Show, Read)
 
 data Program = PDefs [Decl] | TACProgram [TAC]
@@ -33,23 +51,26 @@ data Guard = GuardVoid | GuardType Type
 
 data Stmt
     = StmtExpr Expr
-    | StmtDecl LExpr Guard
-    | StmtInit LExpr Guard Expr
-    | StmtVoidIterDecl LExpr Guard
-    | StmtIterDecl Expr LExpr Guard
-    | StmtDeclD LExpr Guard
-    | StmtInitD LExpr Guard Expr
-    | StmtVoidIterDeclD LExpr Guard
-    | StmtIterDeclD Expr LExpr Guard
-    | StmtReturn Expr
-    | StmtNoReturn
+    | StmtVarInit PIdent Guard Expr
+    | StmtVarArrInit [Range] PIdent Guard Array
+    | StmtDefInit PIdent Guard Expr
+    | StmtDefArrInit [Range] PIdent Guard Array
+    | StmtReturn PReturn Expr
+    | StmtNoReturn PReturn
     | SComp CompStmt
     | StmtIfThenElse Expr CompStmt CompStmt
     | StmtIfThen Expr CompStmt
-    | SSwitchCase Expr [NormCase] [DfltCase]
-    | StmtBreak
-    | StmtContinue
+    | StmtSwitchCase Expr [NormCase] [DfltCase]
+    | StmtBreak PBreak
+    | StmtContinue PContinue
     | StmtWhile Expr CompStmt
+    | StmtFor PIdent ForRange CompStmt
+  deriving (Eq, Ord, Show, Read)
+
+data Array = ExprArray Expr | ExprMultiArray [Array]
+  deriving (Eq, Ord, Show, Read)
+
+data Range = ExprRange PInteger
   deriving (Eq, Ord, Show, Read)
 
 data CompStmt = StmtBlock [Decl]
@@ -61,15 +82,21 @@ data NormCase = CaseNormal Expr CompStmt
 data DfltCase = CaseDefault CompStmt
   deriving (Eq, Ord, Show, Read)
 
+data ForRange = ExprForRange ForId ForId
+  deriving (Eq, Ord, Show, Read)
+
+data ForId = ForIdent PIdent | ForInteger PInteger
+  deriving (Eq, Ord, Show, Read)
+
 data Expr
-    = StmtAssign LExpr AssignOperator Expr
-    | LeftExpr LExpr
-    | ExprInt Integer
-    | ExprDouble Double
-    | ExprChar Char
-    | ExprString String
-    | ExprTrue
-    | ExprFalse
+    = ExprAssign LExpr AssignOperator Expr
+    | ExprLeft LExpr
+    | ExprInt PInteger
+    | ExprFloat PFloat
+    | ExprChar PChar
+    | ExprString PString
+    | ExprTrue PTrue
+    | ExprFalse PFalse
     | ExprFunCall PIdent [Expr]
     | ExprBoolNot Expr
     | ExprNegation Expr
@@ -80,6 +107,7 @@ data Expr
     | ExprIntDiv Expr Expr
     | ExprReminder Expr Expr
     | ExprModulo Expr Expr
+    | ExprReference LExpr
     | ExprPlus Expr Expr
     | ExprMinus Expr Expr
     | ExprLt Expr Expr
@@ -92,17 +120,16 @@ data Expr
     | ExprOr Expr Expr
   deriving (Eq, Ord, Show, Read)
 
-data LExpr
-    = LExprId PIdent | LExprDeref Deref | LExprRef Ref | LExprArr Arr
-  deriving (Eq, Ord, Show, Read)
-
-data Deref = LDerefExpr LExpr
+data LExpr = LExprId PIdent | LExprRef Ref | LExprArr Arr
   deriving (Eq, Ord, Show, Read)
 
 data Ref = LRefExpr LExpr
   deriving (Eq, Ord, Show, Read)
 
-data Arr = LArrExpr LExpr Expr
+data Arr = LArrExpr PIdent AExpr
+  deriving (Eq, Ord, Show, Read)
+
+data AExpr = ArrSing Expr | ArrMul AExpr Expr
   deriving (Eq, Ord, Show, Read)
 
 data AssignOperator
@@ -121,18 +148,15 @@ data AssignOperator
 
 data Type
     = TypeBool
-    | TypeDouble
+    | TypeFloat
     | TypeInt
     | TypeVoid
     | TypeChar
     | TypeString
-    | TypeCompound CompoundType
+    | TypeCompound CType
   deriving (Eq, Ord, Show, Read)
 
 data CompoundType = TypePointer Type | TypeArray Array
-  deriving (Eq, Ord, Show, Read)
-
-data Array = TypeMultiArray [Array]
   deriving (Eq, Ord, Show, Read)
 
 data Label = Label (String,Integer)

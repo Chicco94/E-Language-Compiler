@@ -32,55 +32,59 @@ generateDecl env maybe_type decl =
         -- DeclFun   fdecl@(ADecl t decl) -> generateDeclStmt env t decl
         DeclStmt (stmt) -> generateStmt env new_type stmt
           where new_type = findType maybe_type
-        _ -> env --fail "generateInstruction" -- TODO
+
 
 findType :: Maybe Type -> Type
 findType Nothing = TypeVoid
 findType (Just t) = t
 
 generateStmt :: Env  -> Type -> Stmt -> Env 
-generateStmt env@(program, tempCount) type_ stmt =
-    case stmt of
-        StmtInit stmt@(LExprId (PIdent (pos,name))) guard (ExprInt val) -> (tacInstructions ++ program, tempCount)
-          where tacInstructions = [AssignIntVar (Var (name,pos,type_)) val]
-        StmtExpr expr -> generateExpr env type_ expr
-        _ -> env --
-
+generateStmt env@(program, tempCount) type_ stmt@(StmtVarInit var@(PIdent (pos,name)) guard expr ) = 
+  case expr of
+    -- shortcut per evitare t0 = 1; var = t0
+    (ExprInt    val)  -> ([AssignIntVar    (Var (name,pos,type_)) val] ++ program, tempCount)
+    (ExprChar   val)  -> ([AssignChrVar    (Var (name,pos,type_)) val] ++ program, tempCount)
+    (ExprString val)  -> ([AssignStrVar    (Var (name,pos,type_)) val] ++ program, tempCount)
+    (ExprFloat  val)  -> ([AssignFloatVar  (Var (name,pos,type_)) val] ++ program, tempCount)
+    (ExprTrue   val)  -> ([AssignTrueVar   (Var (name,pos,type_)) val] ++ program, tempCount)
+    (ExprFalse  val)  -> ([AssignFalseVar  (Var (name,pos,type_)) val] ++ program, tempCount)
+    -- effettivo assegnamento con espressione complessa a destra
+    _               -> generateAssign (generateExpr env type_ expr) type_ var OpAssign
+generateStmt env@(program, tempCount) type_ stmt@(StmtExpr expr) = generateExpr env type_ expr
 
 generateExpr :: Env -> Type -> Expr -> Env
-generateExpr env type_ expr = 
+generateExpr env@(program, tempCount) type_ expr = 
     case expr of
-        --StmtAssign   le op re    -> generateAssign env type_ le op re 
-        --ExprTrue    expr        -> "true"
-        --ExprFalse   expr        -> "false"
-        ExprOr       expr1 expr2 -> binaryExpr env type_ expr1 expr2 BOpOr
-        ExprAnd      expr1 expr2 -> binaryExpr env type_ expr1 expr2 BOpAnd
-        ExprPlus     expr1 expr2 -> binaryExpr env type_ expr1 expr2 BOpPlus
-        ExprMinus    expr1 expr2 -> binaryExpr env type_ expr1 expr2 BOpMinus
-        ExprMul      expr1 expr2 -> binaryExpr env type_ expr1 expr2 BOpMul
-        ExprIntDiv   expr1 expr2 -> binaryExpr env type_ expr1 expr2 BOpIntDiv
-        ExprFloatDiv expr1 expr2 -> binaryExpr env type_ expr1 expr2 BOpFloatDiv
-        ExprReminder expr1 expr2 -> binaryExpr env type_ expr1 expr2 BOpRemainder
-        ExprModulo   expr1 expr2 -> binaryExpr env type_ expr1 expr2 BOpModulo
-        ExprPower    expr1 expr2 -> binaryExpr env type_ expr1 expr2 BOpPower
-        _ -> env 
+        ExprAssign   (LExprId id) op re    -> do generateAssign (generateExpr env type_ re) type_ id op
+        
+        ExprOr       expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpOr
+        ExprAnd      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpAnd
+        ExprPlus     expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPlus
+        ExprMinus    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMinus
+        ExprMul      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMul
+        ExprIntDiv   expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpIntDiv
+        ExprFloatDiv expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpFloatDiv
+        ExprReminder expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpRemainder
+        ExprModulo   expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpModulo
+        ExprPower    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPower
+        ExprInt      val         -> ([AssignIntTemp   (Temp (tempCount,type_)) val] ++ program, (tempCount+1))
+        ExprChar     val         -> ([AssignChrTemp   (Temp (tempCount,type_)) val] ++ program, (tempCount+1))
+        ExprString   val         -> ([AssignStrTemp   (Temp (tempCount,type_)) val] ++ program, (tempCount+1))
+        ExprFloat    val         -> ([AssignFloatTemp (Temp (tempCount,type_)) val] ++ program, (tempCount+1))
+        ExprTrue     val         -> ([AssignTrueTemp  (Temp (tempCount,type_)) val] ++ program, (tempCount+1))
+        ExprFalse    val         -> ([AssignFalseTemp (Temp (tempCount,type_)) val] ++ program, (tempCount+1))
 
 --TODO case Type
-binaryExpr :: Env -> Type -> Expr -> Expr -> BinaryOperator -> Env
-binaryExpr env@(program, tempCount) type_ expr1@(ExprInt    val1) expr2@(ExprInt    val2) op = ([ BinOp op (Temp (tempCount+2,type_)) (Temp (tempCount,type_)) (Temp (tempCount+1,type_)), AssignIntTemp   (Temp (tempCount+1,type_)) val2 , AssignIntTemp   (Temp (tempCount,type_)) val1] ++ program, (tempCount+3))
-binaryExpr env@(program, tempCount) type_ expr1@(ExprChar   val1) expr2@(ExprChar   val2) op = ([ BinOp op (Temp (tempCount+2,type_)) (Temp (tempCount,type_)) (Temp (tempCount+1,type_)), AssignChrTemp   (Temp (tempCount+1,type_)) val2 , AssignChrTemp   (Temp (tempCount,type_)) val1] ++ program, (tempCount+3))
-binaryExpr env@(program, tempCount) type_ expr1@(ExprString val1) expr2@(ExprString val2) op = ([ BinOp op (Temp (tempCount+2,type_)) (Temp (tempCount,type_)) (Temp (tempCount+1,type_)), AssignStrTemp   (Temp (tempCount+1,type_)) val2 , AssignStrTemp   (Temp (tempCount,type_)) val1] ++ program, (tempCount+3))
---binaryExpr env@(program, tempCount) type_ expr1@(ExprBool   val1) expr2@(ExprBool   val2) op = ([ BinOp op (Temp (tempCount+2,type_)) (Temp (tempCount,type_)) (Temp (tempCount+1,type_)), AssignBoolTemp  (Temp (tempCount+1,type_)) val2 , AssignBoolTemp  (Temp (tempCount,type_)) val1] ++ program, (tempCount+3))
-binaryExpr env@(program, tempCount) type_ expr1@(ExprDouble val1) expr2@(ExprDouble val2) op = ([ BinOp op (Temp (tempCount+2,type_)) (Temp (tempCount,type_)) (Temp (tempCount+1,type_)), AssignFloatTemp (Temp (tempCount+1,type_)) val2 , AssignFloatTemp (Temp (tempCount,type_)) val1] ++ program, (tempCount+3))
+binaryExpr :: Env -> Type -> BinaryOperator -> Env
+binaryExpr env@(program, tempCount) type_ op = ([ BinOp op (Temp (tempCount,type_)) (Temp (tempCount-2,type_)) (Temp (tempCount-1,type_))] ++ program, (tempCount+1))
 
-{-
+
 --StmtAssign LExpr AssignOperator Expr
-generateAssign :: Env -> Type -> LExpr -> AssignOperator -> Expr -> Env
-generateAssign env type_ lexpr@(LExprId (PIdent (pos,name))) op rexpr = 
+generateAssign :: Env -> Type -> PIdent -> AssignOperator -> Env
+generateAssign env@(program, tempCount) type_ (PIdent (pos,name)) op = 
   case op of
-    OpAssign -> ([AssignT2V  (Var  (name,pos,type_)) (Temp (tempCount,type_))] ++ program, (tempCount))
-    _ -> env
--}
+    OpAssign -> ([AssignT2V  (Var  (name,pos,type_)) (Temp (tempCount-1,type_))] ++ program, (tempCount))
+
 
 -- DeclFun LExpr [Arg] Guard CompStmt
 {-
