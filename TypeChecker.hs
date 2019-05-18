@@ -1,3 +1,10 @@
+-- TODO:
+-- tipi ref
+-- controllare gli array
+-- aggiungere intervalli
+-- cambiare la chiamata di funzione
+-- il caso quando dichiaro un pointer e a dx deve esserci un indirizzo, per forza
+
 module TypeChecker where
 
 import Control.Monad
@@ -79,16 +86,10 @@ checkDeclStmt (env, prog) stmt =
   case stmt of
     StmtExpr expr                -> checkExpr (env, prog) expr
 
-    StmtVarDecl lexpr guard         -> checkStmtDecl (env, prog) lexpr guard MutVar
-    StmtDefDecl lexpr guard         -> checkStmtDecl (env, prog) lexpr guard MutConst
-    StmtVarInit lexpr guard expr    -> checkStmtInit (env, prog) lexpr guard expr MutVar
-    StmtDefInit lexpr guard expr    -> checkStmtInit (env, prog) lexpr guard expr MutConst
-    StmtVarArrDeclNoDim lexpr guard -> checkStmtArrDeclNoDim (env, prog) lexpr guard MutVar
-    StmtDefArrDeclNoDim lexpr guard -> checkStmtArrDeclNoDim (env, prog) lexpr guard MutConst  
-    StmtVarArrDecl expr lexpr guard -> checkStmtArrDecl (env, prog) expr lexpr guard MutVar
-    StmtDefArrDecl expr lexpr guard -> checkStmtArrDecl (env, prog) expr lexpr guard MutConst  
-    --StmtVarArrInit lexpr guard arr  -> checkStmtArrInit (env, prog) lexpr guard arr MutVar
-    --StmtDefArrInit lexpr guard arr  -> checkStmtArrInit (env, prog) lexpr guard arr MutConst
+    StmtVarInit pident guard expr    -> checkStmtInit (env, prog) pident guard expr MutVar
+    StmtDefInit pident guard expr    -> checkStmtInit (env, prog) pident guard expr MutConst 
+    StmtVarArrInit range pident guard arr  -> checkStmtArrInit (env, prog) range pident guard arr MutVar
+    StmtDefArrInit range pident guard arr  -> checkStmtArrInit (env, prog) range pident guard arr MutConst
 
     StmtReturn preturn expr      -> checkReturn (env, prog) preturn expr
     StmtNoReturn preturn         -> checkNoReturn (env, prog) preturn
@@ -181,72 +182,62 @@ checkWhile (env@(xs, blocks@((blockType, context):ys)), prog) expr compstmt = do
            Bad s       -> Bad s
     else fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
 
--- Check constant/variable declaration statement.
-checkStmtDecl :: (Env, [Program]) -> LExpr -> Guard -> Mutability -> Err (Env, [Program])
-checkStmtDecl (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard mut = do
-  case guard of
-    GuardType t -> do
-      if t == TypeVoid
-        then fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
-        else
-          case lookupVar blocks ident of
-            Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
-            _        -> do case mut of
-                             MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtVarDecl lexpr guard)))]) prog)
-                             MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtDefDecl lexpr guard)))]) prog)
-    GuardVoid -> fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
-
 -- Check constant/variable initialization statement.
-checkStmtInit :: (Env, [Program]) -> LExpr -> Guard -> Expr -> Mutability -> Err (Env, [Program])
-checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard expr mut = do
+checkStmtInit :: (Env, [Program]) -> PIdent -> Guard -> Expr -> Mutability -> Err (Env, [Program])
+checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) pident@(PIdent (p, ident)) guard expr mut = do
   case guard of
-    GuardType t -> do
-      if t == TypeVoid
-        then fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
-        else 
-          case lookupVar blocks ident of
-            Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
-            _        -> do case mut of
-                             MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtVarInit lexpr guard expr)))]) prog)
-                             MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtDefInit lexpr guard expr)))]) prog)
-    GuardVoid -> fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+    GuardVoid        -> fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+    GuardType tguard -> do
+      if tguard == TypeVoid
+        then fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+        else do texpr <- inferExpr env expr
+                if texpr `isCompatibleWith` tguard
+                  then 
+                    case lookupVar blocks ident of
+                      Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
+                      _        -> do case mut of
+                                       MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard expr)))]) prog)
+                                       MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtDefInit pident guard expr)))]) prog)
+                  else fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has type " ++ show texpr ++ " which is incompatible with variable " ++ show ident ++ " " ++ show p ++ " that has type " ++ show tguard
 
--- Check constant/variable array without dimension declaration statement.
-checkStmtArrDeclNoDim :: (Env, [Program]) -> LExpr -> Guard -> Mutability -> Err (Env, [Program])
-checkStmtArrDeclNoDim (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard mut = do
-  case guard of
-    GuardType t -> do
-      if t == TypeVoid 
-        then fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
-        else
-          case lookupVar blocks ident of
-            Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
-            _        -> do case mut of
-                             MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtVarArrDeclNoDim lexpr guard)))]) prog)
-                             MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtDefArrDeclNoDim lexpr guard)))]) prog)
-    GuardVoid -> fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
 
--- Check constant/variable array with dimension declaration statement.
-checkStmtArrDecl :: (Env, [Program]) -> Expr -> LExpr -> Guard -> Mutability -> Err (Env, [Program])
-checkStmtArrDecl (env@(sig, blocks@((blockType, context):xs)), prog) expr lexpr@(LExprId (PIdent (p, ident))) guard mut = do
-  case inferExpr env expr of
-    Ok TypeInt -> do 
+--checkStmtArrInit (env, prog) lexpr guard arr MutConst
+checkStmtArrInit :: (Env, [Program]) -> [Range] -> PIdent -> Guard -> Array -> Mutability -> Err (Env, [Program])
+checkStmtArrInit (env@(sig, blocks@((blockType, context):xs)), prog) range pident@(PIdent (p, ident)) guard arr mut = do
+  Ok (env, prog)
+{-
+checkStmtArrInit (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard arr mut = do
+  case inferArray env arr of
+    Ok tarr -> do
       case guard of
         GuardType t -> do
-          if t == TypeVoid 
+          if t == TypeVoid
             then fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
             else
               case lookupVar blocks ident of
                 Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
                 _        -> do case mut of
-                                 MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtVarArrDecl expr lexpr guard)))]) prog)
-                                 MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtDefArrDecl expr lexpr guard)))]) prog)
+                                 MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray t)) (DeclStmt (StmtVarArrInit lexpr guard arr)))]) prog)
+                                 MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray t)) (DeclStmt (StmtDefArrInit lexpr guard arr)))]) prog)
         GuardVoid -> fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
-    _ -> fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must have type " ++ show TypeInt
+    _ -> fail $ show "(TODO,TODO): the expression " ++ printTree arr ++ " must have type " ++ show TypeInt
 
---checkStmtArrInit (env, prog) lexpr guard arr MutConst
---checkStmtArrInit :: (Env, [Program]) -> LExpr -> Guard -> Array -> Mutability -> Err (Env, [Program])
---checkStmtArrInit (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard arr mut = do
+-- Infer array.
+inferArray :: Env -> Array -> Err Type
+inferArray env array =
+  case array of
+    TypeExprArray expr               -> inferExpr env expr
+    TypeMultiArray arrays@(arr:arrs) -> do t <- inferArray env arr
+                                           filterArrays env arrays t
+    _ -> fail $ "inferArray: fatal error!"
+
+filterArrays :: Env -> [Array] -> Type -> Err Type
+filterArrays _ _ t = Ok t
+filterArrays env (arr:arrs) t = do
+  tarr <- inferArray env arr
+  if (t == tarr)
+    then filterArrays env arrs t
+    else fail $ "filterArrays: fatal error!" -}
 
 
 -- Check assignment.
@@ -265,8 +256,8 @@ checkAssign (env, prog) lexpr op expr = do
     OpPlus        -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpMinus       -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpMul         -> do checkAssignOp (env, prog)  t1 lexpr op expr
-    OpIntDiv      -> do checkAssignDiv (env, prog)  t1 TypeInt lexpr op expr
-    OpDoubleDiv    -> do checkAssignDiv (env, prog)  t1 TypeDouble lexpr op expr
+    OpIntDiv      -> do checkAssignDiv (env, prog)  t1 lexpr op expr TypeInt 
+    OpFloatDiv    -> do checkAssignDiv (env, prog)  t1 lexpr op expr TypeFloat
     OpRemainder   -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpModulo      -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpPower       -> do checkAssignOp (env, prog)  t1 lexpr op expr  
@@ -288,8 +279,8 @@ checkAssignOp (env, prog) t1 lexpr op expr = do
     else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
 
 -- Check assignment operator.
-checkAssignDiv :: (Env, [Program]) -> Type -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
-checkAssignDiv (env, prog) t1 top lexpr op expr = do
+checkAssignDiv :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Type -> Err (Env, [Program])
+checkAssignDiv (env, prog) t1 lexpr op expr top = do
   t2 <- inferExpr env expr
   if (t1 `isCompatibleWith` top) && 
      (t2 `isCompatibleWith` top) && 
@@ -314,12 +305,12 @@ checkExpr (env, prog) expr = do
     ExprAssign lexpr op expr -> do checkAssign (env, prog) lexpr op expr
 
     -- Left expressions.
-    LeftExpr lexpr           -> do t <- inferLExpr env lexpr
-                                   return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr (LeftExpr lexpr))))])prog) 
+    ExprLeft lexpr           -> do t <- inferLExpr env lexpr
+                                   return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr (ExprLeft lexpr))))])prog) 
 
     -- Base expressions (i.e., integers, floats, chars, strings, booleans)
     ExprInt int              -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeInt (DeclStmt (StmtExpr (ExprInt int))))]) prog)
-    ExprDouble dbl           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeDouble (DeclStmt (StmtExpr (ExprDouble dbl))))]) prog)
+    ExprFloat flt           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeFloat (DeclStmt (StmtExpr (ExprFloat flt))))]) prog)
     ExprChar chr             -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeChar (DeclStmt (StmtExpr (ExprChar chr))))]) prog)
     ExprString str           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeString (DeclStmt (StmtExpr (ExprString str))))]) prog)
     ExprTrue ptrue           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprTrue ptrue))))]) prog)
@@ -343,9 +334,9 @@ checkExpr (env, prog) expr = do
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
     ExprMul e1 e2      -> do t <- inferArithBinOp env expr e1 e2
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
-    ExprDoubleDiv e1 e2 -> do t <- inferArithBinOpDiv env TypeDouble expr e1 e2
-                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
-    ExprIntDiv e1 e2   -> do t <- inferArithBinOpDiv env TypeInt expr e1 e2
+    ExprFloatDiv e1 e2 -> do t <- inferArithBinOpDiv env expr e1 e2 TypeFloat 
+                             return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+    ExprIntDiv e1 e2   -> do t <- inferArithBinOpDiv env expr e1 e2 TypeInt 
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
     ExprReminder e1 e2 -> do t <- inferArithBinOp env expr e1 e2
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
@@ -398,13 +389,13 @@ inferExpr :: Env -> Expr -> Err Type
 inferExpr env expr =
   case expr of
     -- Left expressions. 
-    LeftExpr lexpr -> inferLExpr env lexpr 
+    ExprLeft lexpr -> inferLExpr env lexpr 
 
     -- Base expressions (i.e., integers, floats, chars, strings, booleans) 
     ExprTrue _    -> Ok TypeBool
     ExprFalse _   -> Ok TypeBool
     ExprInt _     -> Ok TypeInt
-    ExprDouble _  -> Ok TypeDouble
+    ExprFloat _   -> Ok TypeFloat
     ExprChar _    -> Ok TypeChar
     ExprString _  -> Ok TypeString
     
@@ -414,6 +405,9 @@ inferExpr env expr =
     -- Boolean not.
     ExprBoolNot e      -> inferBoolUnOp env expr e
 
+    -- Address operator (i.e. "&").
+    ExprReference le   -> inferReference env expr le
+
     -- Arithmetic unary operators.
     ExprAddition e           -> inferArithUnOp env expr e
     ExprNegation e           -> inferArithUnOp env expr e
@@ -421,8 +415,8 @@ inferExpr env expr =
     -- Arithmetic binary operators.
     ExprPower e1 e2    -> inferArithBinOp env expr e1 e2
     ExprMul e1 e2      -> inferArithBinOp env expr e1 e2
-    ExprDoubleDiv e1 e2 -> inferArithBinOpDiv env TypeDouble expr e1 e2
-    ExprIntDiv e1 e2   -> inferArithBinOpDiv env TypeInt expr e1 e2
+    ExprFloatDiv e1 e2 -> inferArithBinOpDiv env expr e1 e2 TypeFloat
+    ExprIntDiv e1 e2   -> inferArithBinOpDiv env expr e1 e2 TypeInt
     ExprReminder e1 e2 -> inferArithBinOp env expr e1 e2
     ExprModulo e1 e2   -> inferArithBinOp env expr e1 e2
     ExprPlus e1 e2     -> inferArithBinOp env expr e1 e2
@@ -459,41 +453,47 @@ inferLExpr env@(sig, blocks) lexpr = do
         Ok (_,t) -> Ok t
         _ -> fail $ show p ++ ": variable " ++ printTree ident ++ " non defined!"
 
-    LExprDeref (LDerefExpr le)   -> inferLExpr env le
+    --LExprDeref (LDerefExpr le)   -> inferLExpr env le
     LExprRef (LRefExpr le)       -> inferLExpr env le
-    LExprArr (LArrExpr le re)    -> do tle <- inferLExpr env le
-                                       tre <- inferExpr env re
-                                       if (tre == TypeInt)
-                                         then Ok tle
-                                         else fail $ show (getLExprPosition le) ++ ": the type of the array " ++ printTree le ++ " is " ++ show tle ++ " but the inner expression " ++ printTree re ++ " has type " ++ show tre
-   -- _                                  -> fail $ "inferLEXpr: fatal error"
+    {-LExprArr (LArrExpr pident@(PIdent (p,ident)) re) -> do (_,tid) <- lookupVar blocks ident
+                                                           tre <- inferExpr env re
+                                                           if (tre == TypeInt)
+                                                             then Ok tid
+                                                             else fail $ show p ++ ": the type of the array " ++ printTree ident ++ " is " ++ show tid ++ " but the inner expression " ++ printTree re ++ " has type " ++ show tre -}
+    _                                  -> fail $ "inferLEXpr: fatal error"
+
+-- Infer address unary operator.
+inferReference :: Env -> Expr -> LExpr -> Err Type 
+inferReference env expr le = do
+  t <- inferLExpr env le
+  Ok $ TypeCompound (TypeAddress t)
 
 -- Infer arithmetic unary operator.
 inferArithUnOp :: Env -> Expr -> Expr -> Err Type
 inferArithUnOp env expr e = do
   t <- inferExpr env e
-  if (t == TypeInt) || (t == TypeDouble) -- only ints and floats are allowed
+  if (t == TypeInt) || (t == TypeFloat) -- only ints and floats are allowed
     then Ok t
-    else fail $ show (getExprPosition e) ++ ": " ++ printTree e ++ " has type " ++ show t ++ " which must be " ++ show [TypeInt, TypeDouble]
+    else fail $ show (getExprPosition e) ++ ": " ++ printTree e ++ " has type " ++ show t ++ " which must be " ++ show [TypeInt, TypeFloat]
 
 -- Infer arithmetic binary operator.
 inferArithBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
 inferArithBinOp env expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
-  if (t1 `isCompatibleWithAny` [TypeInt, TypeDouble]) && -- only ints and floats are allowed
-     (t2 `isCompatibleWithAny` [TypeInt, TypeDouble]) &&
+  if (t1 `isCompatibleWithAny` [TypeInt, TypeFloat]) && -- only ints and floats are allowed
+     (t2 `isCompatibleWithAny` [TypeInt, TypeFloat]) &&
      areCompatible t1 t2
      then getMostGeneric t1 t2
      else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
 
 -- Infer arithmetic integer division or float division operator.
-inferArithBinOpDiv :: Env -> Type -> Expr -> Expr -> Expr -> Err Type
-inferArithBinOpDiv env top expr e1 e2 = do
+inferArithBinOpDiv :: Env -> Expr -> Expr -> Expr -> Type -> Err Type
+inferArithBinOpDiv env expr e1 e2 top = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
-  if (t1 `isCompatibleWithAny` [TypeInt, TypeDouble]) && -- only ints and floats in divisions
-     (t2 `isCompatibleWithAny` [TypeInt, TypeDouble]) &&
+  if (t1 `isCompatibleWithAny` [TypeInt, TypeFloat]) && -- only ints and floats in divisions
+     (t2 `isCompatibleWithAny` [TypeInt, TypeFloat]) &&
      areCompatible t1 t2
      then Ok top
      else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
@@ -503,8 +503,8 @@ inferRelBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
 inferRelBinOp env expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
-  if (t1 `isCompatibleWithAny` [TypeInt, TypeDouble, TypeChar, TypeString]) &&  -- only ints, floats, chars and strings are allowed
-     (t2 `isCompatibleWithAny` [TypeInt, TypeDouble, TypeChar, TypeString]) &&  -- the same as above
+  if (t1 `isCompatibleWithAny` [TypeInt, TypeFloat, TypeChar, TypeString]) &&  -- only ints, floats, chars and strings are allowed
+     (t2 `isCompatibleWithAny` [TypeInt, TypeFloat, TypeChar, TypeString]) &&  -- the same as above
      areCompatible t1 t2
      then Ok TypeBool
      else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ show t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ show t2
@@ -535,11 +535,11 @@ inferBoolBinOp env expr e1 e2 = do
 defaultPrimitives :: Sig
 defaultPrimitives = 
   Map.insert "writeInt"    ([(ModEmpty, TypeInt)], TypeVoid) $     -- void writeInt(int i)
-  Map.insert "writeFloat"  ([(ModEmpty, TypeDouble)], TypeVoid) $  -- void writeFloat(double d)
+  Map.insert "writeFloat"  ([(ModEmpty, TypeFloat)], TypeVoid) $   -- void writeFloat(float d)
   Map.insert "writeChar"   ([(ModEmpty, TypeChar)], TypeVoid) $    -- void writeChar(char c)
   Map.insert "writeString" ([(ModEmpty, TypeString)], TypeVoid) $  -- void writeString(string s)
   Map.insert "readInt"     ([], TypeInt) $                         -- int readInt()
-  Map.insert "readDouble"  ([], TypeDouble) $                      -- double readFloat()
+  Map.insert "readFloat"  ([], TypeFloat) $                        -- float readFloat()
   Map.insert "readChar"    ([], TypeChar) $                        -- char readChar()
   Map.insert "readString"  ([], TypeString) Map.empty              -- string readString()
 
@@ -582,15 +582,38 @@ addVar context (m,ident) (GuardType t) = Map.insert ident (m,t) context
 -- Type compatibilities:
 -- bool < char < int < float
 --             < string
+--
+-- address <- pointer
+
+getAddressType :: Type -> Type
+getAddressType t1 = do
+  case t1 of
+    TypeCompound (TypePointer t2) -> t2
+    TypeCompound (TypeAddress t2) -> getAddressType t2
+    _                             -> t1
 
 -- T1 is compatible with T2?
 isCompatibleWith :: Type -> Type -> Bool
-t1 `isCompatibleWith` t2 
-  | t1 == t2       = True
-  | t1 == TypeBool = elem t2 [TypeChar, TypeString, TypeInt, TypeDouble]
-  | t1 == TypeChar = elem t2 [TypeString, TypeInt, TypeDouble]
-  | t1 == TypeInt  = t2 == TypeDouble
-  | otherwise      = False
+t1 `isCompatibleWith` t2 =
+  case t2 of
+    TypeCompound (TypePointer tpointer) -> do
+      case t1 of TypeCompound (TypeAddress taddr)    -> (getAddressType taddr) `isCompatibleWith` tpointer
+                 TypeCompound (TypePointer tpointer) -> True
+                 _                                   -> False
+    _                                   -> do
+      case t1 of TypeBool -> elem t2 [TypeBool, TypeChar, TypeString, TypeInt, TypeFloat]
+                 TypeChar -> elem t2 [TypeChar, TypeString, TypeInt, TypeFloat]
+                 TypeInt  -> elem t2 [TypeInt, TypeFloat] 
+                 _        -> False
+{-  case t1 of
+    TypeBool -> elem t2 [TypeBool, TypeChar, TypeString, TypeInt, TypeFloat]
+    TypeChar -> elem t2 [TypeChar, TypeString, TypeInt, TypeFloat]
+    TypeInt  -> elem t2 [TypeInt, TypeFloat]
+    TypeCompound (TypeAddress taddr) -> do
+      case t2 of
+        TypeCompound (TypePointer tpointer) -> taddr `isCompatibleWith` t2
+        _                                   -> False
+    _        -> False -}
 
 -- T is compatible with any of [T1,..Tn]?
 isCompatibleWithAny :: Type -> [Type] -> Bool
@@ -604,7 +627,7 @@ areCompatible t1 t2 = (t1 `isCompatibleWith` t2) || (t2 `isCompatibleWith` t1)
 getMostGeneric :: Type -> Type -> Err Type
 getMostGeneric t1 t2
   | t1 == t2                  = Ok t1
-  | TypeDouble `elem` [t1,t2] = Ok TypeDouble
+  | TypeFloat `elem` [t1,t2]  = Ok TypeFloat
   | TypeInt `elem` [t1,t2]    = Ok TypeInt
   | TypeString `elem` [t1,t2] = Ok TypeString
   | TypeChar `elem` [t1,t2]   = Ok TypeChar
@@ -629,22 +652,23 @@ getExprPosition :: Expr -> (Int, Int)
 getExprPosition e =
   case e of
     ExprInt (PInteger (p, _))   -> p
-    ExprDouble (PDouble (p, _)) -> p
+    ExprFloat (PFloat (p, _))   -> p
     ExprChar (PChar (p, _))     -> p
     ExprString (PString (p, _)) -> p
     ExprTrue (PTrue (p, _))     -> p
     ExprFalse (PFalse (p, _))   -> p
 
     ExprAssign lexpr op rexpr -> getLExprPosition lexpr
-    LeftExpr lexpr            -> getLExprPosition lexpr
+    ExprLeft lexpr            -> getLExprPosition lexpr
 
     ExprBoolNot rexpr         -> getExprPosition rexpr
     ExprNegation rexpr        -> getExprPosition rexpr
     ExprAddition rexpr        -> getExprPosition rexpr
+    ExprReference lexpr       -> getLExprPosition lexpr
     
     ExprPower e1 e2           -> getExprPosition e1
     ExprMul e1 e2             -> getExprPosition e1
-    ExprDoubleDiv e1 e2       -> getExprPosition e1
+    ExprFloatDiv e1 e2        -> getExprPosition e1
     ExprIntDiv e1 e2          -> getExprPosition e1
     ExprReminder e1 e2        -> getExprPosition e1
     ExprModulo e1 e2          -> getExprPosition e1
@@ -666,10 +690,10 @@ getExprPosition e =
 getLExprPosition :: LExpr -> (Int, Int)
 getLExprPosition e =
   case e of
-    LExprId (PIdent (p, ident)) -> p
-    LExprDeref (LDerefExpr le)  -> getLExprPosition le
-    LExprRef (LRefExpr le)      -> getLExprPosition le
-    LExprArr (LArrExpr le re)   -> getLExprPosition le    
+    LExprId (PIdent (p, ident))                        -> p
+    --LExprDeref (LDerefExpr le)                         -> getLExprPosition le
+    LExprRef (LRefExpr le)                             -> getLExprPosition le
+    LExprArr (LArrExpr pident@(PIdent (p,ident)) re)   -> p    
 
 -- Find function block and its type, if exists.
 findFunBlockAndType :: [(BlockType, Context)] -> Err (PIdent, Type)
