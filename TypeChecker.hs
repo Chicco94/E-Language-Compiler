@@ -1,9 +1,6 @@
 -- TODO:
--- tipi ref
 -- controllare gli array
--- aggiungere intervalli
 -- cambiare la chiamata di funzione
--- il caso quando dichiaro un pointer e a dx deve esserci un indirizzo, per forza
 
 module TypeChecker where
 
@@ -202,9 +199,110 @@ checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) pident@(PIdent
 
 
 --checkStmtArrInit (env, prog) lexpr guard arr MutConst
-checkStmtArrInit :: (Env, [Program]) -> [Range] -> PIdent -> Guard -> Array -> Mutability -> Err (Env, [Program])
-checkStmtArrInit (env@(sig, blocks@((blockType, context):xs)), prog) range pident@(PIdent (p, ident)) guard arr mut = do
-  Ok (env, prog)
+checkStmtArrInit :: (Env, [Program]) -> [PInteger] -> PIdent -> Guard -> Array -> Mutability -> Err (Env, [Program])
+checkStmtArrInit (env@(sig, blocks@((blockType, context):xs)), prog) pints pident@(PIdent (p, ident)) guard arr mut = do
+  case guard of
+    GuardVoid        -> fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+    GuardType tguard -> do
+      if tguard == TypeVoid
+        then fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+        else do case checkBounds (getBoundsFromPInts pints) arr of
+                  True -> do tarr <- inferArray env arr tguard
+                             Ok (env, prog)
+                  _    -> fail $ show p ++ ": array " ++ show ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but the initialization " ++ printTree arr ++ " does not match such bounds"
+--checkArrInit :: (Env, [Program]) -> Array -> [PInteger] -> Guard -> Err (Env, [Program])
+
+-- Infer array type.
+inferArray :: Env -> Array -> Type -> Err Type
+inferArray env@(sig, blocks) arr tguard = 
+  let types = inferArr env arr
+  in controlArrayTypes tguard types
+
+controlArrayTypes :: Type -> [Type] -> Err Type
+controlArrayTypes t [] = Ok t 
+controlArrayTypes t (typ:types) =
+  if typ `isCompatibleWith` t
+    then controlArrayTypes t types
+    else fail $ "controlArrayTypes: fatal error" 
+
+inferArr :: Env -> Array -> [Type] 
+inferArr env arr = do
+  case arr of
+    ExprMultiArray multiArray@(x:xs) -> inferArr env x ++ inferArrs env xs
+    ExprArray expr -> case inferExpr env expr of Ok t -> [t]
+                                                 _    -> []
+
+inferArrs :: Env -> [Array] -> [Type]
+inferArrs _ [] = []
+inferArrs env (x:xs) = do
+  case x of
+    ExprMultiArray multiArr@(y:ys) -> inferArr env y ++ inferArrs env xs
+    ExprArray expr -> case inferExpr env expr of Ok t -> [t]
+                                                 _    -> []
+
+getBoundsFromPInts :: [PInteger] -> [Int]
+getBoundsFromPInts [] = []
+getBoundsFromPInts ((PInteger (p, int)):xs) = (read int :: Int) : getBoundsFromPInts xs
+
+checkLengthArray :: Int -> [Array] -> Bool
+checkLengthArray int arr = length arr == int
+ 
+
+checkBounds :: [Int] -> Array -> Bool
+checkBounds [] _ = True --if int == 0 then True
+                        --            else False
+checkBounds (int:ints) arr =
+{-  if int == 1
+    then True
+    else -}
+      case arr of
+        ExprMultiArray multiArr@(x:xs) -> (checkLengthArray int multiArr) && (checkBounds ints x) && (checkArrays ((int-1):ints) xs)
+        ExprArray expr -> True
+
+checkArrays :: [Int] -> [Array] -> Bool
+checkArrays _ [] = True
+checkArrays (int:ints) (x:xs) =
+{-  if int == 0
+    then
+      if xs == []
+        then True
+        else False
+
+    else -}
+{-  if ints /= [] && xs /= []
+    then -}
+  case x of
+    ExprMultiArray multiArr@(y:ys) -> (checkLengthArray int (x:xs))  && (checkLengthArray (head ints) (y:ys)) && (checkBounds (tail ints) y) && (checkArrays (((head ints)-1):(tail ints)) ys) -- && (checkArrays ints ys) -- && (checkArrays (((head ints)-1):(tail ints)) ys)--(checkLengthArray (head ints) (y:ys)) && (checkArrays ((int-1):ints) xs) &&
+    ExprArray expr -> True
+{-    else 
+      case x of
+        ExprMultiArray multiArr@(y:ys) -> (checkLengthArray int (x:xs))  && (checkLengthArray (head ints) (y:ys)) -- && (checkArrays ((int-1):ints) xs) && (checkBounds [int] y) --(checkLengthArray (head ints) (y:ys)) &&
+        ExprArray expr -> True -}
+
+{-
+(ExprMultiArray [
+	ExprMultiArray [ 											<-- x
+		ExprMultiArray [										
+			ExprArray (ExprInt (PInteger ((56,29),"1")))
+		],
+		ExprMultiArray [										
+			ExprArray (ExprInt (PInteger ((56,33),"2")))
+		]
+	],
+	ExprMultiArray [											<-- xs
+		ExprMultiArray [
+			ExprArray (ExprInt (PInteger ((56,39),"3")))
+		],
+		ExprMultiArray [
+			ExprArray (ExprInt (PInteger ((56,43),"4")))
+		]
+	]
+])
+-}
+{-  case a of
+    ExprArray expr -> Ok True--if (read id :: Integer) == 1 then Ok True
+                      --          else fail $ "error"
+    ExprMultiArray arr@(array:arrays) -> Ok True -}
 {-
 checkStmtArrInit (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard arr mut = do
   case inferArray env arr of
@@ -433,6 +531,7 @@ inferExpr env expr =
     ExprAnd e1 e2      -> inferBoolBinOp env expr e1 e2
     ExprOr e1 e2       -> inferBoolBinOp env expr e1 e2
     _ -> fail $ "inferExpr: fatal error"
+  
 
 -- Infer function call.
 inferFunCall :: Env -> Expr -> Err Type

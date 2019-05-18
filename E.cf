@@ -57,21 +57,21 @@ StmtExpr.       Stmt     ::= Expr ";" ;
 StmtVarInit.         Stmt     ::= "var" PIdent Guard ":=" Expr ";" ;         -- Variable initialization.
 --StmtVarArrDeclNoDim. Stmt     ::= "var" "[" "]" LExpr Guard ";" ;           -- Variable array without dimension declaration.
 --StmtVarArrDecl.      Stmt     ::= "var" "[" Expr "]" LExpr Guard ";" ;     	-- Variable array with dimension declaration.
-StmtVarArrInit.      Stmt     ::= "var" "[" [Range] "]" PIdent Guard ":=" Array ";" ;		-- Variable array initialization.
+StmtVarArrInit. Stmt ::= "var" "[" [PInteger] "]" PIdent Guard ":=" Array ";" ; -- Variable array initialization.
 
 
 --StmtDefDecl.         Stmt     ::= "def" PIdent Guard ";" ;                   -- Constant declaration.
 StmtDefInit.         Stmt     ::= "def" PIdent Guard ":=" Expr ";" ;         -- Constant initialization.
 --StmtDefArrDeclNoDim. Stmt     ::= "def" "[" "]" LExpr Guard ";" ;           -- Constant array without dimension declaration.
 --StmtDefArrDecl.      Stmt     ::= "def" "[" Expr "]" LExpr Guard ";" ;      -- Constant array with dimension declaration.
-StmtDefArrInit.      Stmt     ::= "def" "[" [Range] "]" PIdent Guard ":=" Array ";" ;		-- Constant array initialization.
+StmtDefArrInit. Stmt ::= "def" "[" [PInteger] "]" PIdent Guard ":=" Array ";" ; -- Constant array initialization.
 
 ExprArray.      Array ::= Expr ;
 ExprMultiArray. Array ::= "[" [Array] "]" ;
 separator Array "," ;
 
-ExprRange.           Range ::= PInteger ;
-separator Range "," ;
+--ExprRange.           Range ::= PInteger ;
+separator PInteger "," ;
 
 StmtReturn.     Stmt     ::= PReturn "(" Expr ")" ";" ;
 StmtNoReturn.   Stmt     ::= PReturn ";" ;
@@ -92,8 +92,8 @@ StmtBreak.      Stmt     ::= PBreak ";" ;
 StmtContinue.   Stmt     ::= PContinue ";" ;
 
 StmtWhile.      Stmt     ::= "while" "(" Expr ")" CompStmt ;
-StmtFor.        Stmt     ::= "for" PIdent "in" ForRange CompStmt ;
-ExprForRange.   ForRange ::= ForId ".." ForId ;
+StmtFor.        Stmt     ::= "for" PIdent "in" Range CompStmt ;
+ExprRange.      Range    ::= ForId ".." ForId ;
 ForIdent.       ForId    ::= PIdent ;
 ForInteger.     ForId    ::= PInteger ;          
 
@@ -202,7 +202,7 @@ TypeString. Type ::= "string" ;
 TypeCompound. Type  ::= CType ;
 TypePointer.  CType ::= Type "*" ; 					-- Pointer type.
 TypeAddress.  CType ::= Type "&" ;					-- Address type.
-TypeArray.    CType ::= Type "[" [Range] "]" ;		-- Array type.
+TypeArray.    CType ::= Type "[" [PInteger] "]" ;		-- Array type.
 
 
 --TypeExprArray. Array ::= Expr ;           -- Iterable interval.
