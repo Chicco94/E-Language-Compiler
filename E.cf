@@ -6,26 +6,9 @@ position token PContinue 'c' 'o' 'n' 't' 'i' 'n' 'u' 'e' ;		-- continue
 position token PBreak 'b' 'r' 'e' 'a' 'k' ;						-- break
 position token PIdent (letter (letter | digit | '_' | '\'')*) ;	-- function and variable names
 position token PInteger digit+ ;								-- integer
-position token PDouble digit+ '.' digit+ ;						-- double
+position token PFloat digit+ '.' digit+ ;						-- float
 position token PChar '\'' char '\'' ;							-- char
 position token PString '"' char+ '"' ;							-- string
-
--- The available type are bool, double, int, void, char and string.
-TypeBool.   Type ::= "bool" ;
-TypeDouble. Type ::= "double" ;
-TypeInt.    Type ::= "int" ;
-TypeVoid.   Type ::= "void" ; 
-TypeChar.   Type ::= "char" ;
-TypeString. Type ::= "string" ; 
---TypeAny.    Type ::= "any" ;
-
-
--- Compound types.
-TypeCompound. Type  ::= CType ;
-TypePointer.  CType ::= Type "*" ; 					-- Pointer type.
-TypeAddress.  CType ::= Type "&" ;					-- Address type.
-TypeArray.    CType ::= Type "[" [Range] "]" ;		-- Array type.
-
 
 -- A program is a sequence of declarations.
 PDefs.     Program ::= [Decl] ;
@@ -47,7 +30,7 @@ comment "#" ;
 comment "/*" "*/" ;
 
 
--- Function declaration. E.g.: def foo (int x, double y) : int { }
+-- Function declaration. E.g.: def foo (int x, float y) : int { }
 DeclFun.   Decl          ::= "def" LExpr "(" [Arg] ")" Guard CompStmt ;
 ADecl.     AnnotatedDecl ::= "["Type ":]" Decl ;
 separator  Arg "," ;
@@ -70,18 +53,18 @@ GuardType.  Guard ::= ":" Type ;   -- guarded
 -- Any Expression followed by a semicolon ; can be used as a statement.
 StmtExpr.       Stmt     ::= Expr ";" ;
 
-StmtVarDecl.         Stmt     ::= "var" LExpr Guard ";" ;                   -- Variable declaration.
-StmtVarInit.         Stmt     ::= "var" LExpr Guard ":=" Expr ";" ;         -- Variable initialization.
+--StmtVarDecl.         Stmt     ::= "var" PIdent Guard ";" ;                   -- Variable declaration.
+StmtVarInit.         Stmt     ::= "var" PIdent Guard ":=" Expr ";" ;         -- Variable initialization.
 --StmtVarArrDeclNoDim. Stmt     ::= "var" "[" "]" LExpr Guard ";" ;           -- Variable array without dimension declaration.
 --StmtVarArrDecl.      Stmt     ::= "var" "[" Expr "]" LExpr Guard ";" ;     	-- Variable array with dimension declaration.
-StmtVarArrInit.      Stmt     ::= "var" LExpr Guard "[" [Range] "]" ":=" Array ";" ;		-- Variable array initialization.
+StmtVarArrInit. Stmt ::= "var" "[" [Range] "]" PIdent Guard ":=" Array ";" ; -- Variable array initialization.
 
 
-StmtDefDecl.         Stmt     ::= "def" LExpr Guard ";" ;                   -- Constant declaration.
-StmtDefInit.         Stmt     ::= "def" LExpr Guard ":=" Expr ";" ;         -- Constant initialization.
+--StmtDefDecl.         Stmt     ::= "def" PIdent Guard ";" ;                   -- Constant declaration.
+StmtDefInit.         Stmt     ::= "def" PIdent Guard ":=" Expr ";" ;         -- Constant initialization.
 --StmtDefArrDeclNoDim. Stmt     ::= "def" "[" "]" LExpr Guard ";" ;           -- Constant array without dimension declaration.
 --StmtDefArrDecl.      Stmt     ::= "def" "[" Expr "]" LExpr Guard ";" ;      -- Constant array with dimension declaration.
-StmtDefArrInit.      Stmt     ::= "def" LExpr Guard "[" [Range] "]" ":=" Array ";" ;		-- Constant array initialization.
+StmtDefArrInit. Stmt ::= "def" "[" [Range] "]" PIdent Guard ":=" Array ";" ; -- Constant array initialization.
 
 ExprArray.      Array ::= Expr ;
 ExprMultiArray. Array ::= "[" [Array] "]" ;
@@ -144,7 +127,7 @@ ArrMul.  AExpr ::= AExpr "," Expr ;
 -- (Right) Expressions
 ExprLeft.     Expr17 ::= LExpr ;
 ExprInt.      Expr16 ::= PInteger ;
-ExprDouble.   Expr16 ::= PDouble ;
+ExprFloat.    Expr16 ::= PFloat ;
 ExprChar.     Expr16 ::= PChar ;
 ExprString.   Expr16 ::= PString ;
 ExprTrue.     Expr16 ::= PTrue ;
@@ -159,13 +142,13 @@ ExprAddition. Expr14  ::= "+" Expr15 ;
 
 ExprPower.    Expr13 ::= Expr14 "^"  Expr13 ;
 
-ExprMul.       Expr12 ::= Expr12 "*"  Expr13 ;
-ExprDoubleDiv. Expr12 ::= Expr12 "/"  Expr13 ;
-ExprIntDiv.    Expr12 ::= Expr12 "//" Expr13 ;
-ExprReminder.  Expr12 ::= Expr12 "%"  Expr13 ;
-ExprModulo.    Expr12 ::= Expr12 "%%" Expr13 ;
+ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
+ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
+ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
+ExprReminder. Expr12 ::= Expr12 "%"  Expr13 ;
+ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
 
---ExprReference. Expr11 ::= "&" LExpr ;
+ExprReference. Expr11 ::= "&" LExpr ;
 ExprPlus.      Expr11 ::= Expr11 "+"  Expr12 ;
 ExprMinus.     Expr11 ::= Expr11 "-"  Expr12 ;
 
@@ -199,10 +182,27 @@ OpPlus.       AssignOperator ::= "+=" ;
 OpMinus.      AssignOperator ::= "-=" ;
 OpMul.        AssignOperator ::= "*=" ;
 OpIntDiv.     AssignOperator ::= "//=" ;
-OpDoubleDiv.  AssignOperator ::= "/=" ;
+OpFloatDiv.   AssignOperator ::= "/=" ;
 OpRemainder.  AssignOperator ::= "%=" ;
 OpModulo.     AssignOperator ::= "%%=" ;
 OpPower.      AssignOperator ::= "^=" ;
+
+
+-- The available type are bool, double, int, void, char and string.
+TypeBool.   Type ::= "bool" ;
+TypeFloat.  Type ::= "float" ;
+TypeInt.    Type ::= "int" ;
+TypeVoid.   Type ::= "void" ; 
+TypeChar.   Type ::= "char" ;
+TypeString. Type ::= "string" ; 
+--TypeAny.    Type ::= "any" ;
+
+
+-- Compound types.
+TypeCompound. Type  ::= CType ;
+TypePointer.  CType ::= Type "*" ; 					-- Pointer type.
+TypeAddress.  CType ::= Type "&" ;					-- Address type.
+TypeArray.    CType ::= Type "[" [Range] "]" ;		-- Array type.
 
 
 --TypeExprArray. Array ::= Expr ;           -- Iterable interval.
