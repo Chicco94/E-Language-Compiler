@@ -4,6 +4,7 @@ module SkelE where
 
 import AbsE
 import ErrM
+import PrintE
 type Result = Err String
 
 failure :: Show a => a -> Result

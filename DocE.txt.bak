@@ -42,9 +42,9 @@ The set of reserved words is the set of terminals appearing in the grammar. Thos
 The reserved words used in E are the following:
   | ``bool`` | ``break`` | ``char`` | ``continue``
   | ``def`` | ``double`` | ``else`` | ``false``
-  | ``for`` | ``if`` | ``in`` | ``int``
-  | ``match`` | ``return`` | ``string`` | ``switch``
-  | ``true`` | ``var`` | ``void`` | ``while``
+  | ``if`` | ``int`` | ``match`` | ``return``
+  | ``string`` | ``switch`` | ``true`` | ``var``
+  | ``void`` | ``while`` |  | 
 
 The symbols used in E are the following:
   | ( | ) | [ | :]
@@ -89,12 +89,10 @@ All other symbols are terminals.
   |  |  **|**  | ``var`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
   |  |  **|**  | ``var`` ``[`` ``]`` //LExpr// //Guard// ``;`` 
   |  |  **|**  | ``var`` ``[`` //Expr// ``]`` //LExpr// //Guard// ``;`` 
-  |  |  **|**  | ``var`` //LExpr// //Guard// ``:=`` //Array// ``;`` 
   |  |  **|**  | ``def`` //LExpr// //Guard// ``;`` 
   |  |  **|**  | ``def`` //LExpr// //Guard// ``:=`` //Expr// ``;`` 
   |  |  **|**  | ``def`` ``[`` ``]`` //LExpr// //Guard// ``;`` 
   |  |  **|**  | ``def`` ``[`` //Expr// ``]`` //LExpr// //Guard// ``;`` 
-  |  |  **|**  | ``def`` //LExpr// //Guard// ``:=`` //Array// ``;`` 
   |  |  **|**  | ``return`` ``(`` //Expr// ``)`` ``;`` 
   |  |  **|**  | ``return`` ``;`` 
   |  |  **|**  | //CompStmt// 
@@ -104,7 +102,6 @@ All other symbols are terminals.
   |  |  **|**  | ``break`` ``;`` 
   |  |  **|**  | ``continue`` ``;`` 
   |  |  **|**  | ``while`` ``(`` //Expr// ``)`` //CompStmt// 
-  |  |  **|**  | ``for`` //PIdent// ``in`` //Array// //CompStmt// 
   | //CompStmt// | -> | ``{`` //[Decl]// ``}`` 
   | //NormCase// | -> | ``match`` //Expr// //CompStmt// 
   | //DfltCase// | -> | ``match _`` //CompStmt// 
@@ -187,11 +184,5 @@ All other symbols are terminals.
   |  |  **|**  | ``string`` 
   |  |  **|**  | //CompoundType// 
   | //CompoundType// | -> | //Type// ``*`` 
-  |  |  **|**  | //Array// 
-  | //Array// | -> | ``[`` //[Expr]// ``]`` 
-  |  |  **|**  | ``[`` //[Array]// ``]`` 
-  | //[Array]// | -> | **eps**
-  |  |  **|**  | //Array// 
-  |  |  **|**  | //Array// ``,`` //[Array]// 
 
 

@@ -156,7 +156,7 @@ data Type
     | TypeCompound CType
   deriving (Eq, Ord, Show, Read)
 
-data CompoundType = TypePointer Type | TypeArray Array
+data CType = TypePointer Type | TypeAddress Type | TypeArray Type [Range]
   deriving (Eq, Ord, Show, Read)
 
 data Label = Label (String,Integer)
@@ -170,17 +170,19 @@ data Var  = Var  (String,(Int,Int),Type)
   deriving (Eq, Ord, Read)
 
 data TAC 
-  = AssignIntTemp   Temp Integer
-  | AssignChrTemp   Temp Char
-  | AssignStrTemp   Temp String
-  | AssignBoolTemp  Temp Bool
-  | AssignFloatTemp Temp Float
+  = AssignIntTemp   Temp PInteger
+  | AssignChrTemp   Temp PChar
+  | AssignStrTemp   Temp PString
+  | AssignTrueTemp  Temp PTrue
+  | AssignFalseTemp Temp PFalse
+  | AssignFloatTemp Temp PFloat
 
-  | AssignIntVar    Var  Integer
-  | AssignChrVar    Var  Char
-  | AssignStrVar    Var  String
-  | AssignBoolVar   Var  Bool
-  | AssignFloatVar  Var  Float
+  | AssignIntVar    Var  PInteger
+  | AssignChrVar    Var  PChar
+  | AssignStrVar    Var  PString
+  | AssignTrueVar   Var  PTrue
+  | AssignFalseVar  Var  PFalse
+  | AssignFloatVar  Var  PFloat
 
   | AssignT2V Var Temp
   | AssignT2T Temp Temp

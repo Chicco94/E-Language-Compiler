@@ -1,16 +1,8 @@
 var a :int := 0;
-var b :int := 20;
-var c :int := 0;
-//2||3;
-//2&&3;
-1+2;
-2-3;
-2*3;
-2/3;
-//2//3;
-2%3;
-2%%3;
-2^3;
+var b :char := 'a';
+#var c :float:= 2.0*3;
+var d :bool := true;
+#var e :string := "banana";
 
 /*
 PDefs [

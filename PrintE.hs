@@ -73,8 +73,6 @@ prPrec i j = if j<i then parenth else id
 instance Print Integer where
   prt _ x = doc (shows x)
 
-instance Print Int where
-    prt _ x = doc (shows x)
 
 instance Print Double where
   prt _ x = doc (shows x)
@@ -105,46 +103,21 @@ instance Print PIdent where
   prt _ (PIdent (_,i)) = doc (showString ( i))
 
 
-instance Print Program where
-  prt i e = case e of
-    PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
-    --TACProgram (tac:tacs) -> show tac ++ show tacs
-  
+instance Print PInteger where
+  prt _ (PInteger (_,i)) = doc (showString ( i))
 
-instance Show Program where
-  show p = case p of
-    --PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
-    TACProgram [] -> ""
-    TACProgram tacs -> (show tacs)
 
-instance Show TAC where
-  show t = case t of
-    AssignIntVar  var  integer -> show var  ++ " = " ++ show integer ++ "\n"
-    AssignIntTemp temp integer -> show temp ++ " = " ++ show integer ++ "\n"
-    BinOp BOpOr        tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " || " ++ show temp2 ++ "\n"
-    BinOp BOpAnd       tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " && " ++ show temp2 ++ "\n"
-    BinOp BOpPlus      tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2  ++ "\n"
-    BinOp BOpMinus     tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " - " ++ show temp2  ++ "\n"
-    BinOp BOpMul       tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " * " ++ show temp2  ++ "\n"
-    BinOp BOpIntDiv    tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " // " ++ show temp2 ++ "\n"
-    BinOp BOpFloatDiv  tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " / " ++ show temp2  ++ "\n"
-    BinOp BOpRemainder tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " % " ++ show temp2  ++ "\n"
-    BinOp BOpModulo    tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " %% " ++ show temp2 ++ "\n"
-    BinOp BOpPower     tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " ^ " ++ show temp2  ++ "\n"
-      --prPrec i 0 (concatD [prt 0 var, doc (showString "="),prt 0 integer, doc (showString "\n")])
-    _ -> "banana" -- prPrec i 0 (concatD [doc (showString "_")]) --TODO
+instance Print PFloat where
+  prt _ (PFloat (_,i)) = doc (showString ( i))
 
-instance Show Var where --Var = (String,(Int,Int),Type)
-  show (Var (name,pos@(row,col),type_)) = show type_ ++ "\t "++   filter (/='\"') (show name) ++ "@"++ show row ++ ","++show col
-  --prt i (Var (name,pos@(row,col),type_)) = prPrec i 0 (concatD [prt 0 type_,prt 0 name, doc (showString "@"),prt 0 row, doc (showString ","),prt 0 col])
 
-instance Show Temp where --Temp = (Int,Type)
-  show (Temp (num,type_)) = show type_ ++ "\t t" ++ show num
-  --prt i (Temp (num,type_)) = prPrec i 0 (concatD [prt 0 type_,doc (showString "t"),prt 0 num])
-    
+instance Print PChar where
+  prt _ (PChar (_,i)) = doc (showString ( i))
+
+
 instance Print PString where
   prt _ (PString (_,i)) = doc (showString ( i))
-    
+
 
 instance Print Program where
   prt i e = case e of
@@ -316,3 +289,34 @@ instance Print CType where
     TypeArray type_ ranges -> prPrec i 0 (concatD [prt 0 type_, doc (showString "["), prt 0 ranges, doc (showString "]")])
 
 
+instance Show Program where
+  show p = case p of
+    --PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
+    TACProgram [] -> ""
+    TACProgram tacs -> (show tacs)
+
+instance Show TAC where
+  show t = case t of
+    AssignIntVar  var  integer -> show var  ++ " = " ++ show integer ++ "\n"
+    AssignIntTemp temp integer -> show temp ++ " = " ++ show integer ++ "\n"
+    BinOp BOpOr        tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " || " ++ show temp2 ++ "\n"
+    BinOp BOpAnd       tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " && " ++ show temp2 ++ "\n"
+    BinOp BOpPlus      tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2  ++ "\n"
+    BinOp BOpMinus     tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " - " ++ show temp2  ++ "\n"
+    BinOp BOpMul       tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " * " ++ show temp2  ++ "\n"
+    BinOp BOpIntDiv    tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " // " ++ show temp2 ++ "\n"
+    BinOp BOpFloatDiv  tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " / " ++ show temp2  ++ "\n"
+    BinOp BOpRemainder tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " % " ++ show temp2  ++ "\n"
+    BinOp BOpModulo    tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " %% " ++ show temp2 ++ "\n"
+    BinOp BOpPower     tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " ^ " ++ show temp2  ++ "\n"
+      --prPrec i 0 (concatD [prt 0 var, doc (showString "="),prt 0 integer, doc (showString "\n")])
+    _ -> "banana" -- prPrec i 0 (concatD [doc (showString "_")]) --TODO
+
+instance Show Var where --Var = (String,(Int,Int),Type)
+  show (Var (name,pos@(row,col),type_)) = show type_ ++ "\t "++   filter (/='\"') (show name) ++ "@"++ show row ++ ","++show col
+  --prt i (Var (name,pos@(row,col),type_)) = prPrec i 0 (concatD [prt 0 type_,prt 0 name, doc (showString "@"),prt 0 row, doc (showString ","),prt 0 col])
+
+instance Show Temp where --Temp = (Int,Type)
+  show (Temp (num,type_)) = show type_ ++ "\t t" ++ show num
+  --prt i (Temp (num,type_)) = prPrec i 0 (concatD [prt 0 type_,doc (showString "t"),prt 0 num])
+  

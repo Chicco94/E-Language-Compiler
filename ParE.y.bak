@@ -56,23 +56,21 @@ import ErrM
   'double' { PT _ (TS _ 41) }
   'else' { PT _ (TS _ 42) }
   'false' { PT _ (TS _ 43) }
-  'for' { PT _ (TS _ 44) }
-  'if' { PT _ (TS _ 45) }
-  'in' { PT _ (TS _ 46) }
-  'int' { PT _ (TS _ 47) }
-  'match' { PT _ (TS _ 48) }
-  'match _' { PT _ (TS _ 49) }
-  'return' { PT _ (TS _ 50) }
-  'string' { PT _ (TS _ 51) }
-  'switch' { PT _ (TS _ 52) }
-  'true' { PT _ (TS _ 53) }
-  'var' { PT _ (TS _ 54) }
-  'void' { PT _ (TS _ 55) }
-  'while' { PT _ (TS _ 56) }
-  '{' { PT _ (TS _ 57) }
-  '|=' { PT _ (TS _ 58) }
-  '||' { PT _ (TS _ 59) }
-  '}' { PT _ (TS _ 60) }
+  'if' { PT _ (TS _ 44) }
+  'int' { PT _ (TS _ 45) }
+  'match' { PT _ (TS _ 46) }
+  'match _' { PT _ (TS _ 47) }
+  'return' { PT _ (TS _ 48) }
+  'string' { PT _ (TS _ 49) }
+  'switch' { PT _ (TS _ 50) }
+  'true' { PT _ (TS _ 51) }
+  'var' { PT _ (TS _ 52) }
+  'void' { PT _ (TS _ 53) }
+  'while' { PT _ (TS _ 54) }
+  '{' { PT _ (TS _ 55) }
+  '|=' { PT _ (TS _ 56) }
+  '||' { PT _ (TS _ 57) }
+  '}' { PT _ (TS _ 58) }
 
 L_integ  { PT _ (TI $$) }
 L_doubl  { PT _ (TD $$) }
@@ -119,12 +117,10 @@ Stmt : Expr ';' { AbsE.StmtExpr $1 }
      | 'var' LExpr Guard ':=' Expr ';' { AbsE.StmtInit $2 $3 $5 }
      | 'var' '[' ']' LExpr Guard ';' { AbsE.StmtVoidIterDecl $4 $5 }
      | 'var' '[' Expr ']' LExpr Guard ';' { AbsE.StmtIterDecl $3 $5 $6 }
-     | 'var' LExpr Guard ':=' Array ';' { AbsE.StmtArrDecl $2 $3 $5 }
      | 'def' LExpr Guard ';' { AbsE.StmtDeclD $2 $3 }
      | 'def' LExpr Guard ':=' Expr ';' { AbsE.StmtInitD $2 $3 $5 }
      | 'def' '[' ']' LExpr Guard ';' { AbsE.StmtVoidIterDeclD $4 $5 }
      | 'def' '[' Expr ']' LExpr Guard ';' { AbsE.StmtIterDeclD $3 $5 $6 }
-     | 'def' LExpr Guard ':=' Array ';' { AbsE.StmtArrDeclD $2 $3 $5 }
      | 'return' '(' Expr ')' ';' { AbsE.StmtReturn $3 }
      | 'return' ';' { AbsE.StmtNoReturn }
      | CompStmt { AbsE.SComp $1 }
@@ -134,7 +130,6 @@ Stmt : Expr ';' { AbsE.StmtExpr $1 }
      | 'break' ';' { AbsE.StmtBreak }
      | 'continue' ';' { AbsE.StmtContinue }
      | 'while' '(' Expr ')' CompStmt { AbsE.StmtWhile $3 $5 }
-     | 'for' PIdent 'in' Array CompStmt { AbsE.StmtFor $2 $4 $5 }
 CompStmt :: { CompStmt }
 CompStmt : '{' ListDecl '}' { AbsE.StmtBlock (reverse $2) }
 NormCase :: { NormCase }
@@ -244,14 +239,6 @@ Type : 'bool' { AbsE.TypeBool }
      | CompoundType { AbsE.TypeCompound $1 }
 CompoundType :: { CompoundType }
 CompoundType : Type '*' { AbsE.TypePointer $1 }
-             | Array { AbsE.TypeArray $1 }
-Array :: { Array }
-Array : '[' ListExpr ']' { AbsE.TypeArrayArray $2 }
-      | '[' ListArray ']' { AbsE.TypeMultiArray $2 }
-ListArray :: { [Array] }
-ListArray : {- empty -} { [] }
-          | Array { (:[]) $1 }
-          | Array ',' ListArray { (:) $1 $3 }
 {
 
 returnM :: a -> Err a
