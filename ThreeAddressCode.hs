@@ -67,14 +67,11 @@ generateExpr env type_ expr =
 
 --TODO case Type
 binaryExpr :: Env -> Type -> Expr -> Expr -> BinaryOperator -> Env
-binaryExpr env@(program, tempCount) type_ expr1@(ExprInt val1) expr2@(ExprInt val2) op =
-  case type_ of
-    TypeInt    -> ([ BinOp op (Temp (tempCount+2,type_)) (Temp (tempCount,type_)) (Temp (tempCount+1,type_)), AssignIntTemp   (Temp (tempCount+1,type_)) val2 , AssignIntTemp   (Temp (tempCount,type_)) val1] ++ program, (tempCount+3))
-    --TypeChar   -> [BinOp op (Temp (3,type_)) (Temp (1,type_)) (Temp (2,type_)), AssignChrTemp   (Temp (2,type_)) val2 , AssignChrTemp   (Temp (1,type_)) val1] ++ env
-    --TypeString -> [BinOp op (Temp (3,type_)) (Temp (1,type_)) (Temp (2,type_)), AssignStrTemp   (Temp (2,type_)) val2 , AssignStrTemp   (Temp (1,type_)) val1] ++ env
-    --TypeBool   -> [BinOp op (Temp (3,type_)) (Temp (1,type_)) (Temp (2,type_)), AssignBoolTemp  (Temp (2,type_)) val2 , AssignBoolTemp  (Temp (1,type_)) val1] ++ env
-    --TypeDouble -> [BinOp op (Temp (3,type_)) (Temp (1,type_)) (Temp (2,type_)), AssignFloatTemp (Temp (2,type_)) val2 , AssignFloatTemp (Temp (1,type_)) val1] ++ env
-    _ -> env
+binaryExpr env@(program, tempCount) type_ expr1@(ExprInt    val1) expr2@(ExprInt    val2) op = ([ BinOp op (Temp (tempCount+2,type_)) (Temp (tempCount,type_)) (Temp (tempCount+1,type_)), AssignIntTemp   (Temp (tempCount+1,type_)) val2 , AssignIntTemp   (Temp (tempCount,type_)) val1] ++ program, (tempCount+3))
+binaryExpr env@(program, tempCount) type_ expr1@(ExprChar   val1) expr2@(ExprChar   val2) op = ([ BinOp op (Temp (tempCount+2,type_)) (Temp (tempCount,type_)) (Temp (tempCount+1,type_)), AssignChrTemp   (Temp (tempCount+1,type_)) val2 , AssignChrTemp   (Temp (tempCount,type_)) val1] ++ program, (tempCount+3))
+binaryExpr env@(program, tempCount) type_ expr1@(ExprString val1) expr2@(ExprString val2) op = ([ BinOp op (Temp (tempCount+2,type_)) (Temp (tempCount,type_)) (Temp (tempCount+1,type_)), AssignStrTemp   (Temp (tempCount+1,type_)) val2 , AssignStrTemp   (Temp (tempCount,type_)) val1] ++ program, (tempCount+3))
+--binaryExpr env@(program, tempCount) type_ expr1@(ExprBool   val1) expr2@(ExprBool   val2) op = ([ BinOp op (Temp (tempCount+2,type_)) (Temp (tempCount,type_)) (Temp (tempCount+1,type_)), AssignBoolTemp  (Temp (tempCount+1,type_)) val2 , AssignBoolTemp  (Temp (tempCount,type_)) val1] ++ program, (tempCount+3))
+binaryExpr env@(program, tempCount) type_ expr1@(ExprDouble val1) expr2@(ExprDouble val2) op = ([ BinOp op (Temp (tempCount+2,type_)) (Temp (tempCount,type_)) (Temp (tempCount+1,type_)), AssignFloatTemp (Temp (tempCount+1,type_)) val2 , AssignFloatTemp (Temp (tempCount,type_)) val1] ++ program, (tempCount+3))
 
 {-
 --StmtAssign LExpr AssignOperator Expr
