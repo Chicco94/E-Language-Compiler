@@ -297,8 +297,24 @@ instance Show Program where
 
 instance Show TAC where
   show t = case t of
-    AssignIntVar  var  integer -> show var  ++ " = " ++ show integer ++ "\n"
-    AssignIntTemp temp integer -> show temp ++ " = " ++ show integer ++ "\n"
+    AssignIntVar    var  val -> show var   ++ " = " ++ show val ++ "\n"
+    AssignChrVar    var  val -> show var   ++ " = " ++ show val ++ "\n"
+    AssignStrVar    var  val -> show var   ++ " = " ++ show val ++ "\n"
+    AssignTrueVar   var  val -> show var   ++ " = " ++ show val ++ "\n"
+    AssignFalseVar  var  val -> show var   ++ " = " ++ show val ++ "\n"
+    AssignFloatVar  var  val -> show var   ++ " = " ++ show val ++ "\n"
+    
+    AssignIntTemp   temp val -> show temp  ++ " = " ++ show val ++ "\n"
+    AssignChrTemp   temp val -> show temp  ++ " = " ++ show val ++ "\n"
+    AssignStrTemp   temp val -> show temp  ++ " = " ++ show val ++ "\n"
+    AssignTrueTemp  temp val -> show temp  ++ " = " ++ show val ++ "\n"
+    AssignFalseTemp temp val -> show temp  ++ " = " ++ show val ++ "\n"
+    AssignFloatTemp temp val -> show temp  ++ " = " ++ show val ++ "\n"
+    
+    AssignT2V       var  temp -> show var  ++ " = " ++ show temp ++ "\n"
+    AssignT2T       tmp1 tmp2 -> show tmp1 ++ " = " ++ show tmp2 ++ "\n"
+    AssignV2T       temp var  -> show temp ++ " = " ++ show var  ++ "\n"
+    
     BinOp BOpOr        tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " || " ++ show temp2 ++ "\n"
     BinOp BOpAnd       tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " && " ++ show temp2 ++ "\n"
     BinOp BOpPlus      tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2  ++ "\n"
@@ -310,7 +326,7 @@ instance Show TAC where
     BinOp BOpModulo    tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " %% " ++ show temp2 ++ "\n"
     BinOp BOpPower     tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " ^ " ++ show temp2  ++ "\n"
       --prPrec i 0 (concatD [prt 0 var, doc (showString "="),prt 0 integer, doc (showString "\n")])
-    _ -> "banana" -- prPrec i 0 (concatD [doc (showString "_")]) --TODO
+    _ -> "comando non trovato\n" -- prPrec i 0 (concatD [doc (showString "_")]) --TODO
 
 instance Show Var where --Var = (String,(Int,Int),Type)
   show (Var (name,pos@(row,col),type_)) = show type_ ++ "\t "++   filter (/='\"') (show name) ++ "@"++ show row ++ ","++show col

@@ -1,23 +1,5 @@
-var a :int := 0;
+var a :int := 0+2;
 var b :char := 'a';
 #var c :float:= 2.0*3;
 var d :bool := true;
 #var e :string := "banana";
-
-/*
-PDefs [
-    DeclStmt 
-    (StmtExpr 
-        (StmtAssign 
-            (LExprId (PIdent ((4,1),"c"))) 
-            OpAssign 
-            (ExprPlus 
-                (LeftExpr (LExprId (PIdent ((4, 6),"a")))) 
-                (LeftExpr (LExprId (PIdent ((4,10),"b"))))
-            )
-            )
-        )
-    )
-]
-
-*/
