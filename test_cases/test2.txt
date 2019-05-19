@@ -1,5 +1,6 @@
 var a :int := 0+2;
 var b :char := 'a';
-#var c :float:= 2.0*3;
+#var c :float:= 2.0;
 var d :bool := true;
 #var e :string := "banana";
+d := false;

@@ -536,7 +536,7 @@ defaultPrimitives =
   Map.insert "writeChar"   ([(ModEmpty, TypeChar)], TypeVoid) $    -- void writeChar(char c)
   Map.insert "writeString" ([(ModEmpty, TypeString)], TypeVoid) $  -- void writeString(string s)
   Map.insert "readInt"     ([], TypeInt) $                         -- int readInt()
-  Map.insert "readFloat"  ([], TypeFloat) $                        -- float readFloat()
+  Map.insert "readFloat"   ([], TypeFloat) $                       -- float readFloat()
   Map.insert "readChar"    ([], TypeChar) $                        -- char readChar()
   Map.insert "readString"  ([], TypeString) Map.empty              -- string readString()
 
