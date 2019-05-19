@@ -9,8 +9,8 @@ import Prelude hiding (lookup)
 import qualified Data.Map as Map
 
 -- Environment = (Program, tempValue, labels)
-type Env       = ([TAC], TempCount, LabelsMap)
-type TempCount = Int
+type Env       = ([TAC], Temp_count, LabelsMap)
+type Temp_count = Int
 type LabelsMap = Map.Map String Var         -- Variables context: String -> Var
 
 
@@ -56,27 +56,33 @@ findVar labels var@(Var (name,pos,type_)) =
 
 
 generateStmt :: Env  -> Type -> Stmt -> Env 
-generateStmt env@(program, tempCount, labels) type_ stmt@(StmtVarInit id@(PIdent (pos,name)) guard expr ) = do
+generateStmt env@(program, temp_count, labels) type_ stmt@(StmtVarInit id@(PIdent (pos,name)) guard expr ) = do
   let (new_labels, var) = findVar labels (Var (name,pos,type_))
   case expr of
     -- shortcut per evitare t0 = 1; var = t0
-    (ExprInt    val)  -> ([AssignIntVar    var val] ++ program, tempCount, new_labels)
-    (ExprChar   val)  -> ([AssignChrVar    var val] ++ program, tempCount, new_labels)
-    (ExprString val)  -> ([AssignStrVar    var val] ++ program, tempCount, new_labels)
-    (ExprFloat  val)  -> ([AssignFloatVar  var val] ++ program, tempCount, new_labels)
-    (ExprTrue   val)  -> ([AssignTrueVar   var val] ++ program, tempCount, new_labels)
-    (ExprFalse  val)  -> ([AssignFalseVar  var val] ++ program, tempCount, new_labels)
+    (ExprInt    val)  -> ([AssignIntVar    var val] ++ program, temp_count, new_labels)
+    (ExprChar   val)  -> ([AssignChrVar    var val] ++ program, temp_count, new_labels)
+    (ExprString val)  -> ([AssignStrVar    var val] ++ program, temp_count, new_labels)
+    (ExprFloat  val)  -> ([AssignFloatVar  var val] ++ program, temp_count, new_labels)
+    (ExprTrue   val)  -> ([AssignTrueVar   var val] ++ program, temp_count, new_labels)
+    (ExprFalse  val)  -> ([AssignFalseVar  var val] ++ program, temp_count, new_labels)
     -- effettivo assegnamento con espressione complessa a destra
-    _               -> generateAssign (generateExpr (program, tempCount, new_labels) type_ expr) type_ id OpAssign
-generateStmt env@(program, tempCount, labels) type_ stmt@(StmtExpr expr) = generateExpr env type_ expr
+    _               -> generateAssign (generateExpr (program, temp_count, new_labels) type_ expr) type_ id OpAssign
+generateStmt env@(program, temp_count, labels) type_ stmt@(StmtExpr expr) = generateExpr env type_ expr
 
 generateExpr :: Env -> Type -> Expr -> Env
-generateExpr env@(program, tempCount, labels) type_ expr = 
+generateExpr env@(program, temp_count, labels) type_ expr = 
     case expr of
-        ExprAssign   (LExprId id) op re    -> do generateAssign (generateExpr env type_ re) type_ id op
+        -- assign expression to variable
+        ExprAssign   (LExprId id) op re    -> generateAssign (generateExpr env type_ re) type_ id op
+        -- variable inside expression
+        ExprLeft     (LExprId id@(PIdent (pos,name)))          -> do
+          let (new_labels, var) = findVar labels (Var (name,pos,type_))
+          ([AssignV2T   (Temp (temp_count,type_)) var] ++ program, (temp_count+1), new_labels)
         
         ExprOr       expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpOr
         ExprAnd      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpAnd
+        
         ExprPlus     expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPlus
         ExprMinus    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMinus
         ExprMul      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMul
@@ -85,25 +91,38 @@ generateExpr env@(program, tempCount, labels) type_ expr =
         ExprReminder expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpRemainder
         ExprModulo   expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpModulo
         ExprPower    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPower
-        ExprInt      val         -> ([AssignIntTemp   (Temp (tempCount,type_)) val] ++ program, (tempCount+1), labels)
-        ExprChar     val         -> ([AssignChrTemp   (Temp (tempCount,type_)) val] ++ program, (tempCount+1), labels)
-        ExprString   val         -> ([AssignStrTemp   (Temp (tempCount,type_)) val] ++ program, (tempCount+1), labels)
-        ExprFloat    val         -> ([AssignFloatTemp (Temp (tempCount,type_)) val] ++ program, (tempCount+1), labels)
-        ExprTrue     val         -> ([AssignTrueTemp  (Temp (tempCount,type_)) val] ++ program, (tempCount+1), labels)
-        ExprFalse    val         -> ([AssignFalseTemp (Temp (tempCount,type_)) val] ++ program, (tempCount+1), labels)
+        
+        ExprInt      val         -> ([AssignIntTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        ExprChar     val         -> ([AssignChrTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        ExprString   val         -> ([AssignStrTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        ExprFloat    val         -> ([AssignFloatTemp (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        ExprTrue     val         -> ([AssignTrueTemp  (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        ExprFalse    val         -> ([AssignFalseTemp (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
 
---TODO case Type
+        
+-- Build the binary operator using the last two temporaneus variable
 binaryExpr :: Env -> Type -> BinaryOperator -> Env
-binaryExpr env@(program, tempCount, labels) type_ op = ([ BinOp op (Temp (tempCount,type_)) (Temp (tempCount-2,type_)) (Temp (tempCount-1,type_))] ++ program, (tempCount+1), labels)
+binaryExpr env@(program, temp_count, labels) type_ op = ([ BinOp op (Temp (temp_count,type_)) (Temp (temp_count-2,type_)) (Temp (temp_count-1,type_))] ++ program, (temp_count+1), labels)
 
 
 --StmtAssign LExpr AssignOperator Expr
 generateAssign :: Env -> Type -> PIdent -> AssignOperator -> Env
-generateAssign env@(program, tempCount, labels) type_ (PIdent (pos,name)) op = do
+generateAssign env@(program, temp_count, labels) type_ id@(PIdent (pos,name)) op = do
   let (new_labels, var) = findVar labels (Var (name,pos,type_))
   case op of
-    OpAssign -> ([AssignT2V  var (Temp (tempCount-1,type_))] ++ program, (tempCount), new_labels)
-
+    OpAssign    -> ([AssignT2V  var (Temp (temp_count-1,type_))] ++ program, (temp_count), new_labels)
+    _           -> generateAssign (binaryExpr ([AssignV2T (Temp (temp_count,type_)) var] ++ program, (temp_count+1), new_labels) type_ op') type_ id OpAssign
+                    where op' = case op of 
+                                  OpOr        -> BOpOr
+                                  OpAnd       -> BOpAnd       
+                                  OpPlus      -> BOpPlus       
+                                  OpMinus     -> BOpMinus     
+                                  OpMul       -> BOpMul        
+                                  OpIntDiv    -> BOpIntDiv     
+                                  OpFloatDiv  -> BOpFloatDiv   
+                                  OpRemainder -> BOpRemainder 
+                                  OpModulo    -> BOpModulo    
+                                  OpPower     -> BOpPower     
 
 -- DeclFun LExpr [Arg] Guard CompStmt
 {-

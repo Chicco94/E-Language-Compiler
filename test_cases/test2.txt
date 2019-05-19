@@ -1,6 +1,13 @@
 var a :int := 0+2;
-var b :char := 'a';
+a += 1;
+var b :int := a;
+b *= a;
+b -= a;
+
+#var b :char := 'a';
 #var c :float:= 2.0;
 var d :bool := true;
 #var e :string := "banana";
-d := false;
+d |= false;
+d &= false;
+#a := 0+2+3+a*2*6;

@@ -113,14 +113,18 @@ data ForId = ForIdent PIdent | ForInteger PInteger
 data Expr
     = ExprAssign LExpr AssignOperator Expr
     | ExprLeft LExpr
+    
     | ExprInt PInteger
     | ExprFloat PFloat
     | ExprChar PChar
     | ExprString PString
     | ExprTrue PTrue
     | ExprFalse PFalse
+
     | ExprFunCall PIdent [Expr]
+
     | ExprBoolNot Expr
+
     | ExprNegation Expr
     | ExprAddition Expr
     | ExprPower Expr Expr
@@ -129,15 +133,19 @@ data Expr
     | ExprIntDiv Expr Expr
     | ExprReminder Expr Expr
     | ExprModulo Expr Expr
+
     | ExprReference LExpr
+
     | ExprPlus Expr Expr
     | ExprMinus Expr Expr
+
     | ExprLt Expr Expr
     | ExprGt Expr Expr
     | ExprLtEq Expr Expr
     | ExprGtEq Expr Expr
     | ExprEq Expr Expr
     | ExprNeq Expr Expr
+
     | ExprAnd Expr Expr
     | ExprOr Expr Expr
   deriving (Eq, Ord, Show, Read)

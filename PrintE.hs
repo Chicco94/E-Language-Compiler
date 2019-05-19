@@ -329,7 +329,7 @@ instance Show TAC where
     _ -> "comando non trovato\n" -- prPrec i 0 (concatD [doc (showString "_")]) --TODO
 
 instance Show Var where --Var = (String,(Int,Int),Type)
-  show (Var (name,pos@(row,col),type_)) = show type_ ++ "\t "++   filter (/='\"') (show name) ++ "@"++ show row ++ ","++show col
+  show (Var (name,pos@(row,col),type_)) = show type_ ++ "\t "++   filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col
   --prt i (Var (name,pos@(row,col),type_)) = prPrec i 0 (concatD [prt 0 type_,prt 0 name, doc (showString "@"),prt 0 row, doc (showString ","),prt 0 col])
 
 instance Show Temp where --Temp = (Int,Type)
