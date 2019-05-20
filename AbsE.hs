@@ -217,6 +217,7 @@ data TAC
   | AssignT2V Var Temp
   | AssignT2T Temp Temp
   | AssignV2T Temp Var
+  | AssignV2V Var  Var
 
   | BinOp BinaryOperator Temp Temp Temp
   | UnaryOp UnaryOp Temp Temp
@@ -238,6 +239,14 @@ data BinaryOperator
   = BOpAssign
   | BOpOr
   | BOpAnd
+  
+  | BOpLt
+  | BOpGt
+  | BOpLtEq
+  | BOpGtEq
+  | BOpEq
+  | BOpNeq
+
   | BOpPlus
   | BOpMinus
   | BOpMul

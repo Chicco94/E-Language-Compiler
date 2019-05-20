@@ -55,7 +55,9 @@ findVar labels var@(Var (name,pos,type_)) =
     Just old_var -> (labels, old_var)
 
 
+
 generateStmt :: Env  -> Type -> Stmt -> Env 
+-- variable initialization or assignement
 generateStmt env@(program, temp_count, labels) type_ stmt@(StmtVarInit id@(PIdent (pos,name)) guard expr ) = do
   let (new_labels, var) = findVar labels (Var (name,pos,type_))
   case expr of
@@ -68,7 +70,14 @@ generateStmt env@(program, temp_count, labels) type_ stmt@(StmtVarInit id@(PIden
     (ExprFalse  val)  -> ([AssignFalseVar  var val] ++ program, temp_count, new_labels)
     -- effettivo assegnamento con espressione complessa a destra
     _               -> generateAssign (generateExpr (program, temp_count, new_labels) type_ expr) type_ id OpAssign
+-- constant inizialization or assignement
+generateStmt env type_ stmt@(StmtDefInit id guard expr) = generateStmt env type_ (StmtVarInit id guard expr)
+-- expression statement
 generateStmt env@(program, temp_count, labels) type_ stmt@(StmtExpr expr) = generateExpr env type_ expr
+-- compound statement
+generateStmt env@(program, temp_count, labels) type_ stmt@(CompStmt stmt) = generateExpr env type_ expr
+
+
 
 generateExpr :: Env -> Type -> Expr -> Env
 generateExpr env@(program, temp_count, labels) type_ expr = 
@@ -80,9 +89,22 @@ generateExpr env@(program, temp_count, labels) type_ expr =
           let (new_labels, var) = findVar labels (Var (name,pos,type_))
           ([AssignV2T   (Temp (temp_count,type_)) var] ++ program, (temp_count+1), new_labels)
         
+        {- inserire valutazioni rapide (es: true || _ e false && _) -}
+        ExprOr       (ExprTrue  val) _ -> ([AssignTrueTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        ExprAnd      (ExprFalse val) _ -> ([AssignFalseTemp  (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
         ExprOr       expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpOr
         ExprAnd      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpAnd
         
+
+        {- da testare (modificare anche PrintE.hs)
+        ExprLt       expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpLt
+        ExprGt       expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpGt
+        ExprLtEq     expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpLtEq
+        ExprGtEq     expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpGtEq
+        ExprEq       expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpEq
+        ExprNeq      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpNeq
+        -}
+
         ExprPlus     expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPlus
         ExprMinus    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMinus
         ExprMul      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMul

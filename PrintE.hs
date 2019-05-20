@@ -314,9 +314,20 @@ instance Show TAC where
     AssignT2V       var  temp -> show var  ++ " = " ++ show temp ++ "\n"
     AssignT2T       tmp1 tmp2 -> show tmp1 ++ " = " ++ show tmp2 ++ "\n"
     AssignV2T       temp var  -> show temp ++ " = " ++ show var  ++ "\n"
+    AssignV2V       var1 var2 -> show var1 ++ " = " ++ show var2 ++ "\n"
     
     BinOp BOpOr        tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " || " ++ show temp2 ++ "\n"
     BinOp BOpAnd       tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " && " ++ show temp2 ++ "\n"
+
+    {- da testare
+    BinOp BOpLt        tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " < "  ++ show temp2 ++ "\n"
+    BinOp BOpGt        tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " > "  ++ show temp2 ++ "\n"
+    BinOp BOpLtEq      tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " <= " ++ show temp2 ++ "\n"
+    BinOp BOpGtEq      tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " => " ++ show temp2 ++ "\n"
+    BinOp BOpEq        tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " == " ++ show temp2 ++ "\n"
+    BinOp BOpNeq       tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " != " ++ show temp2 ++ "\n"
+    -}
+
     BinOp BOpPlus      tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2  ++ "\n"
     BinOp BOpMinus     tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " - " ++ show temp2  ++ "\n"
     BinOp BOpMul       tempr temp1 temp2 -> show tempr ++ " = " ++ show temp1 ++ " * " ++ show temp2  ++ "\n"
