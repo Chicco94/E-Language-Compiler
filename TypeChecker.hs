@@ -1,5 +1,4 @@
 -- TODO:
--- controllare gli array
 -- cambiare la chiamata di funzione
 
 module TypeChecker where
@@ -53,29 +52,25 @@ checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId pident@(P
         Ok t  -> fail $ show p ++ ": function " ++ printTree fname ++ " already declared"
         _ -> do case checkArgDecl (env, prog) args of
               -- call extendEnv putting an empty Signature and a FunBlock block
-              -- TODO: add parameters to FunBlock 
-                  Ok _ -> do case extendEnv (((Map.empty:(addFun x fname args guard):xs), (((FunBlock pident t), Map.empty):blocks)), prog) compstmt of
-                               Ok (e', p') -> Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))]) prog)
-                               Bad s -> Bad s
+                  Ok ((_, blocks2), _) -> do case extendEnv (((Map.empty:(addFun x fname args guard):xs), (((FunBlock pident t), Map.empty):blocks2)), prog) compstmt of
+                                               Ok (e', p') -> Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))]) prog)
+                                               Bad s -> Bad s
                   Bad s -> Bad s
     GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " must have a type to be well defined" -- TODO: add it as void type?
 
 -- Check argument(s) declaration.
--- TODO: check that each expression is declared only once.
 checkArgDecl :: (Env, [Program]) -> [Arg] -> Err (Env, [Program])  
 checkArgDecl (env, prog) [] = Ok (env, prog) 
-checkArgDecl (env@(sig@(x:xs), blocks), prog) (arg@(ArgDecl mod (PIdent pident@(p,ident)) guard):args) = do
+checkArgDecl (env@(sig@(x:xs), blocks@((blockType, context):ys)), prog) (arg@(ArgDecl mod (PIdent pident@(p,ident)) guard):args) = do
   case guard of
-    GuardVoid    -> do case lookupVar blocks ident of
-                         Ok _ -> checkArgDecl (env, prog) args
-                         _    -> fail $ show p ++ ": argument " ++ printTree ident ++ " is not declared!"
-    GuardType t1 -> case lookupVar blocks ident of
-                     Ok (mut,t2) -> do if mod `isCompatibleWithMutability` mut
-                                         then if t1 `isCompatibleWith` t2
-                                                then checkArgDecl (env, prog) args
-                                                else fail $ show p ++ ": the type of argument " ++ printTree ident ++ " (" ++ show t1 ++ ") is not compatible with " ++ show t2
-                                         else fail $ show p ++ ": the modality of " ++ printTree ident ++ " (" ++ show mod ++ ") is not compatible with " ++ show mut
-                     _           -> fail $ show p ++ ": argument " ++ printTree ident ++ " is not declared!"
+    GuardVoid   -> fail $ show p ++ ": argument " ++ printTree ident ++ " must have a type"
+    GuardType t -> 
+      case lookupVar blocks ident of
+        Ok _ -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
+        _    -> do
+          if mod == ModEmpty || mod == ModVar
+            then checkArgDecl ((sig, ((blockType, addVar context (MutVar, ident) t):ys)), prog) args
+            else checkArgDecl ((sig, ((blockType, addVar context (MutConst, ident) t):ys)), prog) args
 
 -- Check statement declaration.
 checkDeclStmt :: (Env, [Program]) -> Stmt -> Err (Env, [Program])
@@ -365,12 +360,25 @@ checkFunCall (env@(sig, _), prog) (ExprFunCall (PIdent pident@(p,ident)) args) =
                           else fail $ show p ++ ": function '" ++ printTree ident ++ " doesn't match its parameters"
     _ -> fail $ show p ++ ": function '" ++ printTree ident ++ "' is not defined!" 
 
+findLExprName :: LExpr -> String
+findLExprName lexpr =
+  case lexpr of
+    LExprId (PIdent (p,ident))               -> ident
+    LExprRef (LRefExpr le)                   -> findLExprName le
+    LExprArr (LArrExpr (PIdent (p,ident)) _) -> ident
+
 -- Check (right) expression.
 checkExpr :: (Env, [Program]) -> Expr -> Err (Env, [Program])
-checkExpr (env, prog) expr = do
+checkExpr (env@(sigs,blocks), prog) expr = do
   case expr of
     -- Assignment statement (i.e., lexpr operator expr).
-    ExprAssign lexpr op expr -> do checkAssign (env, prog) lexpr op expr
+    ExprAssign lexpr op expr -> do
+      case lookupVar blocks (findLExprName lexpr) of
+        Ok (m,t) -> do
+          if m == MutVar
+            then checkAssign (env, prog) lexpr op expr
+            else fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree (findLExprName lexpr) ++ " is defined as constant, you cannot assign a value to a constant"
+        _        -> fail $ show (getLExprPosition lexpr) ++ ": variable " ++ show (findLExprName lexpr) ++ " is not defined"
 
     -- Left expressions.
     ExprLeft lexpr           -> do t <- inferLExpr env lexpr
@@ -706,11 +714,14 @@ isCompatibleWith :: Type -> Type -> Bool
     _        -> False -}
 t1 `isCompatibleWith` t2 =
   case t1 of
-    TypeBool -> elem t2 [TypeBool, TypeChar, TypeString, TypeInt, TypeFloat]
-    TypeChar -> elem t2 [TypeChar, TypeString, TypeInt, TypeFloat] 
-    TypeInt  -> elem t2 [TypeInt, TypeFloat]
+    TypeBool   -> elem t2 [TypeBool, TypeChar, TypeString, TypeInt, TypeFloat]
+    TypeChar   -> elem t2 [TypeChar, TypeString, TypeInt, TypeFloat] 
+    TypeInt    -> elem t2 [TypeInt, TypeFloat]
+    TypeFloat  -> t2 == TypeFloat
+    TypeString -> t2 == TypeString
     TypeCompound (TypeAddress taddr)    ->
       case t2 of TypeCompound (TypePointer tpointer) -> (getAddressType taddr) `isCompatibleWith` tpointer
+                 TypeCompound (TypeAddress tc)       -> (getAddressType taddr) `isCompatibleWith` tc
                  _                                   -> False
     TypeCompound (TypePointer tpointer) ->
       case t2 of TypeCompound (TypePointer tpointer) -> True
@@ -740,13 +751,13 @@ getMostGeneric t1 t2
   | TypeChar `elem` [t1,t2]   = Ok TypeChar
 
 -- MOD is compatible with mutability MUT?
-isCompatibleWithMutability :: Modality -> Mutability -> Bool
+{- isCompatibleWithMutability :: Modality -> Mutability -> Bool
 mod `isCompatibleWithMutability` mut
   | mod == ModEmpty                  = True  -- if the argument has no modality, then it can be anything
   | mod == ModVar                    = True  -- if the argument is a variable, then it can be anything
   | mod == ModDef && mut == MutConst = True  -- if the argument is a constant defined as constant, then it is ok
   | mod == ModDef && mut == MutVar   = True  -- if the argument is a constant that is defined as variable, then it is ok
-  | otherwise                        = False -- otherwise, not compatible
+  | otherwise                        = False -- otherwise, not compatible -}
 
 getDecls :: [Program] -> [Decl]
 getDecls [] = []
@@ -798,7 +809,6 @@ getLExprPosition :: LExpr -> (Int, Int)
 getLExprPosition e =
   case e of
     LExprId (PIdent (p, ident))                        -> p
-    --LExprDeref (LDerefExpr le)                         -> getLExprPosition le
     LExprRef (LRefExpr le)                             -> getLExprPosition le
     LExprArr (LArrExpr pident@(PIdent (p,ident)) re)   -> p    
 
