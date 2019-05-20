@@ -58,7 +58,7 @@ checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId pident@(P
                                Ok (e', p') -> Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))]) prog)
                                Bad s -> Bad s
                   Bad s -> Bad s
-    GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " must have a type to be well defined" 
+    GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " must have a type to be well defined" -- TODO: add it as void type?
 
 -- Check argument(s) declaration.
 -- TODO: check that each expression is declared only once.
@@ -197,33 +197,40 @@ checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) pident@(PIdent
                                        MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtDefInit pident guard expr)))]) prog)
                   else fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has type " ++ show texpr ++ " which is incompatible with variable " ++ show ident ++ " " ++ show p ++ " that has type " ++ show tguard
 
-
---checkStmtArrInit (env, prog) lexpr guard arr MutConst
 checkStmtArrInit :: (Env, [Program]) -> [PInteger] -> PIdent -> Guard -> Array -> Mutability -> Err (Env, [Program])
 checkStmtArrInit (env@(sig, blocks@((blockType, context):xs)), prog) pints pident@(PIdent (p, ident)) guard arr mut = do
   case guard of
     GuardVoid        -> fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
     GuardType tguard -> do
       if tguard == TypeVoid
-        then fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
-        else do case checkBounds (getBoundsFromPInts pints) arr of
-                  True -> do tarr <- inferArray env arr tguard
-                             Ok (env, prog)
-                  _    -> fail $ show p ++ ": array " ++ show ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but the initialization " ++ printTree arr ++ " does not match such bounds"
---checkArrInit :: (Env, [Program]) -> Array -> [PInteger] -> Guard -> Err (Env, [Program])
-
--- Infer array type.
-inferArray :: Env -> Array -> Type -> Err Type
-inferArray env@(sig, blocks) arr tguard = 
-  let types = inferArr env arr
-  in controlArrayTypes tguard types
+        then fail $ show p ++ ": array " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
+        else do case checkArrayInitBounds (getBoundsFromPInts pints) arr of
+                  True -> do case inferArray env arr tguard of 
+                               Ok tarr -> do
+                                 do case mut of
+                                      MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray tguard pints)) (DeclStmt (StmtVarArrInit pints pident guard arr)))]) prog)
+                                      MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray tguard pints)) (DeclStmt (StmtDefArrInit pints pident guard arr)))]) prog)
+                               Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ show tguard ++ " but there is an expression with type " ++ s ++ " in its initialization"
+                  _    -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but its initialization does not match such bounds"
 
 controlArrayTypes :: Type -> [Type] -> Err Type
 controlArrayTypes t [] = Ok t 
 controlArrayTypes t (typ:types) =
   if typ `isCompatibleWith` t
     then controlArrayTypes t types
-    else fail $ "controlArrayTypes: fatal error" 
+    else fail $ show typ --fail $ show typ ++ " is not compatible with " ++ show t
+
+
+
+
+
+-- Infer array type.
+inferArray :: Env -> Array -> Type -> Err Type
+inferArray env@(sig, blocks) arr tguard = 
+  let types = inferArr env arr
+  in -- showTypes types
+     controlArrayTypes tguard types
+
 
 inferArr :: Env -> Array -> [Type] 
 inferArr env arr = do
@@ -236,9 +243,40 @@ inferArrs :: Env -> [Array] -> [Type]
 inferArrs _ [] = []
 inferArrs env (x:xs) = do
   case x of
-    ExprMultiArray multiArr@(y:ys) -> inferArr env y ++ inferArrs env xs
-    ExprArray expr -> case inferExpr env expr of Ok t -> [t]
-                                                 _    -> []
+    ExprMultiArray multiArr@(y:ys) -> inferArr env x ++ inferArr env y ++ inferArrs env xs ++ inferArrs env ys -- ++ inferArrs env ys
+    ExprArray expr -> case inferExpr env expr of Ok t -> [t] ++ inferArrs env xs
+                                                 _    -> []  ++ inferArrs env xs
+
+
+
+
+
+
+
+
+
+
+ 
+checkArrayInitBounds :: [Int] -> Array -> Bool
+checkArrayInitBounds [] _ = True
+checkArrayInitBounds (int:ints) arr =
+  case arr of
+    ExprMultiArray multiArr@(x:xs) -> (checkLengthArray int multiArr) && 
+                                      (checkArrayInitBounds ints x) && 
+                                      (checkNestedArrayBounds ((int-1):ints) xs)
+    ExprArray expr -> True
+
+checkNestedArrayBounds :: [Int] -> [Array] -> Bool
+checkNestedArrayBounds _ [] = True
+checkNestedArrayBounds (int:ints) (x:xs) =
+  case x of
+    ExprMultiArray multiArr@(y:ys) -> (checkLengthArray int (x:xs))  && 
+                                      (checkLengthArray (head ints) (y:ys)) && 
+                                      --(checkArrays  ints (y:ys)) &&  <<-- TODO: necessary? 
+                                      (checkArrayInitBounds (tail ints) y) && 
+                                      (checkNestedArrayBounds (((head ints)-1):(tail ints)) ys) && 
+                                      (checkNestedArrayBounds ((int-1):ints) xs)
+    ExprArray expr -> True
 
 getBoundsFromPInts :: [PInteger] -> [Int]
 getBoundsFromPInts [] = []
@@ -246,63 +284,6 @@ getBoundsFromPInts ((PInteger (p, int)):xs) = (read int :: Int) : getBoundsFromP
 
 checkLengthArray :: Int -> [Array] -> Bool
 checkLengthArray int arr = length arr == int
- 
-
-checkBounds :: [Int] -> Array -> Bool
-checkBounds [] _ = True --if int == 0 then True
-                        --            else False
-checkBounds (int:ints) arr =
-{-  if int == 1
-    then True
-    else -}
-      case arr of
-        ExprMultiArray multiArr@(x:xs) -> (checkLengthArray int multiArr) && (checkBounds ints x) && (checkArrays ((int-1):ints) xs)
-        ExprArray expr -> True
-
-checkArrays :: [Int] -> [Array] -> Bool
-checkArrays _ [] = True
-checkArrays (int:ints) (x:xs) =
-{-  if int == 0
-    then
-      if xs == []
-        then True
-        else False
-
-    else -}
-{-  if ints /= [] && xs /= []
-    then -}
-  case x of
-    ExprMultiArray multiArr@(y:ys) -> (checkLengthArray int (x:xs))  && (checkLengthArray (head ints) (y:ys)) && (checkBounds (tail ints) y) && (checkArrays (((head ints)-1):(tail ints)) ys) -- && (checkArrays ints ys) -- && (checkArrays (((head ints)-1):(tail ints)) ys)--(checkLengthArray (head ints) (y:ys)) && (checkArrays ((int-1):ints) xs) &&
-    ExprArray expr -> True
-{-    else 
-      case x of
-        ExprMultiArray multiArr@(y:ys) -> (checkLengthArray int (x:xs))  && (checkLengthArray (head ints) (y:ys)) -- && (checkArrays ((int-1):ints) xs) && (checkBounds [int] y) --(checkLengthArray (head ints) (y:ys)) &&
-        ExprArray expr -> True -}
-
-{-
-(ExprMultiArray [
-	ExprMultiArray [ 											<-- x
-		ExprMultiArray [										
-			ExprArray (ExprInt (PInteger ((56,29),"1")))
-		],
-		ExprMultiArray [										
-			ExprArray (ExprInt (PInteger ((56,33),"2")))
-		]
-	],
-	ExprMultiArray [											<-- xs
-		ExprMultiArray [
-			ExprArray (ExprInt (PInteger ((56,39),"3")))
-		],
-		ExprMultiArray [
-			ExprArray (ExprInt (PInteger ((56,43),"4")))
-		]
-	]
-])
--}
-{-  case a of
-    ExprArray expr -> Ok True--if (read id :: Integer) == 1 then Ok True
-                      --          else fail $ "error"
-    ExprMultiArray arr@(array:arrays) -> Ok True -}
 {-
 checkStmtArrInit (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard arr mut = do
   case inferArray env arr of
@@ -682,7 +663,7 @@ addVar context (m,ident) (GuardType t) = Map.insert ident (m,t) context
 -- bool < char < int < float
 --             < string
 --
--- address <- pointer
+-- address < pointer
 
 getAddressType :: Type -> Type
 getAddressType t1 = do
@@ -693,8 +674,8 @@ getAddressType t1 = do
 
 -- T1 is compatible with T2?
 isCompatibleWith :: Type -> Type -> Bool
-t1 `isCompatibleWith` t2 =
-  case t2 of
+--t1 `isCompatibleWith` t2 =
+{-  case t2 of
     TypeCompound (TypePointer tpointer) -> do
       case t1 of TypeCompound (TypeAddress taddr)    -> (getAddressType taddr) `isCompatibleWith` tpointer
                  TypeCompound (TypePointer tpointer) -> True
@@ -703,16 +684,35 @@ t1 `isCompatibleWith` t2 =
       case t1 of TypeBool -> elem t2 [TypeBool, TypeChar, TypeString, TypeInt, TypeFloat]
                  TypeChar -> elem t2 [TypeChar, TypeString, TypeInt, TypeFloat]
                  TypeInt  -> elem t2 [TypeInt, TypeFloat] 
-                 _        -> False
+                 _        -> False -}
 {-  case t1 of
     TypeBool -> elem t2 [TypeBool, TypeChar, TypeString, TypeInt, TypeFloat]
     TypeChar -> elem t2 [TypeChar, TypeString, TypeInt, TypeFloat]
-    TypeInt  -> elem t2 [TypeInt, TypeFloat]
+    TypeInt  -> t2 == TypeFloat || t2 == TypeInt
+    _        -> False -}
+{-
     TypeCompound (TypeAddress taddr) -> do
       case t2 of
         TypeCompound (TypePointer tpointer) -> taddr `isCompatibleWith` t2
         _                                   -> False
     _        -> False -}
+t1 `isCompatibleWith` t2 =
+  case t1 of
+    TypeBool -> elem t2 [TypeBool, TypeChar, TypeString, TypeInt, TypeFloat]
+    TypeChar -> elem t2 [TypeChar, TypeString, TypeInt, TypeFloat] 
+    TypeInt  -> elem t2 [TypeInt, TypeFloat]
+    TypeCompound (TypeAddress taddr)    ->
+      case t2 of TypeCompound (TypePointer tpointer) -> (getAddressType taddr) `isCompatibleWith` tpointer
+                 _                                   -> False
+    TypeCompound (TypePointer tpointer) ->
+      case t2 of TypeCompound (TypePointer tpointer) -> True
+                 _                                   -> False
+    _        -> False 
+{-  | t1 == t2       = True
+  | t1 == TypeBool = elem t2 [TypeChar, TypeString, TypeInt, TypeFloat]
+  | t1 == TypeChar = elem t2 [TypeString, TypeInt, TypeFloat]
+  | t1 == TypeInt  = t2 == TypeFloat
+  | otherwise = False -}
 
 -- T is compatible with any of [T1,..Tn]?
 isCompatibleWithAny :: Type -> [Type] -> Bool
