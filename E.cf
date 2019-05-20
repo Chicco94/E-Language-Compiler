@@ -119,8 +119,8 @@ LRefExpr.       Ref   ::= "*" LExpr;
 --LArrExpr.       Arr   ::= PIdent "[" Expr "]"; -- Changing PIdent with LExpr => +2 s/r conflicts
 LArrExpr. Arr ::= PIdent "[" AExpr "]" ;         -- How we access an array element.
 
-ArrSing. AExpr ::= Expr ;
-ArrMul.  AExpr ::= AExpr "," Expr ;
+ArrSing. AExpr ::= PInteger ;
+ArrMul.  AExpr ::= AExpr "," PInteger ;
 --coercions LExpr 1;
 --_. LExpr ::= "(" LExpr ")" ;
 

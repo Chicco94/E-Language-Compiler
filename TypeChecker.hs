@@ -193,8 +193,8 @@ checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) pident@(PIdent
                     case lookupVar blocks ident of
                       Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
                       _        -> do case mut of
-                                       MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard expr)))]) prog)
-                                       MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtDefInit pident guard expr)))]) prog)
+                                       MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), postAttach (PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard expr)))]) prog)
+                                       MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), postAttach (PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtDefInit pident guard expr)))]) prog)
                   else fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has type " ++ show texpr ++ " which is incompatible with variable " ++ show ident ++ " " ++ show p ++ " that has type " ++ show tguard
 
 checkStmtArrInit :: (Env, [Program]) -> [PInteger] -> PIdent -> Guard -> Array -> Mutability -> Err (Env, [Program])
@@ -208,8 +208,8 @@ checkStmtArrInit (env@(sig, blocks@((blockType, context):xs)), prog) pints piden
                   True -> do case inferArray env arr tguard of 
                                Ok tarr -> do
                                  do case mut of
-                                      MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray tguard pints)) (DeclStmt (StmtVarArrInit pints pident guard arr)))]) prog)
-                                      MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray tguard pints)) (DeclStmt (StmtDefArrInit pints pident guard arr)))]) prog)
+                                      MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) (TypeCompound (TypeArray tguard pints))):blocks)), postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray tguard pints)) (DeclStmt (StmtVarArrInit pints pident guard arr)))]) prog)
+                                      MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) (TypeCompound (TypeArray tguard pints))):blocks)), postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray tguard pints)) (DeclStmt (StmtDefArrInit pints pident guard arr)))]) prog)
                                Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ show tguard ++ " but there is an expression with type " ++ s ++ " in its initialization"
                   _    -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but its initialization does not match such bounds"
 
@@ -284,39 +284,6 @@ getBoundsFromPInts ((PInteger (p, int)):xs) = (read int :: Int) : getBoundsFromP
 
 checkLengthArray :: Int -> [Array] -> Bool
 checkLengthArray int arr = length arr == int
-{-
-checkStmtArrInit (env@(sig, blocks@((blockType, context):xs)), prog) lexpr@(LExprId (PIdent (p, ident))) guard arr mut = do
-  case inferArray env arr of
-    Ok tarr -> do
-      case guard of
-        GuardType t -> do
-          if t == TypeVoid
-            then fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
-            else
-              case lookupVar blocks ident of
-                Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
-                _        -> do case mut of
-                                 MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray t)) (DeclStmt (StmtVarArrInit lexpr guard arr)))]) prog)
-                                 MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) guard):blocks)), postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray t)) (DeclStmt (StmtDefArrInit lexpr guard arr)))]) prog)
-        GuardVoid -> fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ show TypeVoid ++ " is not allowed)"
-    _ -> fail $ show "(TODO,TODO): the expression " ++ printTree arr ++ " must have type " ++ show TypeInt
-
--- Infer array.
-inferArray :: Env -> Array -> Err Type
-inferArray env array =
-  case array of
-    TypeExprArray expr               -> inferExpr env expr
-    TypeMultiArray arrays@(arr:arrs) -> do t <- inferArray env arr
-                                           filterArrays env arrays t
-    _ -> fail $ "inferArray: fatal error!"
-
-filterArrays :: Env -> [Array] -> Type -> Err Type
-filterArrays _ _ t = Ok t
-filterArrays env (arr:arrs) t = do
-  tarr <- inferArray env arr
-  if (t == tarr)
-    then filterArrays env arrs t
-    else fail $ "filterArrays: fatal error!" -}
 
 
 -- Check assignment.
@@ -341,31 +308,53 @@ checkAssign (env, prog) lexpr op expr = do
     OpModulo      -> do checkAssignOp (env, prog)  t1 lexpr op expr
     OpPower       -> do checkAssignOp (env, prog)  t1 lexpr op expr  
 
+-- TODO: compatibilities for all check assignments (done checkAssignOp)
 -- Check assignment with boolean operator.
 checkAssignBoolOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignBoolOp (env, prog) t1 lexpr op expr = do
   t2 <- inferExpr env expr
-  if (t2 `isCompatibleWith` t1) -- t2 has to be compatible with t1 (i.e., the r-expr with the l-expr)
-    then Ok (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-    else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
+  case t1 of
+    TypeCompound (TypeArray ta pints) -> do
+      if (t2 `isCompatibleWith` ta) -- t2 has to be compatible with ta (i.e., the r-expr with the l-expr)
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray TypeBool pints)) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
+    _                                 -> do
+      if (t2 `isCompatibleWith` t1) -- t2 has to be compatible with t1 (i.e., the r-expr with the l-expr)
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
 
 -- Check assignment operator.
 checkAssignOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignOp (env, prog) t1 lexpr op expr = do
   t2 <- inferExpr env expr
-  if (t2 `isCompatibleWith` t1)
-    then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-    else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
+  case t1 of 
+    TypeCompound (TypeArray ta pints) -> do
+      if (t2 `isCompatibleWith` ta)
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray ta pints)) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
+    _                                 -> do
+      if (t2 `isCompatibleWith` t1)
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
 
+-- TODO: if an array is of type int, and we use /= (float division), the result is float or int?
 -- Check assignment operator.
 checkAssignDiv :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Type -> Err (Env, [Program])
 checkAssignDiv (env, prog) t1 lexpr op expr top = do
   t2 <- inferExpr env expr
-  if (t1 `isCompatibleWith` top) && 
-     (t2 `isCompatibleWith` top) && 
-     areCompatible t1 t2 -- it is necessary?
-    then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-    else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
+  case t1 of
+    TypeCompound (TypeArray ta pints) -> do
+      if (ta `isCompatibleWith` top) && 
+         (t2 `isCompatibleWith` top) && 
+         areCompatible ta t2 -- it is necessary?
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray top pints)) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
+    _                                 -> do
+      if (t1 `isCompatibleWith` top) && 
+         (t2 `isCompatibleWith` top) && 
+         areCompatible t1 t2 -- it is necessary?
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl top (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
 
 -- Check function call.
 checkFunCall :: (Env, [Program]) -> Expr -> Err (Env, [Program])
@@ -389,7 +378,7 @@ checkExpr (env, prog) expr = do
 
     -- Base expressions (i.e., integers, floats, chars, strings, booleans)
     ExprInt int              -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeInt (DeclStmt (StmtExpr (ExprInt int))))]) prog)
-    ExprFloat flt           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeFloat (DeclStmt (StmtExpr (ExprFloat flt))))]) prog)
+    ExprFloat flt            -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeFloat (DeclStmt (StmtExpr (ExprFloat flt))))]) prog)
     ExprChar chr             -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeChar (DeclStmt (StmtExpr (ExprChar chr))))]) prog)
     ExprString str           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeString (DeclStmt (StmtExpr (ExprString str))))]) prog)
     ExprTrue ptrue           -> return (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprTrue ptrue))))]) prog)
@@ -524,6 +513,21 @@ inferFunCall env@(sig, blocks) (ExprFunCall (PIdent pident@(p,ident)) args) = do
         else fail $ show p ++ ": function " ++ printTree ident ++ " doesn't match its parameters"
     _ -> fail $ show p ++ ": function " ++ printTree ident ++ " not defined!" 
 
+-- 
+getBoundsFromArrayAccess :: AExpr -> [Int]
+getBoundsFromArrayAccess aexpr =
+  case aexpr of
+    ArrSing pint@(PInteger (p, int))      -> [read int :: Int]
+    ArrMul aexpr pint@(PInteger (p, int)) -> getBoundsFromArrayAccess aexpr ++ [read int :: Int]
+
+areConsistentWithBounds :: [Int] -> [Int] -> Bool
+areConsistentWithBounds [] [] = True
+areConsistentWithBounds _ [] = False
+areConsistentWithBounds [] _ = False
+(x:xs) `areConsistentWithBounds` (y:ys) =
+  if x <= y then xs `areConsistentWithBounds` ys
+            else False
+
 -- Infer left expression.
 inferLExpr :: Env -> LExpr -> Err Type
 inferLExpr env@(sig, blocks) lexpr = do
@@ -531,16 +535,20 @@ inferLExpr env@(sig, blocks) lexpr = do
     LExprId (PIdent (p, ident)) -> 
       case lookupVar blocks ident of
         Ok (_,t) -> Ok t
-        _ -> fail $ show p ++ ": variable " ++ printTree ident ++ " non defined!"
-
-    --LExprDeref (LDerefExpr le)   -> inferLExpr env le
+        _        -> fail $ show p ++ ": variable " ++ printTree ident ++ " not defined!"
     LExprRef (LRefExpr le)       -> inferLExpr env le
-    {-LExprArr (LArrExpr pident@(PIdent (p,ident)) re) -> do (_,tid) <- lookupVar blocks ident
-                                                           tre <- inferExpr env re
-                                                           if (tre == TypeInt)
-                                                             then Ok tid
-                                                             else fail $ show p ++ ": the type of the array " ++ printTree ident ++ " is " ++ show tid ++ " but the inner expression " ++ printTree re ++ " has type " ++ show tre -}
-    _                                  -> fail $ "inferLEXpr: fatal error"
+
+    LExprArr (LArrExpr pident@(PIdent (p,ident)) aexpr) -> do 
+      case lookupVar blocks ident of
+        Ok (_, tid) -> do
+          case tid of
+            (TypeCompound (TypeArray t pints)) -> do
+              case (getBoundsFromArrayAccess aexpr) `areConsistentWithBounds` (getBoundsFromPInts pints) of
+                True  -> Ok (TypeCompound (TypeArray t pints))
+                False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ ", accessing an element outside these bounds is not allowed"
+            _                                -> fail $ "inferLExpr: tid not typecompound"
+        _           -> fail $ show p ++ ": variable " ++ printTree ident ++ " not defined" 
+
 
 -- Infer address unary operator.
 inferReference :: Env -> Expr -> LExpr -> Err Type 
@@ -656,8 +664,8 @@ addFun sig fname args guard =
     GuardVoid -> Map.insert fname ([(mod, t) | (ArgDecl mod _ (GuardType t)) <- args], TypeVoid) sig -- procedures
 
 -- Add variable/constant to signature.
-addVar :: Context -> (Mutability, String) -> Guard -> Context
-addVar context (m,ident) (GuardType t) = Map.insert ident (m,t) context
+addVar :: Context -> (Mutability, String) -> Type -> Context
+addVar context (m,ident) t = Map.insert ident (m,t) context
 
 -- Type compatibilities:
 -- bool < char < int < float
