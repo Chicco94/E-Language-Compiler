@@ -1,5 +1,13 @@
 def a :int := 1;
 def b :int := a;
+def a():int {
+    var temp :int := 4;
+    temp *= 4; 
+    return (temp);
+}
+
+
+
 /*
 def c :int := 3;
 def d :int := 4;

@@ -222,13 +222,9 @@ data TAC
   | BinOp BinaryOperator Temp Temp Temp
   | UnaryOp UnaryOp Temp Temp
 
-  | TACInt Integer
-  | TACDouble Double
-  | TACChar Char
-  | TACString String
-  | TACTrue
-  | TACFalse
-
+  | FuncDef Var
+  | FuncCall Var
+  | Return Temp
   | Goto Label
   | IfNot Temp Label
   | L Label
