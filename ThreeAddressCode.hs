@@ -93,12 +93,26 @@ generateExpr env@(program, temp_count, labels) type_ expr =
         ExprLeft     (LExprId id@(PIdent (pos,name)))          -> do
           let (new_labels, var) = findVar labels (Var (name,pos,type_))
           ([AssignV2T   (Temp (temp_count,type_)) var] ++ program, (temp_count+1), new_labels)
-        
-        {- inserire valutazioni rapide (es: true || _ e false && _) -}
-        ExprOr       expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpOr
-        ExprAnd      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpAnd
-        
+ 
+        ExprInt      val         -> ([AssignIntTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        ExprChar     val         -> ([AssignChrTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        ExprString   val         -> ([AssignStrTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        ExprFloat    val         -> ([AssignFloatTemp (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        ExprTrue     val         -> ([AssignTrueTemp  (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        ExprFalse    val         -> ([AssignFalseTemp (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+    
+        ExprFunCall  fun params  -> (generateCallFunc env fun params) 
 
+        ExprPower    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPower
+        ExprMul      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMul
+        ExprFloatDiv expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpFloatDiv
+        ExprIntDiv   expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpIntDiv
+        ExprReminder expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpRemainder
+        ExprModulo   expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpModulo
+  
+        ExprPlus     expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPlus
+        ExprMinus    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMinus
+  
         {- da testare (modificare anche PrintE.hs)
         ExprLt       expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpLt
         ExprGt       expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpGt
@@ -108,21 +122,11 @@ generateExpr env@(program, temp_count, labels) type_ expr =
         ExprNeq      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpNeq
         -}
 
-        ExprPlus     expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPlus
-        ExprMinus    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMinus
-        ExprMul      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMul
-        ExprIntDiv   expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpIntDiv
-        ExprFloatDiv expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpFloatDiv
-        ExprReminder expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpRemainder
-        ExprModulo   expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpModulo
-        ExprPower    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPower
-        
-        ExprInt      val         -> ([AssignIntTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
-        ExprChar     val         -> ([AssignChrTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
-        ExprString   val         -> ([AssignStrTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
-        ExprFloat    val         -> ([AssignFloatTemp (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
-        ExprTrue     val         -> ([AssignTrueTemp  (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
-        ExprFalse    val         -> ([AssignFalseTemp (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        {- inserire valutazioni rapide (es: true || _ e false && _) -}
+        ExprOr       expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpOr
+        ExprAnd      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpAnd
+      
+
 
         
 -- Build the binary operator using the last two temporaneus variable
@@ -157,3 +161,17 @@ generateDeclFunc env@(program, temp_count, labels) lexpr@(LExprId (PIdent (pos, 
     where type_ = case guard of
                     GuardVoid    -> TypeVoid
                     GuardType t_ -> t_
+
+-- use temp variables as parameters
+generateCallFunc :: Env -> PIdent -> [Expr] -> Env
+generateCallFunc  env@(program, temp_count, labels) (PIdent (pos, name)) params = do
+  let (new_labels, var)              = findVar labels (Var (name,pos,TypeVoid)) -- prendo il tipo della funzione
+  let (program',temp_count',labels') = (generateParams env params)
+  ([FuncCall var (Temp (temp_count,TypeVoid))]++program',temp_count',labels')
+
+
+generateParams :: Env -> [Expr] -> Env
+generateParams env [] = env
+generateParams env@(program, temp_count, labels) (param:params) = do
+  let (program',temp_count',labels') = generateExpr env TypeVoid param
+  generateParams ([AssignT2P (Temp (temp_count,TypeVoid))]++program',temp_count',labels') params

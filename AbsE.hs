@@ -124,18 +124,16 @@ data Expr
     | ExprFunCall PIdent [Expr]
 
     | ExprBoolNot Expr
-
     | ExprNegation Expr
     | ExprAddition Expr
+    | ExprReference LExpr
+
     | ExprPower Expr Expr
     | ExprMul Expr Expr
     | ExprFloatDiv Expr Expr
     | ExprIntDiv Expr Expr
     | ExprReminder Expr Expr
     | ExprModulo Expr Expr
-
-    | ExprReference LExpr
-
     | ExprPlus Expr Expr
     | ExprMinus Expr Expr
 
@@ -214,16 +212,17 @@ data TAC
   | AssignFalseVar  Var  PFalse
   | AssignFloatVar  Var  PFloat
 
-  | AssignT2V Var Temp
+  | AssignT2V Var  Temp
   | AssignT2T Temp Temp
   | AssignV2T Temp Var
   | AssignV2V Var  Var
+  | AssignT2P Temp
 
   | BinOp BinaryOperator Temp Temp Temp
   | UnaryOp UnaryOp Temp Temp
 
   | FuncDef Var
-  | FuncCall Var
+  | FuncCall Var Temp
   | Return Temp
   | Goto Label
   | IfNot Temp Label

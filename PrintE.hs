@@ -298,8 +298,10 @@ instance Show Program where
 instance Show TAC where
   show t = case t of
     {-mettere \n dopo return-}
-    FuncDef (Var (name,pos,type_)) -> "\n\tFunction:\n\t" ++ show type_ ++ "\t" ++ filter (/='\"') (show name) ++ "\n\tStatements:\n"
+    FuncDef (Var (name,pos@(row,col),type_)) -> "\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\tFunction:\n\t" ++ show type_ ++ "\n\tStatements:\n"
     Return  temp                   -> "\treturn_" ++ show temp ++"\n\tEnd Function\n\n"
+    FuncCall (Var (name,pos@(row,col),type_)) temp-> "\t" ++ show temp ++ " = " ++ show type_ ++ " call " ++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col++"\n"
+
 
     AssignIntVar    var  val  -> "\t" ++ show var   ++ " = " ++ show val ++ "\n"
     AssignChrVar    var  val  -> "\t" ++ show var   ++ " = " ++ show val ++ "\n"
@@ -319,6 +321,7 @@ instance Show TAC where
     AssignT2T       tmp1 tmp2 -> "\t" ++ show tmp1 ++ " = " ++ show tmp2 ++ "\n"
     AssignV2T       temp var  -> "\t" ++ show temp ++ " = " ++ show var  ++ "\n"
     AssignV2V       var1 var2 -> "\t" ++ show var1 ++ " = " ++ show var2 ++ "\n"
+    AssignT2P       temp      -> "\t" ++ "param_"  ++ show temp ++ "\n"
     
     BinOp BOpOr        tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " || " ++ show temp2 ++ "\n"
     BinOp BOpAnd       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " && " ++ show temp2 ++ "\n"
