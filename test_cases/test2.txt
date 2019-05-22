@@ -1,11 +1,13 @@
-def a :int := 1;
-def b :int := a;
-def fun(var b :int):int {
-    var temp :int := 4;
-    temp *= b; 
-    return (temp-1);
+var a :float := 4;
+var b :float := 3;
+
+def foo(var a :float, var b :float) :float {
+    return (a + b);
 }
-a := fun(b);
+
+
+var c :float := foo(a+b,a-b);
+
 
 
 

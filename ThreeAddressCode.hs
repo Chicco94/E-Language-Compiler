@@ -101,7 +101,7 @@ generateExpr env@(program, temp_count, labels) type_ expr =
         ExprTrue     val         -> ([AssignTrueTemp  (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
         ExprFalse    val         -> ([AssignFalseTemp (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
     
-        ExprFunCall  fun params  -> (generateCallFunc env fun params) 
+        ExprFunCall  fun params  -> (generateCallFunc env fun params type_) 
 
         ExprPower    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPower
         ExprMul      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMul
@@ -163,11 +163,11 @@ generateDeclFunc env@(program, temp_count, labels) lexpr@(LExprId (PIdent (pos, 
                     GuardType t_ -> t_
 
 -- use temp variables as parameters
-generateCallFunc :: Env -> PIdent -> [Expr] -> Env
-generateCallFunc  env@(program, temp_count, labels) (PIdent (pos, name)) params = do
-  let (new_labels, var)              = findVar labels (Var (name,pos,TypeVoid)) -- prendo il tipo della funzione
+generateCallFunc :: Env -> PIdent -> [Expr] -> Type ->Env
+generateCallFunc  env@(program, temp_count, labels) (PIdent (pos, name)) params type_ = do
+  let (new_labels, var)              = findVar labels (Var (name,pos,type_)) -- prendo il tipo della funzione
   let (program',temp_count',labels') = (generateParams env params)
-  ([FuncCall var (Temp (temp_count,TypeVoid))]++program',temp_count',labels')
+  ([FuncCall var (Temp (temp_count,type_))]++program',temp_count',labels')
 
 
 generateParams :: Env -> [Expr] -> Env
