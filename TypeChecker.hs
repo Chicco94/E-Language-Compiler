@@ -65,9 +65,9 @@ checkArgDecl (env@(sig@(x:xs), blocks@((blockType, context):ys)), prog) (arg@(Ar
   case guard of
     GuardVoid   -> fail $ show p ++ ": argument " ++ printTree ident ++ " must have a type"
     GuardType t -> 
-      case t of
+      --case t of
         --TypeCompound (TypeAddress _) -> fail $ show p ++ ": argument " ++ show ident ++ " has an invalid type, & is not allowed"
-        _                            -> do
+        --_                            -> do
           case lookupVar blocks ident of
             Ok _ -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
             _    -> do
@@ -404,11 +404,11 @@ checkAssignBoolOp (env, prog) t1 lexpr op expr = do
     TypeCompound (TypeArray ta pints) -> do
       if (t2 `isCompatibleWith` ta) -- t2 has to be compatible with ta (i.e., the r-expr with the l-expr)
         then Ok (env, postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray TypeBool pints)) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
     _                                 -> do
       if (t2 `isCompatibleWith` t1) -- t2 has to be compatible with t1 (i.e., the r-expr with the l-expr)
         then Ok (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
 
 -- Check assignment operator.
 checkAssignOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
@@ -418,11 +418,11 @@ checkAssignOp (env, prog) t1 lexpr op expr = do
     TypeCompound (TypeArray ta pints) -> do
       if (t2 `isCompatibleWith` ta)
         then Ok (env, postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray ta pints)) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
     _                                 -> do
       if (t2 `isCompatibleWith` t1)
         then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
 
 -- TODO: if an array is of type int, and we use /= (float division), the result is float or int?
 -- Check assignment operator.
@@ -435,31 +435,20 @@ checkAssignDiv (env, prog) t1 lexpr op expr top = do
          (t2 `isCompatibleWith` top) && 
          areCompatible ta t2 -- it is necessary?
         then Ok (env, postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray top pints)) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
     _                                 -> do
       if (t1 `isCompatibleWith` top) && 
          (t2 `isCompatibleWith` top) && 
          areCompatible t1 t2 -- it is necessary?
         then Ok (env, postAttach (PDefs [TypedDecl (ADecl top (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ show t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ show t2 
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
 
 -- Check function call.
-
--- int i  : declares an int
--- int* p : declares a pointer to an int
-
--- void foo(int i)
--- void foo(int* p)
-
--- foo(i)  : calls foo(int i), the parameter is passed as a copy
--- foo(*p) : deferences the int pointer p and calls foo(int i) with the int pointed to by p
--- foo(&i) : takes the address of i and calls out foo(int* i) with that address
-
 checkFunCall :: (Env, [Program]) -> Expr -> Err (Env, [Program])
 checkFunCall (env@(sig, _), prog) (ExprFunCall (PIdent pident@(p,ident)) args) = do
   case lookupFun sig ident of
     Ok funDef@(mods,t) -> 
-      if length args == length mods -- !! doesn't work..
+      if length args == length mods --
         then do
           case checkFunCallArgs (env, prog) mods args of
             Ok _  -> Ok (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr (ExprFunCall (PIdent pident) args))))]) prog)
@@ -470,19 +459,32 @@ checkFunCall (env@(sig, _), prog) (ExprFunCall (PIdent pident@(p,ident)) args) =
 
 checkFunCallArgs :: (Env, [Program]) -> [(Modality, Type)] -> [Expr] -> Err String
 checkFunCallArgs (env, prog) [] [] = Ok "fun call arguments are ok"
-checkFunCallArgs (env, prog) (x@(mod,tdecl):xs) (y:ys) = do
-  targ <- inferExpr env y
+checkFunCallArgs (env, prog) (x@(mod,tdecl):xs) (expr:exprs) = do
+  targ <- inferExpr env expr
+  if ((getInitLevel expr) + (getTypeLevel targ)) == (getTypeLevel tdecl)
+   then do
+     if (getInnerType targ) `isCompatibleWith` (getInnerType tdecl)
+       then checkFunCallArgs (env, prog) xs exprs
+     else fail $ show (getExprPosition expr) ++ ": expression argument " ++ printTree expr ++ " has type " ++ printTree targ ++ " but the declaration of the function requires to have type " ++ printTree tdecl
+   else do
+     -- expr level < decl level
+     if ((getInitLevel expr) + (getTypeLevel targ)) < (getTypeLevel tdecl)
+       then fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl)
+       else do
+         if ((getInitLevel expr) + (getTypeLevel targ)) > (getTypeLevel tdecl)
+           then fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl)
+           else fail $ "checkFunCallArgs: fatal error"
+{-
   case targ of
     TypeCompound (TypePointer innerType) -> do
       if innerType `isCompatibleWith` tdecl
         then checkFunCallArgs (env, prog) xs ys
-        else fail $ show (getExprPosition y) ++ ": expression argument " ++ printTree y ++ " has type " ++ show targ ++ " but the declaration of the function requires to have type " ++ show tdecl
---fail $ show (getExprPosition y) ++ ": expression argument " ++ printTree y ++ " cannot be passed to the function as pointer"
+        else fail $ show (getExprPosition y) ++ ": expression argument " ++ printTree y ++ " has type " ++ printTree targ ++ " but the declaration of the function requires to have type " ++ printTree tdecl
     _                            -> do
       if targ `isCompatibleWith` tdecl
         then checkFunCallArgs (env, prog) xs ys
-        else fail $ show (getExprPosition y) ++ ": expression argument " ++ printTree y ++ " has type " ++ show targ ++ " but the declaration of the function requires to have type " ++ show tdecl
-
+        else fail $ show (getExprPosition y) ++ ": expression argument " ++ printTree y ++ " has type " ++ printTree targ ++ " but the declaration of the function requires to have type " ++ printTree tdecl
+-}
 
 
 
@@ -507,7 +509,7 @@ checkExpr (env@(sigs,blocks), prog) expr = do
           if m == MutVar
             then checkAssign (env, prog) lexpr op expr
             else fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree (findLExprName lexpr) ++ " is defined as constant, you cannot assign a value to a constant"
-        _        -> fail $ show (getLExprPosition lexpr) ++ ": variable " ++ show (findLExprName lexpr) ++ " is not defined"
+        _        -> fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree (findLExprName lexpr) ++ " is not defined"
 
     -- Left expressions.
     ExprLeft lexpr           -> do t <- inferLExpr env lexpr
