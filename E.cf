@@ -201,7 +201,7 @@ TypeString. Type ::= "string" ;
 -- Compound types.
 TypeCompound. Type  ::= CType ;
 TypePointer.  CType ::= Type "*" ; 					-- Pointer type.
-TypeAddress.  CType ::= Type "&" ;					-- Address type.
+--TypeAddress.  CType ::= Type "&" ;					-- Address type.
 TypeArray.    CType ::= Type "[" [PInteger] "]" ;		-- Array type.
 
 
