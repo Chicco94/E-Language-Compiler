@@ -95,7 +95,9 @@ generateStmt env@(program, temp_count, variables) type_ stmt@(SComp (StmtBlock d
 -- while stmt
 generateStmt env@(program, temp_count, variables) type_ stmt@(StmtWhile bexpr (StmtBlock decls)) = do
   --let (new_variables, var) = findVar variables (Var ("guard",pos,TypeVoid)) -- creo l'etichetta come variabile Void
-  (generateTAC_int ([Lbl (Label ("body",(1,1)) ),Goto (Label ("gaurd",(1,1)) )]++program,temp_count,variables) decls) 
+  let (program',temp_count',variables') = (generateTAC_int ([Lbl (Label ("body",(1,1)) ),Goto (Label ("gaurd",(1,1)) )]++program,temp_count,variables) (PDefs decls)) 
+  -- da aggiungere if
+  (([Goto (Label ("body",(1,1)) ),Lbl (Label ("guard",(1,1)) )]++program',temp_count',variables')) 
   --([Return (Temp (temp_count'-1,type_))] ++ program',temp_count',variables')
 
 generateExpr :: Env -> Type -> Expr -> Env
