@@ -8,10 +8,11 @@ import PrintE
 import Prelude hiding (lookup)
 import qualified Data.Map as Map
 
--- Environment = (Program, tempValue, labels)
-type Env       = ([TAC], Temp_count, LabelsMap)
+-- Environment = (Program, tempValue, variables)
+type Env       = ([TAC], Temp_count, VariablesMap)
 type Temp_count = Int
-type LabelsMap = Map.Map String Var         -- Variables context: String -> Var
+type VariablesMap = Map.Map String Var         -- Variables context: String -> Var
+type LabelsMap    = Map.Map String Label       -- Variables context: String -> Var
 
 
  -- Initialize the tacprogram with an empty list.
@@ -44,62 +45,75 @@ generateDecl env maybe_type decl =
 -- search the variable in the list of variables
 -- if there is just return it
 -- if there isn't, add it to the list and then return it 
-findVar :: LabelsMap -> Var -> (LabelsMap,Var)
-findVar labels var@(Var (name,pos,type_)) = 
-  case Map.lookup name labels of
+findVar :: VariablesMap -> Var -> (VariablesMap,Var)
+findVar variables var@(Var (name,pos,type_)) = 
+  case Map.lookup name variables of
     -- the variable is new
-    Nothing     -> (Map.insert name var labels, var)
+    Nothing     -> (Map.insert name var variables, var)
     -- the variable has already been declared
-    Just old_var -> (labels, old_var)
+    Just old_var -> (variables, old_var)
+
+findLabel :: LabelsMap -> Label -> (LabelsMap,Label)
+findLabel lables lbl@(Label (name,num)) = 
+  case Map.lookup name lables of
+    -- the lable is new
+    Nothing     -> (Map.insert name lbl lables, lbl)
+    -- the lable has already been declared
+    Just old_lbl -> (lables, old_lbl)
 
 
 
 generateStmt :: Env  -> Type -> Stmt -> Env 
 -- expression statement
-generateStmt env@(program, temp_count, labels) type_ stmt@(StmtExpr expr) = generateExpr env type_ expr
+generateStmt env@(program, temp_count, variables) type_ stmt@(StmtExpr expr) = generateExpr env type_ expr
 -- variable initialization or assignement
-generateStmt env@(program, temp_count, labels) type_ stmt@(StmtVarInit id@(PIdent (pos,name)) guard expr ) = do
-  let (new_labels, var) = findVar labels (Var (name,pos,type_))
+generateStmt env@(program, temp_count, variables) type_ stmt@(StmtVarInit id@(PIdent (pos,name)) guard expr ) = do
+  let (new_variables, var) = findVar variables (Var (name,pos,type_))
   case expr of
     -- shortcut per evitare t0 = 1; var = t0
-    (ExprInt    val)  -> ([AssignIntVar    var val] ++ program, temp_count, new_labels)
-    (ExprChar   val)  -> ([AssignChrVar    var val] ++ program, temp_count, new_labels)
-    (ExprString val)  -> ([AssignStrVar    var val] ++ program, temp_count, new_labels)
-    (ExprFloat  val)  -> ([AssignFloatVar  var val] ++ program, temp_count, new_labels)
-    (ExprTrue   val)  -> ([AssignTrueVar   var val] ++ program, temp_count, new_labels)
-    (ExprFalse  val)  -> ([AssignFalseVar  var val] ++ program, temp_count, new_labels)
+    (ExprInt    val)  -> ([AssignIntVar    var val] ++ program, temp_count, new_variables)
+    (ExprChar   val)  -> ([AssignChrVar    var val] ++ program, temp_count, new_variables)
+    (ExprString val)  -> ([AssignStrVar    var val] ++ program, temp_count, new_variables)
+    (ExprFloat  val)  -> ([AssignFloatVar  var val] ++ program, temp_count, new_variables)
+    (ExprTrue   val)  -> ([AssignTrueVar   var val] ++ program, temp_count, new_variables)
+    (ExprFalse  val)  -> ([AssignFalseVar  var val] ++ program, temp_count, new_variables)
     -- shortcut per evitare t0 = v1; v2 = t0
     -- effettivo assegnamento con espressione complessa a destra
-    _                 -> generateAssign (generateExpr (program, temp_count, new_labels) type_ expr) type_ id OpAssign
+    _                 -> generateAssign (generateExpr (program, temp_count, new_variables) type_ expr) type_ id OpAssign
 -- constant inizialization or assignement
 generateStmt env type_ stmt@(StmtDefInit id guard expr) = generateStmt env type_ (StmtVarInit id guard expr)
 -- return stmt
-generateStmt env@(program, temp_count, labels) type_ stmt@(StmtReturn (PReturn (pos,name)) expr) = do
-  let (program',temp_count',labels') = generateExpr env type_ expr
-  ([Return (Temp (temp_count'-1,type_))] ++ program',temp_count',labels') -- ritorno l'ultima instanziata
+generateStmt env@(program, temp_count, variables) type_ stmt@(StmtReturn (PReturn (pos,name)) expr) = do
+  let (program',temp_count',variables') = generateExpr env type_ expr
+  ([Return (Temp (temp_count'-1,type_))] ++ program',temp_count',variables') -- ritorno l'ultima variabile temporanea instanziata
 -- compound statement
 {-
-generateStmt env@(program, temp_count, labels) type_ stmt@(SComp (StmtBlock decls)) = do
-  let env'@(program',temp_count',labels') = generateTAC_int (PDefs decls)
-  (program'++program,temp_count, labels)
+generateStmt env@(program, temp_count, variables) type_ stmt@(SComp (StmtBlock decls)) = do
+  let env'@(program',temp_count',variables') = generateTAC_int (PDefs decls)
+  (program'++program,temp_count, variables)
 -}
+-- while stmt
+generateStmt env@(program, temp_count, variables) type_ stmt@(StmtWhile bexpr (StmtBlock decls)) = do
+  --let (new_variables, var) = findVar variables (Var ("guard",pos,TypeVoid)) -- creo l'etichetta come variabile Void
+  (generateTAC_int ([Lbl (Label ("body",(1,1)) ),Goto (Label ("gaurd",(1,1)) )]++program,temp_count,variables) decls) 
+  --([Return (Temp (temp_count'-1,type_))] ++ program',temp_count',variables')
 
 generateExpr :: Env -> Type -> Expr -> Env
-generateExpr env@(program, temp_count, labels) type_ expr = 
+generateExpr env@(program, temp_count, variables) type_ expr = 
     case expr of
         -- assign expression to variable
         ExprAssign   (LExprId id) op re    -> generateAssign (generateExpr env type_ re) type_ id op
         -- variable inside expression
         ExprLeft     (LExprId id@(PIdent (pos,name)))          -> do
-          let (new_labels, var) = findVar labels (Var (name,pos,type_))
-          ([AssignV2T   (Temp (temp_count,type_)) var] ++ program, (temp_count+1), new_labels)
+          let (new_variables, var) = findVar variables (Var (name,pos,type_))
+          ([AssignV2T   (Temp (temp_count,type_)) var] ++ program, (temp_count+1), new_variables)
  
-        ExprInt      val         -> ([AssignIntTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
-        ExprChar     val         -> ([AssignChrTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
-        ExprString   val         -> ([AssignStrTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
-        ExprFloat    val         -> ([AssignFloatTemp (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
-        ExprTrue     val         -> ([AssignTrueTemp  (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
-        ExprFalse    val         -> ([AssignFalseTemp (Temp (temp_count,type_)) val] ++ program, (temp_count+1), labels)
+        ExprInt      val         -> ([AssignIntTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), variables)
+        ExprChar     val         -> ([AssignChrTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), variables)
+        ExprString   val         -> ([AssignStrTemp   (Temp (temp_count,type_)) val] ++ program, (temp_count+1), variables)
+        ExprFloat    val         -> ([AssignFloatTemp (Temp (temp_count,type_)) val] ++ program, (temp_count+1), variables)
+        ExprTrue     val         -> ([AssignTrueTemp  (Temp (temp_count,type_)) val] ++ program, (temp_count+1), variables)
+        ExprFalse    val         -> ([AssignFalseTemp (Temp (temp_count,type_)) val] ++ program, (temp_count+1), variables)
     
         ExprFunCall  fun params  -> (generateCallFunc env fun params type_) 
 
@@ -131,16 +145,16 @@ generateExpr env@(program, temp_count, labels) type_ expr =
         
 -- Build the binary operator using the last two temporaneus variable
 binaryExpr :: Env -> Type -> BinaryOperator -> Env
-binaryExpr env@(program, temp_count, labels) type_ op = ([ BinOp op (Temp (temp_count,type_)) (Temp (temp_count-2,type_)) (Temp (temp_count-1,type_))] ++ program, (temp_count+1), labels)
+binaryExpr env@(program, temp_count, variables) type_ op = ([ BinOp op (Temp (temp_count,type_)) (Temp (temp_count-2,type_)) (Temp (temp_count-1,type_))] ++ program, (temp_count+1), variables)
 
 
 --StmtAssign LExpr AssignOperator Expr
 generateAssign :: Env -> Type -> PIdent -> AssignOperator -> Env
-generateAssign env@(program, temp_count, labels) type_ id@(PIdent (pos,name)) op = do
-  let (new_labels, var) = findVar labels (Var (name,pos,type_))
+generateAssign env@(program, temp_count, variables) type_ id@(PIdent (pos,name)) op = do
+  let (new_variables, var) = findVar variables (Var (name,pos,type_))
   case op of
-    OpAssign    -> ([AssignT2V  var (Temp (temp_count-1,type_))] ++ program, (temp_count), new_labels)
-    _           -> generateAssign (binaryExpr ([AssignV2T (Temp (temp_count,type_)) var] ++ program, (temp_count+1), new_labels) type_ op') type_ id OpAssign
+    OpAssign    -> ([AssignT2V  var (Temp (temp_count-1,type_))] ++ program, (temp_count), new_variables)
+    _           -> generateAssign (binaryExpr ([AssignV2T (Temp (temp_count,type_)) var] ++ program, (temp_count+1), new_variables) type_ op') type_ id OpAssign
                     where op' = case op of 
                                   OpOr        -> BOpOr
                                   OpAnd       -> BOpAnd       
@@ -155,23 +169,23 @@ generateAssign env@(program, temp_count, labels) type_ id@(PIdent (pos,name)) op
 
 -- DeclFun LExpr [Arg] Guard CompStmt
 generateDeclFunc :: Env -> LExpr -> [Arg] -> Guard -> CompStmt -> Env
-generateDeclFunc env@(program, temp_count, labels) lexpr@(LExprId (PIdent (pos, name))) args guard stmt@(StmtBlock decls) = do
-  let (new_labels, var) = findVar labels (Var (name,pos,type_))
-  (generateTAC_int ([FuncDef var]++program,temp_count, labels) (PDefs decls))
+generateDeclFunc env@(program, temp_count, variables) lexpr@(LExprId (PIdent (pos, name))) args guard stmt@(StmtBlock decls) = do
+  let (new_variables, var) = findVar variables (Var (name,pos,type_))
+  (generateTAC_int ([FuncDef var]++program,temp_count, variables) (PDefs decls))
     where type_ = case guard of
                     GuardVoid    -> TypeVoid
                     GuardType t_ -> t_
 
 -- use temp variables as parameters
 generateCallFunc :: Env -> PIdent -> [Expr] -> Type ->Env
-generateCallFunc  env@(program, temp_count, labels) (PIdent (pos, name)) params type_ = do
-  let (new_labels, var)              = findVar labels (Var (name,pos,type_)) -- prendo il tipo della funzione
-  let (program',temp_count',labels') = (generateParams env params)
-  ([FuncCall var (Temp (temp_count,type_))]++program',temp_count',labels')
+generateCallFunc  env@(program, temp_count, variables) (PIdent (pos, name)) params type_ = do
+  let (new_variables, var)              = findVar variables (Var (name,pos,type_)) -- prendo il tipo della funzione
+  let (program',temp_count',variables') = (generateParams env params)
+  ([FuncCall var (Temp (temp_count,type_))]++program',temp_count',variables')
 
 
 generateParams :: Env -> [Expr] -> Env
 generateParams env [] = env
-generateParams env@(program, temp_count, labels) (param:params) = do
-  let (program',temp_count',labels') = generateExpr env TypeVoid param
-  generateParams ([AssignT2P (Temp (temp_count,TypeVoid))]++program',temp_count',labels') params
+generateParams env@(program, temp_count, variables) (param:params) = do
+  let (program',temp_count',variables') = generateExpr env TypeVoid param
+  generateParams ([AssignT2P (Temp (temp_count,TypeVoid))]++program',temp_count',variables') params

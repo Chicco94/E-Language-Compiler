@@ -187,8 +187,8 @@ data Type
 data CType = TypePointer Type | TypeAddress Type | TypeArray Type [Range]
   deriving (Eq, Ord, Show, Read)
 
-data Label = Label (String,Integer)
-  deriving (Eq, Ord, Show, Read)
+data Label = Label (String,(Int,Int))
+  deriving (Eq, Ord, Read)
 
 -- temporal variables: 't'id_numeber
 data Temp = Temp (Int,Type)
@@ -225,9 +225,8 @@ data TAC
   | FuncCall Var Temp
   | Return Temp
   | Goto Label
-  | IfNot Temp Label
-  | L Label
-  | Noop
+  | Lbl Label
+  | If Temp Label
   deriving (Eq, Ord, Read)
 
 data BinaryOperator

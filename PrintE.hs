@@ -343,6 +343,9 @@ instance Show TAC where
     BinOp BOpRemainder tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " % " ++ show temp2  ++ "\n"
     BinOp BOpModulo    tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " %% " ++ show temp2 ++ "\n"
     BinOp BOpPower     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " ^ " ++ show temp2  ++ "\n"
+
+    Goto label -> "\tgoto " ++ show label  ++ "\n"
+    Lbl label -> show label
       --prPrec i 0 (concatD [prt 0 var, doc (showString "="),prt 0 integer, doc (showString "\n")])
     _ -> "comando non trovato\n" -- prPrec i 0 (concatD [doc (showString "_")]) --TODO
 
@@ -354,3 +357,6 @@ instance Show Temp where --Temp = (Int,Type)
   show (Temp (num,type_)) = show type_ ++ "  t" ++ show num
   --prt i (Temp (num,type_)) = prPrec i 0 (concatD [prt 0 type_,doc (showString "t"),prt 0 num])
   
+instance Show Label where --Label = (Int,Type)
+  show (Label (name,pos@(row,col))) = filter (/='\"') (show name) ++  "@"++ show row ++ "-"++show col
+--prt i (Temp (num,type_)) = prPrec i 0 (concatD [prt 0 type_,doc (showString "t"),prt 0 num])
