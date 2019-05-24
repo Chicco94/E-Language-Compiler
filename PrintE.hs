@@ -346,6 +346,7 @@ instance Show TAC where
 
     Goto label -> "\tgoto " ++ show label  ++ "\n"
     Lbl label -> show label
+    If temp label ->"\tifFalse " ++ show temp ++ " goto "++show label++"\n"
       --prPrec i 0 (concatD [prt 0 var, doc (showString "="),prt 0 integer, doc (showString "\n")])
     _ -> "comando non trovato\n" -- prPrec i 0 (concatD [doc (showString "_")]) --TODO
 

@@ -87,11 +87,15 @@ generateStmt env@(program, temp_count, variables) type_ stmt@(StmtReturn (PRetur
   let (program',temp_count',variables') = generateExpr env type_ expr
   ([Return (Temp (temp_count'-1,type_))] ++ program',temp_count',variables') -- ritorno l'ultima variabile temporanea instanziata
 -- compound statement
-{-
-generateStmt env@(program, temp_count, variables) type_ stmt@(SComp (StmtBlock decls)) = do
-  let env'@(program',temp_count',variables') = generateTAC_int (PDefs decls)
-  (program'++program,temp_count, variables)
--}
+generateStmt env type_ stmt@(SComp (StmtBlock decls)) = generateTAC_int env (PDefs decls)
+-- if then else
+generateStmt env@(program, temp_count, variables) type_ stmt@(StmtIfThenElse bexpr (StmtBlock decls) (StmtBlock decls)) = do
+  (generateExpr env type_ bexpr)
+  -- if then 
+generateStmt env@(program, temp_count, variables) type_ stmt@(StmtIfThen bexpr stmts) = do
+  let (program', temp_count', variables') = (generateExpr env TypeBool bexpr)
+  let (program'', temp_count'', variables'') = generateStmt ([If (Temp (temp_count'-1,TypeBool)) (Label ("end_if",(0,0)) )]++program',temp_count',variables') type_ (SComp stmts)
+  ([Lbl (Label ("end_if",(0,0)) )]++program'',temp_count'',variables'')
 -- while stmt
 generateStmt env@(program, temp_count, variables) type_ stmt@(StmtWhile bexpr (StmtBlock decls)) = do
   --let (new_variables, var) = findVar variables (Var ("guard",pos,TypeVoid)) -- creo l'etichetta come variabile Void
