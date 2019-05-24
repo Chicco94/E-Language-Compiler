@@ -43,7 +43,7 @@ generateDecl env maybe_type decl =
                                           (Just type_) -> type_
 
 -- search the variable in the list of variables
--- if there is just return it
+-- if there is, just return it
 -- if there isn't, add it to the list and then return it 
 findVar :: VariablesMap -> Var -> (VariablesMap,Var)
 findVar variables var@(Var (name,pos,type_)) = 
@@ -92,7 +92,7 @@ generateStmt env type_ stmt@(SComp (StmtBlock decls)) = generateTAC_int env (PDe
 generateStmt env@(program, temp_count, variables) type_ stmt@(StmtIfThenElse bexpr stmtsT stmtsF) = do
   let (program', temp_count', variables') = (generateExpr env type_ bexpr)
   let (program'', temp_count'', variables'') = generateStmt ([If (Temp (temp_count'-1,TypeBool)) (Label ("if_false",(0,0)) )]++program',temp_count',variables') type_ (SComp stmtsT)
-  let (program''', temp_count''', variables''') = generateStmt ([Lbl (Label ("if_false",(0,0)) ),Goto (Label ("end_if",(0,0)) )]++program'',temp_count'',variables'') type_ (SComp stmtsT)
+  let (program''', temp_count''', variables''') = generateStmt ([Lbl (Label ("if_false",(0,0)) ),Goto (Label ("end_if",(0,0)) )]++program'',temp_count'',variables'') type_ (SComp stmtsF)
   ([Lbl (Label ("end_if",(0,0)) )]++program''',temp_count''',variables''')
   -- if then 
 generateStmt env@(program, temp_count, variables) type_ stmt@(StmtIfThen bexpr stmts) = do
@@ -103,8 +103,7 @@ generateStmt env@(program, temp_count, variables) type_ stmt@(StmtIfThen bexpr s
 generateStmt env@(program, temp_count, variables) type_ stmt@(StmtWhile bexpr (StmtBlock decls)) = do
   --let (new_variables, var) = findVar variables (Var ("guard",pos,TypeVoid)) -- creo l'etichetta come variabile Void
   let (program',temp_count',variables') = (generateTAC_int ([Lbl (Label ("body",(1,1)) ),Goto (Label ("gaurd",(1,1)) )]++program,temp_count,variables) (PDefs decls)) 
-  -- da aggiungere if
-  (([Goto (Label ("body",(1,1)) ),Lbl (Label ("guard",(1,1)) )]++program',temp_count',variables')) 
+  (([If (Temp (temp_count'-1,TypeBool)) (Label ("body",(0,0)) ),Lbl (Label ("guard",(1,1)) )]++program',temp_count',variables')) 
   --([Return (Temp (temp_count'-1,type_))] ++ program',temp_count',variables')
 
 generateExpr :: Env -> Type -> Expr -> Env
