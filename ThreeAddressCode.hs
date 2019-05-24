@@ -89,8 +89,11 @@ generateStmt env@(program, temp_count, variables) type_ stmt@(StmtReturn (PRetur
 -- compound statement
 generateStmt env type_ stmt@(SComp (StmtBlock decls)) = generateTAC_int env (PDefs decls)
 -- if then else
-generateStmt env@(program, temp_count, variables) type_ stmt@(StmtIfThenElse bexpr (StmtBlock decls) (StmtBlock decls)) = do
-  (generateExpr env type_ bexpr)
+generateStmt env@(program, temp_count, variables) type_ stmt@(StmtIfThenElse bexpr stmtsT stmtsF) = do
+  let (program', temp_count', variables') = (generateExpr env type_ bexpr)
+  let (program'', temp_count'', variables'') = generateStmt ([If (Temp (temp_count'-1,TypeBool)) (Label ("if_false",(0,0)) )]++program',temp_count',variables') type_ (SComp stmtsT)
+  let (program''', temp_count''', variables''') = generateStmt ([Lbl (Label ("if_false",(0,0)) ),Goto (Label ("end_if",(0,0)) )]++program'',temp_count'',variables'') type_ (SComp stmtsT)
+  ([Lbl (Label ("end_if",(0,0)) )]++program''',temp_count''',variables''')
   -- if then 
 generateStmt env@(program, temp_count, variables) type_ stmt@(StmtIfThen bexpr stmts) = do
   let (program', temp_count', variables') = (generateExpr env TypeBool bexpr)
