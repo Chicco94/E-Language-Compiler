@@ -1,6 +1,3 @@
--- TODO:
--- cambiare la chiamata di funzione
-
 module TypeChecker where
 
 import Control.Monad
@@ -74,11 +71,6 @@ checkArgDecl (env@(sig@(x:xs), blocks@((blockType, context):ys)), prog) (arg@(Ar
               if mod == ModEmpty || mod == ModVar
                 then checkArgDecl ((sig, ((blockType, addVar context (MutVar, ident) t):ys)), prog) args
                 else checkArgDecl ((sig, ((blockType, addVar context (MutConst, ident) t):ys)), prog) args
-
-
-
-
-
 
 -- Check statement declaration.
 checkDeclStmt :: (Env, [Program]) -> Stmt -> Err (Env, [Program])
@@ -182,37 +174,11 @@ checkWhile (env@(xs, blocks@((blockType, context):ys)), prog) expr compstmt = do
            Bad s       -> Bad s
     else fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
 
-
-isPointerType :: Type -> Bool
-isPointerType t = case t of TypeCompound (TypePointer _) -> True
-                            _                            -> False
-
-{- isAddressType :: Type -> Bool
-isAddressType t = case t of TypeCompound (TypeAddress _) -> True
-                            _                            -> False -}
-
-isBaseType :: Type -> Bool
-isBaseType t 
-  | t == TypeBool   = True
-  | t == TypeInt    = True
-  | t == TypeFloat  = True
-  | t == TypeChar   = True
-  | t == TypeString = True
-  | otherwise       = False
-
-
--- TODO: arrays?
-getExprLevel :: Type -> Int
-getExprLevel t =
-  case t of
-    TypeCompound (TypePointer p) -> (getExprLevel p) - 1 -- -1 ahead
-    --TypeCompound (TypeAddress a) -> (getExprLevel a) + 1 -- +1 ahead
-    _                            -> 0                    --  0 ahead
-
 getTypeLevel :: Type -> Int
 getTypeLevel t =
   case t of
     TypeCompound (TypePointer p) -> (getTypeLevel p) + 1 -- +1 ahead
+    TypeCompound (TypeArray a _)   -> (getTypeLevel a) + 0
     _                            -> 0                     --  0 ahead
 
 getLeftLevel :: LExpr -> Int
@@ -227,7 +193,6 @@ getInitLevel e =
     ExprReference le                  -> 1
     ExprLeft (LExprRef (LRefExpr le)) -> (getLeftLevel le) - 1
     _                                 -> 0
-
 
 getInnerType :: Type -> Type
 getInnerType t =
@@ -247,7 +212,6 @@ showType t =
     --TypeCompound (TypeAddress _) -> "address"
     TypeCompound (TypePointer _) -> "pointer"
     _                            -> []
-
 
 checkStmtInit :: (Env, [Program]) -> PIdent -> Guard -> Expr -> Mutability -> Err (Env, [Program])
 checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) pident@(PIdent (p, ident)) guard expr mut = do
@@ -297,53 +261,52 @@ checkStmtArrInit (env@(sig, blocks@((blockType, context):xs)), prog) pints piden
                                  do case mut of
                                       MutVar   -> Ok $ ((sig, ((blockType, addVar context (mut, ident) (TypeCompound (TypeArray tguard pints))):blocks)), postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray tguard pints)) (DeclStmt (StmtVarArrInit pints pident guard arr)))]) prog)
                                       MutConst -> Ok $ ((sig, ((blockType, addVar context (mut, ident) (TypeCompound (TypeArray tguard pints))):blocks)), postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray tguard pints)) (DeclStmt (StmtDefArrInit pints pident guard arr)))]) prog)
-                               Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ show tguard ++ " but there is an expression with type " ++ s ++ " in its initialization"
+                               Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree tguard ++ " but there is an expression with type " ++ s ++ " in its initialization"
                   _    -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but its initialization does not match such bounds"
 
-controlArrayTypes :: Type -> [Type] -> Err Type
+controlArrayTypes :: Type -> [(Int, Type)] -> Err Type
 controlArrayTypes t [] = Ok t 
-controlArrayTypes t (typ:types) =
-  if typ `isCompatibleWith` t
+controlArrayTypes t1 (typ@(b,t2):types) =
+  if (getTypeLevel t1) == (b + (getTypeLevel t2)) 
+    then 
+      if (getInnerType t2) `isCompatibleWith` (getInnerType t1)
+        then controlArrayTypes t1 types
+        else fail $ printTree t2
+    else 
+     if (getTypeLevel t1) < (b + (getTypeLevel t2)) 
+       then fail $ printTree t2 ++ " * (one '*' is from the '&')"
+       else fail $ printTree t2
+      
+{-  if typ `isCompatibleWith` t
     then controlArrayTypes t types
-    else fail $ show typ --fail $ show typ ++ " is not compatible with " ++ show t
-
-
-
-
+    else fail $ printTree typ --fail $ show typ ++ " is not compatible with " ++ show t -}
 
 -- Infer array type.
 inferArray :: Env -> Array -> Type -> Err Type
-inferArray env@(sig, blocks) arr tguard = 
-  let types = inferArr env arr
-  in -- showTypes types
-     controlArrayTypes tguard types
+inferArray env@(sig, blocks) arr tguard = let types = inferArr env arr
+                                          in controlArrayTypes tguard types
 
-
-inferArr :: Env -> Array -> [Type] 
+inferArr :: Env -> Array -> [(Int, Type)] 
 inferArr env arr = do
   case arr of
     ExprMultiArray multiArray@(x:xs) -> inferArr env x ++ inferArrs env xs
-    ExprArray expr -> case inferExpr env expr of Ok t -> [t]
-                                                 _    -> []
+    ExprArray expr -> case inferExpr env expr of 
+                        Ok t -> case expr of
+                                  ExprReference _ -> [(1, t)]
+                                  _               -> [(0, t)]
+                        _    -> []
 
-inferArrs :: Env -> [Array] -> [Type]
+inferArrs :: Env -> [Array] -> [(Int, Type)]
 inferArrs _ [] = []
 inferArrs env (x:xs) = do
   case x of
-    ExprMultiArray multiArr@(y:ys) -> inferArr env x ++ inferArr env y ++ inferArrs env xs ++ inferArrs env ys -- ++ inferArrs env ys
-    ExprArray expr -> case inferExpr env expr of Ok t -> [t] ++ inferArrs env xs
-                                                 _    -> []  ++ inferArrs env xs
+    ExprMultiArray multiArr@(y:ys) -> inferArr env x ++ inferArr env y ++ inferArrs env xs ++ inferArrs env ys
+    ExprArray expr -> case inferExpr env expr of 
+                        Ok t -> case expr of 
+                                  ExprReference _ -> [(1, t)] ++ inferArrs env xs
+                                  _               -> [(0, t)] ++ inferArrs env xs
+                        _    -> []  ++ inferArrs env xs
 
-
-
-
-
-
-
-
-
-
- 
 checkArrayInitBounds :: [Int] -> Array -> Bool
 checkArrayInitBounds [] _ = True
 checkArrayInitBounds (int:ints) arr =
@@ -372,30 +335,64 @@ getBoundsFromPInts ((PInteger (p, int)):xs) = (read int :: Int) : getBoundsFromP
 checkLengthArray :: Int -> [Array] -> Bool
 checkLengthArray int arr = length arr == int
 
-
 -- Check assignment.
 checkAssign :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssign (env, prog) lexpr op expr = do
   t1 <- inferLExpr env lexpr
   case op of
     -- Normal assignment (i.e., ':=').
-    OpAssign      -> do checkAssignOp (env, prog)  t1 lexpr op expr
+    OpAssign      -> do checkAssignOp (env, prog) lexpr op expr
 
     -- Assignment with boolean operator (i.e., '|=', '&=').
     OpOr          -> do checkAssignBoolOp (env, prog) t1 lexpr op expr
     OpAnd         -> do checkAssignBoolOp (env, prog) t1 lexpr op expr
     
-    -- Assignment with arithmetic operator (e.g., '+=', '%%=').
-    OpPlus        -> do checkAssignOp (env, prog)  t1 lexpr op expr
-    OpMinus       -> do checkAssignOp (env, prog)  t1 lexpr op expr
-    OpMul         -> do checkAssignOp (env, prog)  t1 lexpr op expr
-    OpIntDiv      -> do checkAssignDiv (env, prog)  t1 lexpr op expr TypeInt 
-    OpFloatDiv    -> do checkAssignDiv (env, prog)  t1 lexpr op expr TypeFloat
-    OpRemainder   -> do checkAssignOp (env, prog)  t1 lexpr op expr
-    OpModulo      -> do checkAssignOp (env, prog)  t1 lexpr op expr
-    OpPower       -> do checkAssignOp (env, prog)  t1 lexpr op expr  
+    -- Assignment with arithmetic operator (e.g., '+=', '%%='). -- TODO: only int and float
+    --OpPlus        -> do checkAssignOp (env, prog) t1 lexpr op expr
+    --OpMinus       -> do checkAssignOp (env, prog) t1 lexpr op expr
+    --OpMul         -> do checkAssignOp (env, prog) t1 lexpr op expr
+    --OpIntDiv      -> do checkAssignDiv (env, prog) t1 lexpr op expr TypeInt 
+    --OpFloatDiv    -> do checkAssignDiv (env, prog) t1 lexpr op expr TypeFloat
+    --OpRemainder   -> do checkAssignOp (env, prog) t1 lexpr op expr
+    --OpModulo      -> do checkAssignOp (env, prog) t1 lexpr op expr
+    --OpPower       -> do checkAssignOp (env, prog) t1 lexpr op expr  
 
--- TODO: compatibilities for all check assignments (done checkAssignOp)
+-- Check assignment operator.
+checkAssignOp :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
+checkAssignOp (env, prog) lexpr op expr = do
+  t1 <- inferLExpr env lexpr
+  t2 <- inferExpr env expr
+  if ((getInitLevel expr) + (getTypeLevel t2)) == (getTypeLevel t1)
+   then do
+     case t1 of 
+        TypeCompound (TypeArray ta pints) -> do
+          if ((getInnerType t2) `isCompatibleWith` (getInnerType ta))
+            then Ok (env, postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray ta pints)) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+            else fail $ show (getLExprPosition lexpr) ++ ":1 the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
+        _                                 -> do
+          if ((getInnerType t2) `isCompatibleWith` (getInnerType t1))
+            then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+            else fail $ -- "lexpr: " ++ printTree t1 ++ " " ++ show (getTypeLevel t1) ++ "\nexpr: " ++ printTree t2 ++ " " ++ show ((getInitLevel expr) + (getTypeLevel t2))
+                        show (getLExprPosition lexpr) ++ ":2 the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2
+    else do
+      if ((getInitLevel expr) + (getTypeLevel t2)) < (getTypeLevel t1)
+        then fail $ "checkAssignOp: error1"
+        else do
+          if ((getInitLevel expr) + (getTypeLevel t2)) > (getTypeLevel t1)
+            then fail $ "checkAssignOp: error2"
+            else fail $ "checkAssignOp: error3"
+  
+  {- t2 <- inferExpr env expr
+  case t1 of 
+    TypeCompound (TypeArray ta pints) -> do
+      if (t2 `isCompatibleWith` ta)
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray ta pints)) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
+    _                                 -> do
+      if (t2 `isCompatibleWith` t1)
+        then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 -}
+
 -- Check assignment with boolean operator.
 checkAssignBoolOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignBoolOp (env, prog) t1 lexpr op expr = do
@@ -408,20 +405,6 @@ checkAssignBoolOp (env, prog) t1 lexpr op expr = do
     _                                 -> do
       if (t2 `isCompatibleWith` t1) -- t2 has to be compatible with t1 (i.e., the r-expr with the l-expr)
         then Ok (env, postAttach (PDefs [TypedDecl (ADecl TypeBool (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
-
--- Check assignment operator.
-checkAssignOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
-checkAssignOp (env, prog) t1 lexpr op expr = do
-  t2 <- inferExpr env expr
-  case t1 of 
-    TypeCompound (TypeArray ta pints) -> do
-      if (t2 `isCompatibleWith` ta)
-        then Ok (env, postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray ta pints)) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
-    _                                 -> do
-      if (t2 `isCompatibleWith` t1)
-        then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
         else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
 
 -- TODO: if an array is of type int, and we use /= (float division), the result is float or int?
@@ -469,27 +452,11 @@ checkFunCallArgs (env, prog) (x@(mod,tdecl):xs) (expr:exprs) = do
    else do
      -- expr level < decl level
      if ((getInitLevel expr) + (getTypeLevel targ)) < (getTypeLevel tdecl)
-       then fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl)
+       then fail $ show (getExprPosition expr) ++ ":1 expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl)
        else do
          if ((getInitLevel expr) + (getTypeLevel targ)) > (getTypeLevel tdecl)
-           then fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl)
+           then fail $ show (getExprPosition expr) ++ ":2 expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl) 
            else fail $ "checkFunCallArgs: fatal error"
-{-
-  case targ of
-    TypeCompound (TypePointer innerType) -> do
-      if innerType `isCompatibleWith` tdecl
-        then checkFunCallArgs (env, prog) xs ys
-        else fail $ show (getExprPosition y) ++ ": expression argument " ++ printTree y ++ " has type " ++ printTree targ ++ " but the declaration of the function requires to have type " ++ printTree tdecl
-    _                            -> do
-      if targ `isCompatibleWith` tdecl
-        then checkFunCallArgs (env, prog) xs ys
-        else fail $ show (getExprPosition y) ++ ": expression argument " ++ printTree y ++ " has type " ++ printTree targ ++ " but the declaration of the function requires to have type " ++ printTree tdecl
--}
-
-
-
-
-
 
 findLExprName :: LExpr -> String
 findLExprName lexpr =
@@ -554,10 +521,6 @@ checkExpr (env@(sigs,blocks), prog) expr = do
     ExprMinus e1 e2    -> do t <- inferArithBinOp env expr e1 e2
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
 
-    -- Interval creation. (Recall that an interval is an iterable.)
-    --ExprIntInc e1 e2   -> checkInterval (env, prog) expr e1 e2
-    --ExprIntExc e1 e2   -> checkInterval (env, prog) expr e1 e2
-
     -- Relational binary operators.
     ExprLt e1 e2       -> do t <- inferRelBinOp env expr e1 e2
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
@@ -577,15 +540,6 @@ checkExpr (env@(sigs,blocks), prog) expr = do
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
     ExprOr e1 e2       -> do t <- inferBoolBinOp env expr e1 e2
                              return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
-
--- Check interval creation.
-{- checkInterval :: (Env, [Program]) -> Expr -> Expr -> Expr -> Err (Env, [Program])
-checkInterval (env, prog) expr e1 e2 = do
-  t1 <- inferExpr env e1
-  t2 <- inferExpr env e2
-  if (t1 == TypeInt) && (t2 == TypeInt) -- only ints are allowed.
-    then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr expr)))]) prog)
-    else fail $ "only integer intervals allowed!" -}
 
 -- #######################################
 -- 					Inference functions:
@@ -647,12 +601,11 @@ inferFunCall :: Env -> Expr -> Err Type
 inferFunCall env@(sig, blocks) (ExprFunCall (PIdent pident@(p,ident)) args) = do
   case lookupFun sig ident of
     Ok (mods,t) -> do
-      if length args == length mods
+      if length args == length mods -- TODO: I suppose it is not necessary to do this check because we are just inferring the type, think about it
         then Ok t
-        else fail $ show p ++ ": function " ++ printTree ident ++ " doesn't match its parameters"
-    _ -> fail $ show p ++ ": function " ++ printTree ident ++ " not defined!" 
+        else fail $ show p ++ ": function " ++ printTree ident ++ " is declared with " ++ show (length mods) ++ " parameters, passing " ++ show (length args) ++ " arguments to the function is not wise"
+    _ -> fail $ show p ++ ": function " ++ printTree ident ++ " not defined" 
 
--- 
 getBoundsFromArrayAccess :: AExpr -> [Int]
 getBoundsFromArrayAccess aexpr =
   case aexpr of
@@ -664,7 +617,7 @@ areConsistentWithBounds [] [] = True
 areConsistentWithBounds _ [] = False
 areConsistentWithBounds [] _ = False
 (x:xs) `areConsistentWithBounds` (y:ys) =
-  if x <= y then xs `areConsistentWithBounds` ys
+  if x <= y then xs `areConsistentWithBounds` ys -- TODO: we start indices from 0 or 1 (i.e. '<=' or '<')?
             else False
 
 -- Infer left expression.
@@ -690,13 +643,6 @@ inferLExpr env@(sig, blocks) lexpr = do
                 False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ ", accessing an element outside these bounds is not allowed"
             _                                -> fail $ "inferLExpr: tid not typecompound"
         _           -> fail $ show p ++ ": variable " ++ printTree ident ++ " not defined" 
-
-
--- Infer address unary operator.
-{- inferReference :: Env -> Expr -> LExpr -> Err Type 
-inferReference env expr le = do
-  t <- inferLExpr env le
-  Ok $ TypeCompound (TypeAddress t) -}
 
 -- Infer arithmetic unary operator.
 inferArithUnOp :: Env -> Expr -> Expr -> Err Type
@@ -824,28 +770,6 @@ getAddressType t1 = do
 
 -- T1 is compatible with T2?
 isCompatibleWith :: Type -> Type -> Bool
---t1 `isCompatibleWith` t2 =
-{-  case t2 of
-    TypeCompound (TypePointer tpointer) -> do
-      case t1 of TypeCompound (TypeAddress taddr)    -> (getAddressType taddr) `isCompatibleWith` tpointer
-                 TypeCompound (TypePointer tpointer) -> True
-                 _                                   -> False
-    _                                   -> do
-      case t1 of TypeBool -> elem t2 [TypeBool, TypeChar, TypeString, TypeInt, TypeFloat]
-                 TypeChar -> elem t2 [TypeChar, TypeString, TypeInt, TypeFloat]
-                 TypeInt  -> elem t2 [TypeInt, TypeFloat] 
-                 _        -> False -}
-{-  case t1 of
-    TypeBool -> elem t2 [TypeBool, TypeChar, TypeString, TypeInt, TypeFloat]
-    TypeChar -> elem t2 [TypeChar, TypeString, TypeInt, TypeFloat]
-    TypeInt  -> t2 == TypeFloat || t2 == TypeInt
-    _        -> False -}
-{-
-    TypeCompound (TypeAddress taddr) -> do
-      case t2 of
-        TypeCompound (TypePointer tpointer) -> taddr `isCompatibleWith` t2
-        _                                   -> False
-    _        -> False -}
 t1 `isCompatibleWith` t2 =
   case t1 of
     TypeBool   -> elem t2 [TypeBool, TypeChar, TypeString, TypeInt, TypeFloat]
@@ -853,19 +777,7 @@ t1 `isCompatibleWith` t2 =
     TypeInt    -> elem t2 [TypeInt, TypeFloat]
     TypeFloat  -> t2 == TypeFloat
     TypeString -> t2 == TypeString
-   {- TypeCompound (TypeAddress taddr)    ->
-      case t2 of TypeCompound (TypePointer tpointer) -> (getAddressType taddr) `isCompatibleWith` tpointer
-                 --TypeCompound (TypeAddress tc)       -> (getAddressType taddr) `isCompatibleWith` tc
-                 _                                   -> False
-    TypeCompound (TypePointer tpointer) ->
-      case t2 of TypeCompound (TypePointer tpointer) -> True 
-                 _                                   -> False -}
     _        -> False
-{-  | t1 == t2       = True
-  | t1 == TypeBool = elem t2 [TypeChar, TypeString, TypeInt, TypeFloat]
-  | t1 == TypeChar = elem t2 [TypeString, TypeInt, TypeFloat]
-  | t1 == TypeInt  = t2 == TypeFloat
-  | otherwise = False -}
 
 -- T is compatible with any of [T1,..Tn]?
 isCompatibleWithAny :: Type -> [Type] -> Bool
