@@ -91,12 +91,20 @@ generateStmt env@(program, temp_count, variables,label_count) type_ stmt@(StmtIf
   let (program'', temp_count'', variables'',label_count'') = generateStmt ([IfFalse (Temp (temp_count'-1,TypeBool)) (Label ("if_false",label_count') )]++program', temp_count', variables', label_count'+1) type_ (SComp stmtsT)
   let (program''', temp_count''', variables''',label_count''') = generateStmt ([Lbl (Label ("if_false",label_count') ),Goto (Label ("end_if",label_count') )]++program'',temp_count'',variables'', label_count'') type_ (SComp stmtsF)
   ([Lbl (Label ("end_if",label_count') )]++program''',temp_count''',variables''',label_count''')
-  -- if then 
+-- if then 
 generateStmt env@(program, temp_count, variables,label_count) type_ stmt@(StmtIfThen bexpr stmts) = do
   let (program', temp_count', variables', label_count') = (generateExpr env TypeBool bexpr)
   let (program'', temp_count'', variables'', label_count'') = generateStmt ([IfFalse (Temp (temp_count'-1,TypeBool)) (Label ("end_if", label_count') )]++program',temp_count',variables', label_count') type_ (SComp stmts)
   ([Lbl (Label ("end_if", label_count') )]++program'',temp_count'',variables'', label_count'')
--- while stmt
+-- switch case
+generateStmt env@(program, temp_count, variables,label_count) type_ stmt@(StmtSwitchCase expr norm_cases dflt_case) = env
+-- evaluate expr
+-- jump to conditions
+-- normcases   -> stmts + jump_to_end
+-- defaultcase -> stmts + jump_to_end
+-- condition jump
+-- defualut case  
+  -- while stmt
 generateStmt env@(program, temp_count, variables,label_count) type_ stmt@(StmtWhile bexpr (StmtBlock decls)) = do
   let (program',temp_count',variables',label_count') =  (generateExpr (generateTAC_int (addTACList env [Lbl (Label ("body",label_count) ),Goto (Label ("gaurd",label_count) )]) (PDefs decls)) TypeBool bexpr)
   (([If (Temp (temp_count'-1,TypeBool)) (Label ("body",label_count) ),Lbl (Label ("guard",label_count) )]++program',temp_count',variables', label_count')) 
