@@ -195,13 +195,11 @@ TypeInt.    Type ::= "int" ;
 TypeVoid.   Type ::= "void" ; 
 TypeChar.   Type ::= "char" ;
 TypeString. Type ::= "string" ; 
---TypeAny.    Type ::= "any" ;
 
 
 -- Compound types.
 TypeCompound. Type  ::= CType ;
 TypePointer.  CType ::= Type "*" ; 					-- Pointer type.
---TypeAddress.  CType ::= Type "&" ;					-- Address type.
 TypeArray.    CType ::= Type "[" [PInteger] "]" ;		-- Array type.
 
 

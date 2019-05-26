@@ -1,3 +1,8 @@
+{- 
+	TODO:
+- remove array type
+-}
+
 module TypeChecker where
 
 import Control.Monad
@@ -95,7 +100,37 @@ checkDeclStmt (env, prog) stmt =
     StmtIfThen expr cstmt -> checkIfThen (env, prog) expr cstmt
 
     StmtWhile expr cstmt         -> checkWhile (env, prog) expr cstmt
-    _ -> Bad "checkStmt: fatal error!"
+    StmtFor pident range cstmt   -> checkFor (env, prog) pident range cstmt
+
+    StmtSwitchCase expr norm dflt -> checkStmtSwitchCase (env, prog) expr norm dflt
+
+checkStmtSwitchCase :: (Env, [Program]) -> Expr -> [NormCase] -> [DfltCase] -> Err (Env, [Program])
+checkStmtSwitchCase (env@(sig@(x:xs), blocks), prog) expr norm dflt = do
+  case checkNormalCases (env, prog) expr norm [] of
+    Ok normacc        -> do
+      case checkDefaultCases (env, prog) expr dflt [] of
+        Ok dfltacc -> Ok (env, postAttach (PDefs [DeclStmt (StmtSwitchCase expr normacc dfltacc)]) prog)
+        Bad s      -> Bad s
+    Bad s       -> Bad s
+
+checkNormalCases :: (Env, [Program]) -> Expr -> [NormCase] -> [NormCase] -> Err [NormCase]
+checkNormalCases (env, prog) _ [] acc = Ok acc
+checkNormalCases (env@(sig@(x:xs), blocks), prog) expr (y@(CaseNormal e cstmt):ys) acc = do
+  texpr <- inferExpr env expr
+  tcase <- inferExpr env e
+  if tcase `isCompatibleWith` texpr
+    then do
+      (e', p') <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), prog) cstmt
+      checkNormalCases (env, prog) expr ys (acc ++ [CaseNormal e (StmtBlock (getDecls p'))])
+    else fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has " ++ printTree texpr ++ " type, but the matching expression " ++ printTree e ++ " " ++ show (getExprPosition e) ++ " has " ++ printTree tcase ++ " type"
+      
+checkDefaultCases :: (Env, [Program]) -> Expr -> [DfltCase] -> [DfltCase] -> Err [DfltCase]
+checkDefaultCases (env, prog) _ [] acc = Ok acc
+checkDefaultCases (env@(sig@(x:xs), blocks), prog) expr (y@(CaseDefault cstmt):ys) acc = do
+  texpr <- inferExpr env expr
+  (e', p') <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), prog) cstmt
+  checkDefaultCases (env, prog) expr ys (acc ++ [CaseDefault (StmtBlock (getDecls p'))])
+
 
 -- Check if-then-else statement.
 checkIfThenElse :: (Env, [Program]) -> Expr -> CompStmt -> CompStmt -> Err (Env, [Program]) 
@@ -174,12 +209,74 @@ checkWhile (env@(xs, blocks@((blockType, context):ys)), prog) expr compstmt = do
            Bad s       -> Bad s
     else fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
 
+-- Check for statement.
+checkFor :: (Env, [Program]) -> PIdent -> Range -> CompStmt -> Err (Env, [Program])
+checkFor (env@(xs, blocks@((blockType, context):ys)), prog) pident@(PIdent (p,ident)) range@(ExprRange id1 id2) compstmt = do
+  case lookupVar blocks ident of
+    Ok (m,t) -> do
+      if (t == TypeInt) && (m == MutVar)
+        then
+          case id1 of
+            ForIdent (PIdent (p1, forId1)) -> do
+              case lookupVar blocks forId1 of
+                Ok (m1, t1) -> do 
+                  if t1 == TypeInt -- t1 int
+                    then
+                      case id2 of
+                        ForIdent (PIdent (p2, forId2)) -> do
+                          case lookupVar blocks forId2 of
+                            Ok (m2, t2) -> do
+                              if t2 == TypeInt -- t2 int
+                                then case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
+                                  Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))]) prog)
+                                  Bad s       -> Bad s
+                                -- t2 != int
+                                else fail $ show p2 ++ ": the variable " ++ printTree forId2 ++ " does not have " ++ printTree TypeInt ++ " type (which is required in a range)"
+                            _           -> fail $ show p2 ++ " the variable " ++ printTree forId2 ++ " is not declared"
+                        _                              -> do
+                          case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
+                            Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))]) prog)
+                            Bad s       -> Bad s
+                    -- t1 != int
+                    else fail $ show p1 ++ ": the variable " ++ printTree forId1 ++ " does not have " ++ printTree TypeInt ++ " type (which is required in a range)"
+                _          -> fail $ show p1 ++ ": the variable " ++ printTree forId1 ++ " is not declared"
+            -- id1 is integer
+            _                              -> do
+              case id2 of
+                ForIdent (PIdent (p2, forId2)) -> do
+                  case lookupVar blocks forId2 of
+                     Ok (m2, t2) -> do
+                       if t2 == TypeInt -- t2 int
+                         then case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
+                           Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))]) prog)
+                           Bad s       -> Bad s
+                         -- t2 != int
+                         else fail $ show p2 ++ ": the variable " ++ printTree forId2 ++ " does not have " ++ printTree TypeInt ++ " type (which is required in a range)"
+                     _           -> fail $ show p2 ++ " the variable " ++ printTree forId2 ++ " is not declared"
+                _                              -> do
+                  case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
+                    Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))]) prog)
+                    Bad s       -> Bad s 
+        else 
+          if (t /= TypeInt)
+            then fail $ show p ++ ": the variable " ++ printTree ident ++ " must have " ++ printTree TypeInt ++ " type in a range expression"
+            else
+              if (m /= MutVar) then fail $ show p ++ ": the variable " ++ printTree ident ++ " must be a variable instead of a constant in a range expression"
+                               else fail "checkFor: fatal error"
+    _ -> fail $ show p ++ ": the variable " ++ printTree ident ++ " is not declared"
+  {-t <- inferExpr env expr
+  if (t == TypeBool)
+    then case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
+           Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtWhile expr (StmtBlock (getDecls p')))]) prog)
+           Bad s       -> Bad s
+    else fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean" -}
+
 getTypeLevel :: Type -> Int
 getTypeLevel t =
   case t of
-    TypeCompound (TypePointer p) -> (getTypeLevel p) + 1 -- +1 ahead
-    TypeCompound (TypeArray a _)   -> (getTypeLevel a) + 0
-    _                            -> 0                     --  0 ahead
+    TypeCompound (TypePointer p) -> (getTypeLevel p) + 1
+    TypeCompound (TypeArray a _) -> (getTypeLevel a) + 0
+    _                            -> 0      
 
 getLeftLevel :: LExpr -> Int
 getLeftLevel le =
@@ -202,16 +299,8 @@ getInnerType t =
     TypeFloat  -> TypeFloat
     TypeChar   -> TypeChar
     TypeString -> TypeString
-    --TypeCompound (TypeAddress t') -> getInnerType t'
     TypeCompound (TypePointer t') -> getInnerType t'
     TypeCompound (TypeArray t' _) -> getInnerType t'
-
-showType :: Type -> String
-showType t =
-  case t of
-    --TypeCompound (TypeAddress _) -> "address"
-    TypeCompound (TypePointer _) -> "pointer"
-    _                            -> []
 
 checkStmtInit :: (Env, [Program]) -> PIdent -> Guard -> Expr -> Mutability -> Err (Env, [Program])
 checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) pident@(PIdent (p, ident)) guard expr mut = do
@@ -276,10 +365,6 @@ controlArrayTypes t1 (typ@(b,t2):types) =
      if (getTypeLevel t1) < (b + (getTypeLevel t2)) 
        then fail $ printTree t2 ++ " * (one '*' is from the '&')"
        else fail $ printTree t2
-      
-{-  if typ `isCompatibleWith` t
-    then controlArrayTypes t types
-    else fail $ printTree typ --fail $ show typ ++ " is not compatible with " ++ show t -}
 
 -- Infer array type.
 inferArray :: Env -> Array -> Type -> Err Type
@@ -368,30 +453,19 @@ checkAssignOp (env, prog) lexpr op expr = do
         TypeCompound (TypeArray ta pints) -> do
           if ((getInnerType t2) `isCompatibleWith` (getInnerType ta))
             then Ok (env, postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray ta pints)) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-            else fail $ show (getLExprPosition lexpr) ++ ":1 the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
+            else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
         _                                 -> do
           if ((getInnerType t2) `isCompatibleWith` (getInnerType t1))
             then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
             else fail $ -- "lexpr: " ++ printTree t1 ++ " " ++ show (getTypeLevel t1) ++ "\nexpr: " ++ printTree t2 ++ " " ++ show ((getInitLevel expr) + (getTypeLevel t2))
-                        show (getLExprPosition lexpr) ++ ":2 the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2
+                        show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2
     else do
       if ((getInitLevel expr) + (getTypeLevel t2)) < (getTypeLevel t1)
-        then fail $ "checkAssignOp: error1"
+        then fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show (getTypeLevel t1) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel t2))
         else do
           if ((getInitLevel expr) + (getTypeLevel t2)) > (getTypeLevel t1)
-            then fail $ "checkAssignOp: error2"
-            else fail $ "checkAssignOp: error3"
-  
-  {- t2 <- inferExpr env expr
-  case t1 of 
-    TypeCompound (TypeArray ta pints) -> do
-      if (t2 `isCompatibleWith` ta)
-        then Ok (env, postAttach (PDefs [TypedDecl (ADecl (TypeCompound (TypeArray ta pints)) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree ta ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 
-    _                                 -> do
-      if (t2 `isCompatibleWith` t1)
-        then Ok (env, postAttach (PDefs [TypedDecl (ADecl t1 (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree t1 ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree t2 -}
+            then fail $ fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show (getTypeLevel t1) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel t2))
+            else fail $ "checkAssignOp: fatal error"
 
 -- Check assignment with boolean operator.
 checkAssignBoolOp :: (Env, [Program]) -> Type -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
@@ -452,10 +526,10 @@ checkFunCallArgs (env, prog) (x@(mod,tdecl):xs) (expr:exprs) = do
    else do
      -- expr level < decl level
      if ((getInitLevel expr) + (getTypeLevel targ)) < (getTypeLevel tdecl)
-       then fail $ show (getExprPosition expr) ++ ":1 expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl)
+       then fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl)
        else do
          if ((getInitLevel expr) + (getTypeLevel targ)) > (getTypeLevel tdecl)
-           then fail $ show (getExprPosition expr) ++ ":2 expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl) 
+           then fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl) 
            else fail $ "checkFunCallArgs: fatal error"
 
 findLExprName :: LExpr -> String
@@ -877,4 +951,4 @@ findIterBlock (block@(blockType, context):blocks) =
 extendEnv :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
 extendEnv (env@(s, y), prog) (StmtBlock decls) = do 
   (e@((sig:sigs), b@(block:blocks)), p) <- foldM checkDecl (env, prog) decls
-  Ok ((sigs,blocks), p List.\\ prog) -- pop & list difference   
+  Ok ((sigs,blocks), p List.\\ prog) -- pop & list difference (to remove the redundancy)  
