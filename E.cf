@@ -53,24 +53,16 @@ GuardType.  Guard ::= ":" Type ;   -- guarded
 -- Any Expression followed by a semicolon ; can be used as a statement.
 StmtExpr.       Stmt     ::= Expr ";" ;
 
---StmtVarDecl.         Stmt     ::= "var" PIdent Guard ";" ;                   -- Variable declaration.
+
 StmtVarInit.         Stmt     ::= "var" PIdent Guard ":=" Expr ";" ;         -- Variable initialization.
---StmtVarArrDeclNoDim. Stmt     ::= "var" "[" "]" LExpr Guard ";" ;           -- Variable array without dimension declaration.
---StmtVarArrDecl.      Stmt     ::= "var" "[" Expr "]" LExpr Guard ";" ;     	-- Variable array with dimension declaration.
-StmtVarArrInit. Stmt ::= "var" "[" [PInteger] "]" PIdent Guard ":=" Array ";" ; -- Variable array initialization.
-
-
---StmtDefDecl.         Stmt     ::= "def" PIdent Guard ";" ;                   -- Constant declaration.
 StmtDefInit.         Stmt     ::= "def" PIdent Guard ":=" Expr ";" ;         -- Constant initialization.
---StmtDefArrDeclNoDim. Stmt     ::= "def" "[" "]" LExpr Guard ";" ;           -- Constant array without dimension declaration.
---StmtDefArrDecl.      Stmt     ::= "def" "[" Expr "]" LExpr Guard ";" ;      -- Constant array with dimension declaration.
-StmtDefArrInit. Stmt ::= "def" "[" [PInteger] "]" PIdent Guard ":=" Array ";" ; -- Constant array initialization.
+
+StmtVarArrInit. Stmt ::= "var" PIdent Guard ":=" "[" Array "]" ";" ; -- Variable array initialization.
+StmtDefArrInit. Stmt ::= "def" PIdent Guard ":=" "[" Array "]" ";" ; -- Constant array initialization.
 
 ExprArray.      Array ::= Expr ;
 ExprMultiArray. Array ::= "[" [Array] "]" ;
 separator Array "," ;
-
---ExprRange.           Range ::= PInteger ;
 separator PInteger "," ;
 
 StmtReturn.     Stmt     ::= PReturn "(" Expr ")" ";" ;
@@ -188,25 +180,29 @@ OpModulo.     AssignOperator ::= "%%=" ;
 OpPower.      AssignOperator ::= "^=" ;
 
 
--- The available type are bool, double, int, void, char and string.
-TypeBool.   Type ::= "bool" ;
-TypeFloat.  Type ::= "float" ;
-TypeInt.    Type ::= "int" ;
-TypeVoid.   Type ::= "void" ; 
-TypeChar.   Type ::= "char" ;
-TypeString. Type ::= "string" ; 
+rules Type ::= BasicType | CompoundType ;
 
+-- The available type are bool, double, int, void, char and string.
+TypeBool.   BasicType ::= "bool" ;
+TypeFloat.  BasicType ::= "float" ;
+TypeInt.    BasicType ::= "int" ;
+TypeVoid.   BasicType ::= "void" ; 
+TypeChar.   BasicType ::= "char" ;
+TypeString. BasicType ::= "string" ; 
+
+
+rules CompoundType ::= ArrayType | Ptr ;
+
+ArrDefBase.  ArrayType ::= "[" [PInteger] "]" BasicType ;
+ArrDefPtr.   ArrayType ::= "[" [PInteger] "]" Ptr ;
+
+Pointer.         Ptr       ::= BasicType "*" ;
+Pointer2Pointer. Ptr       ::= Ptr "*" ;
 
 -- Compound types.
-TypeCompound. Type  ::= CType ;
-TypePointer.  CType ::= Type "*" ; 					-- Pointer type.
-TypeArray.    CType ::= Type "[" [PInteger] "]" ;		-- Array type.
-
-
---TypeExprArray. Array ::= Expr ;           -- Iterable interval.
---TypeArrayArray.    Array ::= "[" [Expr] "]" ;   -- Iterable array.
---TypeMultiArray.   Array ::= "[" [Array] "]" ;   -- Iterable array.
---separator Array "," ;
+--TypeCompound. Type  ::= CType ;
+--TypePointer.  CType ::= Type "*" ; 					-- Pointer type.
+--TypeArray.    CType ::= Type "[" [PInteger] "]" ;		-- Array type.
 
 
 -- The entry point is the program.
