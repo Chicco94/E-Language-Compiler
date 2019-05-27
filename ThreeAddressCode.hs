@@ -42,6 +42,12 @@ generateDecl env maybe_type decl =
                                           Nothing      -> TypeVoid
                                           (Just type_) -> type_
 
+
+-- add a nuw variable to the env
+addVar :: Env -> Var -> Env
+addVar env@(program, temp_count, variables,label_count) var@(Var (name,pos,type_)) = 
+  (program, temp_count, (Map.insert name var variables),label_count)
+
 -- search the variable in the list of variables
 -- if there is, just return it
 -- if there isn1t, add it to the list and then return it 
@@ -69,15 +75,15 @@ generateStmt env@(program, temp_count, variables,label_count) type_ stmt =
   case stmt of
     StmtExpr expr                                 -> generateExpr env type_ expr  -- expression statement
     StmtVarInit id@(PIdent (pos,name)) guard expr -> do                           -- variable initialization or assignement
-      let (env1, var) = findVar env (Var (name,pos,type_))
+      let env1 = addVar env (Var (name,pos,type_))
       case expr of
         -- shortcut per evitare t0 = 1; var = t0
-        (ExprInt    val)  -> (addTACList env1 [AssignIntVar    var val])
-        (ExprChar   val)  -> (addTACList env1 [AssignChrVar    var val])
-        (ExprString val)  -> (addTACList env1 [AssignStrVar    var val])
-        (ExprFloat  val)  -> (addTACList env1 [AssignFloatVar  var val])
-        (ExprTrue   val)  -> (addTACList env1 [AssignTrueVar   var val])
-        (ExprFalse  val)  -> (addTACList env1 [AssignFalseVar  var val])
+        (ExprInt    val)  -> (addTACList env1 [AssignIntVar    (Var (name,pos,type_)) val])
+        (ExprChar   val)  -> (addTACList env1 [AssignChrVar    (Var (name,pos,type_)) val])
+        (ExprString val)  -> (addTACList env1 [AssignStrVar    (Var (name,pos,type_)) val])
+        (ExprFloat  val)  -> (addTACList env1 [AssignFloatVar  (Var (name,pos,type_)) val])
+        (ExprTrue   val)  -> (addTACList env1 [AssignTrueVar   (Var (name,pos,type_)) val])
+        (ExprFalse  val)  -> (addTACList env1 [AssignFalseVar  (Var (name,pos,type_)) val])
         -- effettivo assegnamento con espressione complessa a destra
         _                 -> generateAssign (generateExpr env1 type_ expr) type_ id OpAssign
     StmtDefInit id guard expr                      -> generateStmt env type_ (StmtVarInit id guard expr) -- constant inizialization or assignement
@@ -211,8 +217,8 @@ generateDeclFunc env@(program, temp_count, variables,label_count) lexpr@(LExprId
 -- use temp variables as parameters
 generateCallFunc :: Env -> PIdent -> [Expr] -> Type ->Env
 generateCallFunc  env@(program, temp_count, variables,label_count) (PIdent (pos, name)) params type_ = do
-  let (env1, var)              = findVar env (Var (name,pos,type_)) -- prendo il tipo della funzione
-  (addTACList (generateParams env1 params) [FuncCall var (Temp (temp_count,type_))])
+  let (_, var)              = findVar env (Var (name,pos,type_)) -- prendo il tipo della funzione
+  (addTACList (generateParams env params) [FuncCall var (Temp (temp_count,type_))])
 
 generateParams :: Env -> [Expr] -> Env
 generateParams env [] = env
