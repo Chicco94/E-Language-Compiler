@@ -54,15 +54,19 @@ GuardType.  Guard ::= ":" Type ;   -- guarded
 StmtExpr.       Stmt     ::= Expr ";" ;
 
 
-StmtVarInit.         Stmt     ::= "var" PIdent Guard ":=" Expr ";" ;         -- Variable initialization.
-StmtDefInit.         Stmt     ::= "def" PIdent Guard ":=" Expr ";" ;         -- Constant initialization.
+StmtVarInit.         Stmt     ::= "var" PIdent Guard ":=" ComplexExpr ";" ;         -- Variable initialization.
+StmtDefInit.         Stmt     ::= "def" PIdent Guard ":=" ComplexExpr ";" ;         -- Constant initialization.
 
-StmtVarArrInit. Stmt ::= "var" PIdent Guard ":=" "[" Array "]" ";" ; -- Variable array initialization.
-StmtDefArrInit. Stmt ::= "def" PIdent Guard ":=" "[" Array "]" ";" ; -- Constant array initialization.
+--StmtVarArrInit. Stmt ::= "var" PIdent Guard ":=" "[" Array "]" ";" ; -- Variable array initialization.
+--StmtDefArrInit. Stmt ::= "def" PIdent Guard ":=" "[" Array "]" ";" ; -- Constant array initialization.
 
-ExprArray.      Array ::= Expr ;
-ExprMultiArray. Array ::= "[" [Array] "]" ;
-separator Array "," ;
+ExprSimple.         ComplexExpr ::= Expr ;
+ExprArray.          ComplexExpr ::= "[" [ComplexExpr] "]" ;
+separator       nonempty ComplexExpr "," ;
+
+--ExprArray.      Array ::= Expr ;
+--ExprMultiArray. Array ::= "[" [Array] "]" ;
+--separator Array "," ;
 separator PInteger "," ;
 
 StmtReturn.     Stmt     ::= PReturn "(" Expr ")" ";" ;
