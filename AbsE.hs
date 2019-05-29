@@ -187,7 +187,7 @@ data Type
 data CType = TypePointer Type | TypeAddress Type | TypeArray Type [Range]
   deriving (Eq, Ord, Show, Read)
 
-data Label = Label (String,(Int))
+data Label = Label (String,Int)
   deriving (Eq, Ord, Read)
 
 -- temporal variables: 't'id_numeber
