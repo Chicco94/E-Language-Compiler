@@ -119,10 +119,8 @@ Guard : {- empty -} { AbsE.GuardVoid }
       | ':' Type { AbsE.GuardType $2 }
 Stmt :: { Stmt }
 Stmt : Expr ';' { AbsE.StmtExpr $1 }
-     | 'var' PIdent Guard ':=' Expr ';' { AbsE.StmtVarInit $2 $3 $5 }
-     | 'var' '[' ListRange ']' PIdent Guard ':=' Array ';' { AbsE.StmtVarArrInit $3 $5 $6 $8 }
-     | 'def' PIdent Guard ':=' Expr ';' { AbsE.StmtDefInit $2 $3 $5 }
-     | 'def' '[' ListRange ']' PIdent Guard ':=' Array ';' { AbsE.StmtDefArrInit $3 $5 $6 $8 }
+     | 'var' PIdent Guard ':=' ComplexExpr ';' { AbsE.StmtVarInit $2 $3 $5 }
+     | 'def' PIdent Guard ':=' ComplexExpr ';' { AbsE.StmtDefInit $2 $3 $5 }
      | PReturn '(' Expr ')' ';' { AbsE.StmtReturn $1 $3 }
      | PReturn ';' { AbsE.StmtNoReturn $1 }
      | CompStmt { AbsE.SComp $1 }
@@ -132,20 +130,17 @@ Stmt : Expr ';' { AbsE.StmtExpr $1 }
      | PBreak ';' { AbsE.StmtBreak $1 }
      | PContinue ';' { AbsE.StmtContinue $1 }
      | 'while' '(' Expr ')' CompStmt { AbsE.StmtWhile $3 $5 }
-     | 'for' PIdent 'in' ForRange CompStmt { AbsE.StmtFor $2 $4 $5 }
-Array :: { Array }
-Array : Expr { AbsE.ExprArray $1 }
-      | '[' ListArray ']' { AbsE.ExprMultiArray $2 }
-ListArray :: { [Array] }
-ListArray : {- empty -} { [] }
-          | Array { (:[]) $1 }
-          | Array ',' ListArray { (:) $1 $3 }
-Range :: { Range }
-Range : PInteger { AbsE.ExprRange $1 }
-ListRange :: { [Range] }
-ListRange : {- empty -} { [] }
-          | Range { (:[]) $1 }
-          | Range ',' ListRange { (:) $1 $3 }
+     | 'for' PIdent 'in' Range CompStmt { AbsE.StmtFor $2 $4 $5 }
+ComplexExpr :: { ComplexExpr }
+ComplexExpr : Expr { AbsE.ExprSimple $1 }
+            | '[' ListComplexExpr ']' { AbsE.ExprArray $2 }
+ListComplexExpr :: { [ComplexExpr] }
+ListComplexExpr : ComplexExpr { (:[]) $1 }
+                | ComplexExpr ',' ListComplexExpr { (:) $1 $3 }
+ListPInteger :: { [PInteger] }
+ListPInteger : {- empty -} { [] }
+             | PInteger { (:[]) $1 }
+             | PInteger ',' ListPInteger { (:) $1 $3 }
 CompStmt :: { CompStmt }
 CompStmt : '{' ListDecl '}' { AbsE.StmtBlock (reverse $2) }
 NormCase :: { NormCase }
@@ -158,8 +153,8 @@ ListNormCase : {- empty -} { [] }
 ListDfltCase :: { [DfltCase] }
 ListDfltCase : {- empty -} { [] }
              | ListDfltCase DfltCase { flip (:) $1 $2 }
-ForRange :: { ForRange }
-ForRange : ForId '..' ForId { AbsE.ExprForRange $1 $3 }
+Range :: { Range }
+Range : ForId '..' ForId { AbsE.ExprRange $1 $3 }
 ForId :: { ForId }
 ForId : PIdent { AbsE.ForIdent $1 }
       | PInteger { AbsE.ForInteger $1 }
@@ -175,8 +170,8 @@ Ref : '*' LExpr { AbsE.LRefExpr $2 }
 Arr :: { Arr }
 Arr : PIdent '[' AExpr ']' { AbsE.LArrExpr $1 $3 }
 AExpr :: { AExpr }
-AExpr : Expr { AbsE.ArrSing $1 }
-      | AExpr ',' Expr { AbsE.ArrMul $1 $3 }
+AExpr : PInteger { AbsE.ArrSing $1 }
+      | AExpr ',' PInteger { AbsE.ArrMul $1 $3 }
 Expr17 :: { Expr }
 Expr17 : LExpr { AbsE.ExprLeft $1 } | '(' Expr ')' { $2 }
 Expr16 :: { Expr }
@@ -252,17 +247,24 @@ AssignOperator : ':=' { AbsE.OpAssign }
                | '%%=' { AbsE.OpModulo }
                | '^=' { AbsE.OpPower }
 Type :: { Type }
-Type : 'bool' { AbsE.TypeBool }
-     | 'float' { AbsE.TypeFloat }
-     | 'int' { AbsE.TypeInt }
-     | 'void' { AbsE.TypeVoid }
-     | 'char' { AbsE.TypeChar }
-     | 'string' { AbsE.TypeString }
-     | CType { AbsE.TypeCompound $1 }
-CType :: { CType }
-CType : Type '*' { AbsE.TypePointer $1 }
-      | Type '&' { AbsE.TypeAddress $1 }
-      | Type '[' ListRange ']' { AbsE.TypeArray $1 $3 }
+Type : BasicType { AbsE.TypeBasicType $1 }
+     | CompoundType { AbsE.TypeCompoundType $1 }
+BasicType :: { BasicType }
+BasicType : 'bool' { AbsE.TypeBool }
+          | 'float' { AbsE.TypeFloat }
+          | 'int' { AbsE.TypeInt }
+          | 'void' { AbsE.TypeVoid }
+          | 'char' { AbsE.TypeChar }
+          | 'string' { AbsE.TypeString }
+CompoundType :: { CompoundType }
+CompoundType : ArrayType { AbsE.CompoundTypeArrayType $1 }
+             | Ptr { AbsE.CompoundTypePtr $1 }
+ArrayType :: { ArrayType }
+ArrayType : '[' ListPInteger ']' BasicType { AbsE.ArrDefBase $2 $4 }
+          | '[' ListPInteger ']' Ptr { AbsE.ArrDefPtr $2 $4 }
+Ptr :: { Ptr }
+Ptr : BasicType '*' { AbsE.Pointer $1 }
+    | Ptr '*' { AbsE.Pointer2Pointer $1 }
 {
 
 returnM :: a -> Err a

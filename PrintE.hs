@@ -105,7 +105,9 @@ instance Print PIdent where
 
 instance Print PInteger where
   prt _ (PInteger (_,i)) = doc (showString ( i))
-
+  prtList _ [] = (concatD [])
+  prtList _ [x] = (concatD [prt 0 x])
+  prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
 
 instance Print PFloat where
   prt _ (PFloat (_,i)) = doc (showString ( i))
@@ -117,6 +119,7 @@ instance Print PChar where
 
 instance Print PString where
   prt _ (PString (_,i)) = doc (showString ( i))
+
 
 
 instance Print Program where
@@ -154,10 +157,8 @@ instance Print Guard where
 instance Print Stmt where
   prt i e = case e of
     StmtExpr expr -> prPrec i 0 (concatD [prt 0 expr, doc (showString ";")])
-    StmtVarInit pident guard expr -> prPrec i 0 (concatD [doc (showString "var"), prt 0 pident, prt 0 guard, doc (showString ":="), prt 0 expr, doc (showString ";")])
-    StmtVarArrInit ranges pident guard array -> prPrec i 0 (concatD [doc (showString "var"), doc (showString "["), prt 0 ranges, doc (showString "]"), prt 0 pident, prt 0 guard, doc (showString ":="), prt 0 array, doc (showString ";")])
-    StmtDefInit pident guard expr -> prPrec i 0 (concatD [doc (showString "def"), prt 0 pident, prt 0 guard, doc (showString ":="), prt 0 expr, doc (showString ";")])
-    StmtDefArrInit ranges pident guard array -> prPrec i 0 (concatD [doc (showString "def"), doc (showString "["), prt 0 ranges, doc (showString "]"), prt 0 pident, prt 0 guard, doc (showString ":="), prt 0 array, doc (showString ";")])
+    StmtVarInit pident guard complexexpr -> prPrec i 0 (concatD [doc (showString "var"), prt 0 pident, prt 0 guard, doc (showString ":="), prt 0 complexexpr, doc (showString ";")])
+    StmtDefInit pident guard complexexpr -> prPrec i 0 (concatD [doc (showString "def"), prt 0 pident, prt 0 guard, doc (showString ":="), prt 0 complexexpr, doc (showString ";")])
     StmtReturn preturn expr -> prPrec i 0 (concatD [prt 0 preturn, doc (showString "("), prt 0 expr, doc (showString ")"), doc (showString ";")])
     StmtNoReturn preturn -> prPrec i 0 (concatD [prt 0 preturn, doc (showString ";")])
     SComp compstmt -> prPrec i 0 (concatD [prt 0 compstmt])
@@ -167,19 +168,12 @@ instance Print Stmt where
     StmtBreak pbreak -> prPrec i 0 (concatD [prt 0 pbreak, doc (showString ";")])
     StmtContinue pcontinue -> prPrec i 0 (concatD [prt 0 pcontinue, doc (showString ";")])
     StmtWhile expr compstmt -> prPrec i 0 (concatD [doc (showString "while"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 compstmt])
-    StmtFor pident forrange compstmt -> prPrec i 0 (concatD [doc (showString "for"), prt 0 pident, doc (showString "in"), prt 0 forrange, prt 0 compstmt])
+    StmtFor pident range compstmt -> prPrec i 0 (concatD [doc (showString "for"), prt 0 pident, doc (showString "in"), prt 0 range, prt 0 compstmt])
 
-instance Print Array where
+instance Print ComplexExpr where
   prt i e = case e of
-    ExprArray expr -> prPrec i 0 (concatD [prt 0 expr])
-    ExprMultiArray arrays -> prPrec i 0 (concatD [doc (showString "["), prt 0 arrays, doc (showString "]")])
-  prtList _ [] = (concatD [])
-  prtList _ [x] = (concatD [prt 0 x])
-  prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
-instance Print Range where
-  prt i e = case e of
-    ExprRange pinteger -> prPrec i 0 (concatD [prt 0 pinteger])
-  prtList _ [] = (concatD [])
+    ExprSimple expr -> prPrec i 0 (concatD [prt 0 expr])
+    ExprArray complexexprs -> prPrec i 0 (concatD [doc (showString "["), prt 0 complexexprs, doc (showString "]")])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])
 instance Print CompStmt where
@@ -196,9 +190,9 @@ instance Print DfltCase where
     CaseDefault compstmt -> prPrec i 0 (concatD [doc (showString "match _"), prt 0 compstmt])
   prtList _ [] = (concatD [])
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
-instance Print ForRange where
+instance Print Range where
   prt i e = case e of
-    ExprForRange forid1 forid2 -> prPrec i 0 (concatD [prt 0 forid1, doc (showString ".."), prt 0 forid2])
+    ExprRange forid1 forid2 -> prPrec i 0 (concatD [prt 0 forid1, doc (showString ".."), prt 0 forid2])
 
 instance Print ForId where
   prt i e = case e of
@@ -255,8 +249,8 @@ instance Print Arr where
 
 instance Print AExpr where
   prt i e = case e of
-    ArrSing expr -> prPrec i 0 (concatD [prt 0 expr])
-    ArrMul aexpr expr -> prPrec i 0 (concatD [prt 0 aexpr, doc (showString ","), prt 0 expr])
+    ArrSing pinteger -> prPrec i 0 (concatD [prt 0 pinteger])
+    ArrMul aexpr pinteger -> prPrec i 0 (concatD [prt 0 aexpr, doc (showString ","), prt 0 pinteger])
 
 instance Print AssignOperator where
   prt i e = case e of
@@ -274,19 +268,32 @@ instance Print AssignOperator where
 
 instance Print Type where
   prt i e = case e of
+    TypeBasicType basictype -> prPrec i 0 (concatD [prt 0 basictype])
+    TypeCompoundType compoundtype -> prPrec i 0 (concatD [prt 0 compoundtype])
+
+instance Print BasicType where
+  prt i e = case e of
     TypeBool -> prPrec i 0 (concatD [doc (showString "bool")])
     TypeFloat -> prPrec i 0 (concatD [doc (showString "float")])
     TypeInt -> prPrec i 0 (concatD [doc (showString "int")])
     TypeVoid -> prPrec i 0 (concatD [doc (showString "void")])
     TypeChar -> prPrec i 0 (concatD [doc (showString "char")])
     TypeString -> prPrec i 0 (concatD [doc (showString "string")])
-    TypeCompound ctype -> prPrec i 0 (concatD [prt 0 ctype])
 
-instance Print CType where
+instance Print CompoundType where
   prt i e = case e of
-    TypePointer type_ -> prPrec i 0 (concatD [prt 0 type_, doc (showString "*")])
-    TypeAddress type_ -> prPrec i 0 (concatD [prt 0 type_, doc (showString "&")])
-    TypeArray type_ ranges -> prPrec i 0 (concatD [prt 0 type_, doc (showString "["), prt 0 ranges, doc (showString "]")])
+    CompoundTypeArrayType arraytype -> prPrec i 0 (concatD [prt 0 arraytype])
+    CompoundTypePtr ptr -> prPrec i 0 (concatD [prt 0 ptr])
+
+instance Print ArrayType where
+  prt i e = case e of
+    ArrDefBase pintegers basictype -> prPrec i 0 (concatD [doc (showString "["), prt 0 pintegers, doc (showString "]"), prt 0 basictype])
+    ArrDefPtr pintegers ptr -> prPrec i 0 (concatD [doc (showString "["), prt 0 pintegers, doc (showString "]"), prt 0 ptr])
+
+instance Print Ptr where
+  prt i e = case e of
+    Pointer basictype -> prPrec i 0 (concatD [prt 0 basictype, doc (showString "*")])
+    Pointer2Pointer ptr -> prPrec i 0 (concatD [prt 0 ptr, doc (showString "*")])
 
 
 instance Show Program where
@@ -323,15 +330,15 @@ instance Show TAC where
     AssignV2V       var1 var2            -> "\t" ++ show var1 ++ " = " ++ show var2 ++ "\n"
     AssignT2P       temp                 -> "\t" ++ "param_"  ++ show temp ++ "\n"
     
-    BinOp BOpOr       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " || " ++ show temp2 ++ "\n"
-    BinOp BOpAnd      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " && " ++ show temp2 ++ "\n"
+    BinOp BOpOr        tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " || " ++ show temp2 ++ "\n"
+    BinOp BOpAnd       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " && " ++ show temp2 ++ "\n"
 
-    BinOp BOpLt       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " less_than "           ++ show temp2 ++ "\n"
-    BinOp BOpGt       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " greater_than "        ++ show temp2 ++ "\n"
-    BinOp BOpLtEq     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " less_equal_than "     ++ show temp2 ++ "\n"
-    BinOp BOpGtEq     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " greater_equal_than "  ++ show temp2 ++ "\n"
-    BinOp BOpEq       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " equal "               ++ show temp2 ++ "\n"
-    BinOp BOpNeq      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " not_equal "           ++ show temp2 ++ "\n"
+    BinOp BOpLt        tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " less_than "           ++ show temp2 ++ "\n"
+    BinOp BOpGt        tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " greater_than "        ++ show temp2 ++ "\n"
+    BinOp BOpLtEq      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " less_equal_than "     ++ show temp2 ++ "\n"
+    BinOp BOpGtEq      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " greater_equal_than "  ++ show temp2 ++ "\n"
+    BinOp BOpEq        tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " equal "               ++ show temp2 ++ "\n"
+    BinOp BOpNeq       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " not_equal "           ++ show temp2 ++ "\n"
 
     BinOp BOpPlus      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2  ++ "\n"
     BinOp BOpMinus     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " - " ++ show temp2  ++ "\n"

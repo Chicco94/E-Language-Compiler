@@ -101,10 +101,8 @@ All other symbols are terminals.
   | //Guard// | -> | **eps**
   |  |  **|**  | ``:`` //Type// 
   | //Stmt// | -> | //Expr// ``;`` 
-  |  |  **|**  | ``var`` //PIdent// //Guard// ``:=`` //Expr// ``;`` 
-  |  |  **|**  | ``var`` ``[`` //[Range]// ``]`` //PIdent// //Guard// ``:=`` //Array// ``;`` 
-  |  |  **|**  | ``def`` //PIdent// //Guard// ``:=`` //Expr// ``;`` 
-  |  |  **|**  | ``def`` ``[`` //[Range]// ``]`` //PIdent// //Guard// ``:=`` //Array// ``;`` 
+  |  |  **|**  | ``var`` //PIdent// //Guard// ``:=`` //ComplexExpr// ``;`` 
+  |  |  **|**  | ``def`` //PIdent// //Guard// ``:=`` //ComplexExpr// ``;`` 
   |  |  **|**  | //PReturn// ``(`` //Expr// ``)`` ``;`` 
   |  |  **|**  | //PReturn// ``;`` 
   |  |  **|**  | //CompStmt// 
@@ -114,16 +112,14 @@ All other symbols are terminals.
   |  |  **|**  | //PBreak// ``;`` 
   |  |  **|**  | //PContinue// ``;`` 
   |  |  **|**  | ``while`` ``(`` //Expr// ``)`` //CompStmt// 
-  |  |  **|**  | ``for`` //PIdent// ``in`` //ForRange// //CompStmt// 
-  | //Array// | -> | //Expr// 
-  |  |  **|**  | ``[`` //[Array]// ``]`` 
-  | //[Array]// | -> | **eps**
-  |  |  **|**  | //Array// 
-  |  |  **|**  | //Array// ``,`` //[Array]// 
-  | //Range// | -> | //PInteger// 
-  | //[Range]// | -> | **eps**
-  |  |  **|**  | //Range// 
-  |  |  **|**  | //Range// ``,`` //[Range]// 
+  |  |  **|**  | ``for`` //PIdent// ``in`` //Range// //CompStmt// 
+  | //ComplexExpr// | -> | //Expr// 
+  |  |  **|**  | ``[`` //[ComplexExpr]// ``]`` 
+  | //[ComplexExpr]// | -> | //ComplexExpr// 
+  |  |  **|**  | //ComplexExpr// ``,`` //[ComplexExpr]// 
+  | //[PInteger]// | -> | **eps**
+  |  |  **|**  | //PInteger// 
+  |  |  **|**  | //PInteger// ``,`` //[PInteger]// 
   | //CompStmt// | -> | ``{`` //[Decl]// ``}`` 
   | //NormCase// | -> | ``match`` //Expr// //CompStmt// 
   | //DfltCase// | -> | ``match _`` //CompStmt// 
@@ -131,7 +127,7 @@ All other symbols are terminals.
   |  |  **|**  | //NormCase// //[NormCase]// 
   | //[DfltCase]// | -> | **eps**
   |  |  **|**  | //DfltCase// //[DfltCase]// 
-  | //ForRange// | -> | //ForId// ``..`` //ForId// 
+  | //Range// | -> | //ForId// ``..`` //ForId// 
   | //ForId// | -> | //PIdent// 
   |  |  **|**  | //PInteger// 
   | //Expr// | -> | //LExpr// //AssignOperator// //Expr1// 
@@ -141,8 +137,8 @@ All other symbols are terminals.
   |  |  **|**  | //Arr// 
   | //Ref// | -> | ``*`` //LExpr// 
   | //Arr// | -> | //PIdent// ``[`` //AExpr// ``]`` 
-  | //AExpr// | -> | //Expr// 
-  |  |  **|**  | //AExpr// ``,`` //Expr// 
+  | //AExpr// | -> | //PInteger// 
+  |  |  **|**  | //AExpr// ``,`` //PInteger// 
   | //Expr17// | -> | //LExpr// 
   |  |  **|**  | ``(`` //Expr// ``)`` 
   | //Expr16// | -> | //PInteger// 
@@ -202,15 +198,19 @@ All other symbols are terminals.
   |  |  **|**  | ``%=`` 
   |  |  **|**  | ``%%=`` 
   |  |  **|**  | ``^=`` 
-  | //Type// | -> | ``bool`` 
+  | //Type// | -> | //BasicType// 
+  |  |  **|**  | //CompoundType// 
+  | //BasicType// | -> | ``bool`` 
   |  |  **|**  | ``float`` 
   |  |  **|**  | ``int`` 
   |  |  **|**  | ``void`` 
   |  |  **|**  | ``char`` 
   |  |  **|**  | ``string`` 
-  |  |  **|**  | //CType// 
-  | //CType// | -> | //Type// ``*`` 
-  |  |  **|**  | //Type// ``&`` 
-  |  |  **|**  | //Type// ``[`` //[Range]// ``]`` 
+  | //CompoundType// | -> | //ArrayType// 
+  |  |  **|**  | //Ptr// 
+  | //ArrayType// | -> | ``[`` //[PInteger]// ``]`` //BasicType// 
+  |  |  **|**  | ``[`` //[PInteger]// ``]`` //Ptr// 
+  | //Ptr// | -> | //BasicType// ``*`` 
+  |  |  **|**  | //Ptr// ``*`` 
 
 

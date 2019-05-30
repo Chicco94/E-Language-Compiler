@@ -38,12 +38,12 @@ generateDecl :: Env -> Maybe Type -> Decl -> Env
 generateDecl env maybe_type decl =
     case decl of
         TypedDecl (ADecl type_ decl1) -> generateDecl env (Just type_) decl1
-        -- LExpr [Arg] Guard CompStmt
         DeclFun   id args type_ stmts -> generateDeclFunc env id args type_ stmts
-        DeclStmt (stmt) -> generateStmt env new_type stmt
+        DeclStmt (stmt)               -> generateStmt env new_type stmt
           where new_type = case maybe_type of 
-                                          Nothing      -> TypeVoid
-                                          (Just type_) -> type_
+                              Nothing                     -> TypeVoid
+                              (Just (TypeBasicType    type_)) -> type_
+                              --(Just (TypeCompoundType type_)) -> type_
 
 
 -- add a new label to the env
@@ -94,12 +94,12 @@ addTAC env@(program, temp_count, variables,labels,labels_count,scope) tac =
 
 
 
-generateStmt :: Env  -> Type -> Stmt -> Env 
+generateStmt :: Env  -> BasicType -> Stmt -> Env 
 generateStmt env@(program, temp_count, variables,labels,labels_count,scope) type_ stmt = 
   case stmt of
     StmtExpr expr                                 -> generateExpr env type_ expr  -- expression statement
     
-    StmtVarInit id@(PIdent (pos,name)) guard expr -> do                           -- variable initialization or assignement
+    StmtVarInit id@(PIdent (pos,name)) guard (ExprSimple expr) -> do                           -- variable initialization or assignement
       let (env1,var) = addVar env (Var (name,pos,type_))
       case expr of
         -- shortcut per evitare t0 = 1; var = t0
@@ -165,20 +165,23 @@ generateStmt env@(program, temp_count, variables,labels,labels_count,scope) type
       )
     
     -- TODO for
-    StmtFor id range stmts -> env 
+    StmtFor id (ExprRange start_for end_for) stmts -> env --do
+--      let env1 = generateAssign (generateExpr env typeInt start_for) typeInt id OpAssign
+
+    
 
 
-generateCases :: Env -> Type -> [NormCase] -> Env
+generateCases :: Env -> BasicType -> [NormCase] -> Env
 generateCases env _ [] = env 
 generateCases env@(program, temp_count, variables,labels,labels_count,scope) type_ ((CaseNormal _ stmts):rest) = 
   generateCases ( addTACList (generateStmt (addTACList env [Lbl (Label ("match_", labels_count) )]) type_ (SComp stmts)) [Goto (Label ("end_case",labels_count) )] ) type_ rest 
 
-generateCasesCond :: Env -> Type -> [NormCase] -> Env
+generateCasesCond :: Env -> BasicType -> [NormCase] -> Env
 generateCasesCond env _ [] = env 
 generateCasesCond env@(program, temp_count, variables,labels,labels_count,scope) type_ ((CaseNormal expr _):rest) = 
   generateCasesCond (addTACList (generateExpr env type_ expr) [If (Temp (0,TypeBool)) (Label ("match_", labels_count) )]) type_ rest 
   
-generateExpr :: Env -> Type -> Expr -> Env
+generateExpr :: Env -> BasicType -> Expr -> Env
 generateExpr env@(program, temp_count, variables,labels,labels_count,scope) type_ expr = 
     case expr of
         -- assign expression to variable
@@ -226,13 +229,13 @@ generateExpr env@(program, temp_count, variables,labels,labels_count,scope) type
           ([Lbl (Label ("end_and",labels_count1) ),AssignFalseTemp  (Temp (temp_count2,TypeBool)) (PFalse ((0,0),"false")),Lbl (Label ("falseAnd",labels_count1) ),Goto (Label ("end_and",labels_count1) ),AssignTrueTemp  (Temp (temp_count2,TypeBool)) (PTrue ((0,0),"true")), IfFalse (Temp (temp_count2-1,TypeBool)) (Label ("false_and", labels_count1) )]++program2,temp_count2+1, variables2, labels2,labels_count2+1,scope)
         
 -- Build the binary operator using the last two temporaneus variable
-binaryExpr :: Env -> Type -> BinaryOperator -> Env
+binaryExpr :: Env -> BasicType -> BinaryOperator -> Env
 binaryExpr env@(program, temp_count, variables,labels,labels_count,scope) type_ op = ([ BinOp op (Temp (temp_count,type_)) (Temp (temp_count-2,type_)) (Temp (temp_count-1,type_))] ++ program, (temp_count+1), variables, labels, labels_count,scope)
 
 
 
 --StmtAssign LExpr AssignOperator Expr
-generateAssign :: Env -> Type -> PIdent -> AssignOperator -> Env
+generateAssign :: Env -> BasicType -> PIdent -> AssignOperator -> Env
 generateAssign env@(program, temp_count, variables,labels,labels_count,scope) type_ id@(PIdent (pos,name)) op = do
   let (env1@(_, _, new_variables,_,_,_), var) = findVar env (Var (name,pos,type_))
   case op of
@@ -259,12 +262,12 @@ generateDeclFunc env@(program, temp_count, variables,labels,labels_count,scope) 
   (generateTAC_int (addTACList env1 [FuncDef var]) (PDefs decls))
     where type_ = case guard of
                     GuardVoid    -> TypeVoid
-                    GuardType t_ -> t_
+                    GuardType (TypeBasicType t_) -> t_
 
 
 
 -- use temp variables as parameters
-generateCallFunc :: Env -> PIdent -> [Expr] -> Type ->Env
+generateCallFunc :: Env -> PIdent -> [Expr] -> BasicType ->Env
 generateCallFunc  env@(program, temp_count, variables,labels,labels_count,scope) (PIdent (pos, name)) params type_ = do
   let (_, var)              = findVar env (Var (name,pos,type_)) -- prendo il tipo della funzione
   (addTACList (generateParams env params) [FuncCall var (Temp (temp_count,type_))])

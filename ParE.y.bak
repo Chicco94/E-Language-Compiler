@@ -31,61 +31,69 @@ import ErrM
   ',' { PT _ (TS _ 16) }
   '-' { PT _ (TS _ 17) }
   '-=' { PT _ (TS _ 18) }
-  '/' { PT _ (TS _ 19) }
-  '//' { PT _ (TS _ 20) }
-  '//=' { PT _ (TS _ 21) }
-  '/=' { PT _ (TS _ 22) }
-  ':' { PT _ (TS _ 23) }
-  ':=' { PT _ (TS _ 24) }
-  ':]' { PT _ (TS _ 25) }
-  ';' { PT _ (TS _ 26) }
-  '<' { PT _ (TS _ 27) }
-  '<=' { PT _ (TS _ 28) }
-  '==' { PT _ (TS _ 29) }
-  '>' { PT _ (TS _ 30) }
-  '>=' { PT _ (TS _ 31) }
-  '[' { PT _ (TS _ 32) }
-  ']' { PT _ (TS _ 33) }
-  '^' { PT _ (TS _ 34) }
-  '^=' { PT _ (TS _ 35) }
-  'bool' { PT _ (TS _ 36) }
-  'break' { PT _ (TS _ 37) }
+  '..' { PT _ (TS _ 19) }
+  '/' { PT _ (TS _ 20) }
+  '//' { PT _ (TS _ 21) }
+  '//=' { PT _ (TS _ 22) }
+  '/=' { PT _ (TS _ 23) }
+  ':' { PT _ (TS _ 24) }
+  ':=' { PT _ (TS _ 25) }
+  ':]' { PT _ (TS _ 26) }
+  ';' { PT _ (TS _ 27) }
+  '<' { PT _ (TS _ 28) }
+  '<=' { PT _ (TS _ 29) }
+  '==' { PT _ (TS _ 30) }
+  '>' { PT _ (TS _ 31) }
+  '>=' { PT _ (TS _ 32) }
+  '[' { PT _ (TS _ 33) }
+  ']' { PT _ (TS _ 34) }
+  '^' { PT _ (TS _ 35) }
+  '^=' { PT _ (TS _ 36) }
+  'bool' { PT _ (TS _ 37) }
   'char' { PT _ (TS _ 38) }
-  'continue' { PT _ (TS _ 39) }
-  'def' { PT _ (TS _ 40) }
-  'double' { PT _ (TS _ 41) }
-  'else' { PT _ (TS _ 42) }
-  'false' { PT _ (TS _ 43) }
-  'if' { PT _ (TS _ 44) }
+  'def' { PT _ (TS _ 39) }
+  'else' { PT _ (TS _ 40) }
+  'float' { PT _ (TS _ 41) }
+  'for' { PT _ (TS _ 42) }
+  'if' { PT _ (TS _ 43) }
+  'in' { PT _ (TS _ 44) }
   'int' { PT _ (TS _ 45) }
   'match' { PT _ (TS _ 46) }
   'match _' { PT _ (TS _ 47) }
-  'return' { PT _ (TS _ 48) }
-  'string' { PT _ (TS _ 49) }
-  'switch' { PT _ (TS _ 50) }
-  'true' { PT _ (TS _ 51) }
-  'var' { PT _ (TS _ 52) }
-  'void' { PT _ (TS _ 53) }
-  'while' { PT _ (TS _ 54) }
-  '{' { PT _ (TS _ 55) }
-  '|=' { PT _ (TS _ 56) }
-  '||' { PT _ (TS _ 57) }
-  '}' { PT _ (TS _ 58) }
+  'string' { PT _ (TS _ 48) }
+  'switch' { PT _ (TS _ 49) }
+  'var' { PT _ (TS _ 50) }
+  'void' { PT _ (TS _ 51) }
+  'while' { PT _ (TS _ 52) }
+  '{' { PT _ (TS _ 53) }
+  '|=' { PT _ (TS _ 54) }
+  '||' { PT _ (TS _ 55) }
+  '}' { PT _ (TS _ 56) }
 
-L_integ  { PT _ (TI $$) }
-L_doubl  { PT _ (TD $$) }
-L_charac { PT _ (TC $$) }
-L_quoted { PT _ (TL $$) }
+L_PTrue { PT _ (T_PTrue _) }
+L_PFalse { PT _ (T_PFalse _) }
+L_PReturn { PT _ (T_PReturn _) }
+L_PContinue { PT _ (T_PContinue _) }
+L_PBreak { PT _ (T_PBreak _) }
 L_PIdent { PT _ (T_PIdent _) }
+L_PInteger { PT _ (T_PInteger _) }
+L_PFloat { PT _ (T_PFloat _) }
+L_PChar { PT _ (T_PChar _) }
+L_PString { PT _ (T_PString _) }
 
 
 %%
 
-Integer :: { Integer } : L_integ  { (read ( $1)) :: Integer }
-Double  :: { Double }  : L_doubl  { (read ( $1)) :: Double }
-Char    :: { Char }    : L_charac { (read ( $1)) :: Char }
-String  :: { String }  : L_quoted {  $1 }
+PTrue    :: { PTrue} : L_PTrue { PTrue (mkPosToken $1)}
+PFalse    :: { PFalse} : L_PFalse { PFalse (mkPosToken $1)}
+PReturn    :: { PReturn} : L_PReturn { PReturn (mkPosToken $1)}
+PContinue    :: { PContinue} : L_PContinue { PContinue (mkPosToken $1)}
+PBreak    :: { PBreak} : L_PBreak { PBreak (mkPosToken $1)}
 PIdent    :: { PIdent} : L_PIdent { PIdent (mkPosToken $1)}
+PInteger    :: { PInteger} : L_PInteger { PInteger (mkPosToken $1)}
+PFloat    :: { PFloat} : L_PFloat { PFloat (mkPosToken $1)}
+PChar    :: { PChar} : L_PChar { PChar (mkPosToken $1)}
+PString    :: { PString} : L_PString { PString (mkPosToken $1)}
 
 Program :: { Program }
 Program : ListDecl { AbsE.PDefs (reverse $1) }
@@ -100,8 +108,6 @@ ListArg :: { [Arg] }
 ListArg : {- empty -} { [] }
         | Arg { (:[]) $1 }
         | Arg ',' ListArg { (:) $1 $3 }
-ListStmt :: { [Stmt] }
-ListStmt : {- empty -} { [] } | ListStmt Stmt { flip (:) $1 $2 }
 Arg :: { Arg }
 Arg : Modality PIdent Guard { AbsE.ArgDecl $1 $2 $3 }
 Modality :: { Modality }
@@ -113,23 +119,33 @@ Guard : {- empty -} { AbsE.GuardVoid }
       | ':' Type { AbsE.GuardType $2 }
 Stmt :: { Stmt }
 Stmt : Expr ';' { AbsE.StmtExpr $1 }
-     | 'var' LExpr Guard ';' { AbsE.StmtDecl $2 $3 }
-     | 'var' LExpr Guard ':=' Expr ';' { AbsE.StmtInit $2 $3 $5 }
-     | 'var' '[' ']' LExpr Guard ';' { AbsE.StmtVoidIterDecl $4 $5 }
-     | 'var' '[' Expr ']' LExpr Guard ';' { AbsE.StmtIterDecl $3 $5 $6 }
-     | 'def' LExpr Guard ';' { AbsE.StmtDeclD $2 $3 }
-     | 'def' LExpr Guard ':=' Expr ';' { AbsE.StmtInitD $2 $3 $5 }
-     | 'def' '[' ']' LExpr Guard ';' { AbsE.StmtVoidIterDeclD $4 $5 }
-     | 'def' '[' Expr ']' LExpr Guard ';' { AbsE.StmtIterDeclD $3 $5 $6 }
-     | 'return' '(' Expr ')' ';' { AbsE.StmtReturn $3 }
-     | 'return' ';' { AbsE.StmtNoReturn }
+     | 'var' PIdent Guard ':=' Expr ';' { AbsE.StmtVarInit $2 $3 $5 }
+     | 'var' '[' ListRange ']' PIdent Guard ':=' Array ';' { AbsE.StmtVarArrInit $3 $5 $6 $8 }
+     | 'def' PIdent Guard ':=' Expr ';' { AbsE.StmtDefInit $2 $3 $5 }
+     | 'def' '[' ListRange ']' PIdent Guard ':=' Array ';' { AbsE.StmtDefArrInit $3 $5 $6 $8 }
+     | PReturn '(' Expr ')' ';' { AbsE.StmtReturn $1 $3 }
+     | PReturn ';' { AbsE.StmtNoReturn $1 }
      | CompStmt { AbsE.SComp $1 }
      | 'if' '(' Expr ')' CompStmt 'else' CompStmt { AbsE.StmtIfThenElse $3 $5 $7 }
      | 'if' '(' Expr ')' CompStmt { AbsE.StmtIfThen $3 $5 }
-     | 'switch' '(' Expr ')' '{' ListNormCase ListDfltCase '}' { AbsE.SSwitchCase $3 (reverse $6) (reverse $7) }
-     | 'break' ';' { AbsE.StmtBreak }
-     | 'continue' ';' { AbsE.StmtContinue }
+     | 'switch' '(' Expr ')' '{' ListNormCase ListDfltCase '}' { AbsE.StmtSwitchCase $3 (reverse $6) (reverse $7) }
+     | PBreak ';' { AbsE.StmtBreak $1 }
+     | PContinue ';' { AbsE.StmtContinue $1 }
      | 'while' '(' Expr ')' CompStmt { AbsE.StmtWhile $3 $5 }
+     | 'for' PIdent 'in' ForRange CompStmt { AbsE.StmtFor $2 $4 $5 }
+Array :: { Array }
+Array : Expr { AbsE.ExprArray $1 }
+      | '[' ListArray ']' { AbsE.ExprMultiArray $2 }
+ListArray :: { [Array] }
+ListArray : {- empty -} { [] }
+          | Array { (:[]) $1 }
+          | Array ',' ListArray { (:) $1 $3 }
+Range :: { Range }
+Range : PInteger { AbsE.ExprRange $1 }
+ListRange :: { [Range] }
+ListRange : {- empty -} { [] }
+          | Range { (:[]) $1 }
+          | Range ',' ListRange { (:) $1 $3 }
 CompStmt :: { CompStmt }
 CompStmt : '{' ListDecl '}' { AbsE.StmtBlock (reverse $2) }
 NormCase :: { NormCase }
@@ -142,29 +158,34 @@ ListNormCase : {- empty -} { [] }
 ListDfltCase :: { [DfltCase] }
 ListDfltCase : {- empty -} { [] }
              | ListDfltCase DfltCase { flip (:) $1 $2 }
+ForRange :: { ForRange }
+ForRange : ForId '..' ForId { AbsE.ExprForRange $1 $3 }
+ForId :: { ForId }
+ForId : PIdent { AbsE.ForIdent $1 }
+      | PInteger { AbsE.ForInteger $1 }
 Expr :: { Expr }
-Expr : LExpr AssignOperator Expr1 { AbsE.StmtAssign $1 $2 $3 }
+Expr : LExpr AssignOperator Expr1 { AbsE.ExprAssign $1 $2 $3 }
      | Expr1 { $1 }
 LExpr :: { LExpr }
 LExpr : PIdent { AbsE.LExprId $1 }
-      | Deref { AbsE.LExprDeref $1 }
       | Ref { AbsE.LExprRef $1 }
       | Arr { AbsE.LExprArr $1 }
-Deref :: { Deref }
-Deref : '&' LExpr { AbsE.LDerefExpr $2 }
 Ref :: { Ref }
 Ref : '*' LExpr { AbsE.LRefExpr $2 }
 Arr :: { Arr }
-Arr : LExpr '[' Expr ']' { AbsE.LArrExpr $1 $3 }
+Arr : PIdent '[' AExpr ']' { AbsE.LArrExpr $1 $3 }
+AExpr :: { AExpr }
+AExpr : Expr { AbsE.ArrSing $1 }
+      | AExpr ',' Expr { AbsE.ArrMul $1 $3 }
 Expr17 :: { Expr }
-Expr17 : LExpr { AbsE.LeftExpr $1 } | '(' Expr ')' { $2 }
+Expr17 : LExpr { AbsE.ExprLeft $1 } | '(' Expr ')' { $2 }
 Expr16 :: { Expr }
-Expr16 : Integer { AbsE.ExprInt $1 }
-       | Double { AbsE.ExprDouble $1 }
-       | Char { AbsE.ExprChar $1 }
-       | String { AbsE.ExprString $1 }
-       | 'true' { AbsE.ExprTrue }
-       | 'false' { AbsE.ExprFalse }
+Expr16 : PInteger { AbsE.ExprInt $1 }
+       | PFloat { AbsE.ExprFloat $1 }
+       | PChar { AbsE.ExprChar $1 }
+       | PString { AbsE.ExprString $1 }
+       | PTrue { AbsE.ExprTrue $1 }
+       | PFalse { AbsE.ExprFalse $1 }
        | Expr17 { $1 }
 Expr15 :: { Expr }
 Expr15 : PIdent '(' ListExpr ')' { AbsE.ExprFunCall $1 $3 }
@@ -184,7 +205,8 @@ Expr12 : Expr12 '*' Expr13 { AbsE.ExprMul $1 $3 }
        | Expr12 '%%' Expr13 { AbsE.ExprModulo $1 $3 }
        | Expr13 { $1 }
 Expr11 :: { Expr }
-Expr11 : Expr11 '+' Expr12 { AbsE.ExprPlus $1 $3 }
+Expr11 : '&' LExpr { AbsE.ExprReference $2 }
+       | Expr11 '+' Expr12 { AbsE.ExprPlus $1 $3 }
        | Expr11 '-' Expr12 { AbsE.ExprMinus $1 $3 }
        | Expr12 { $1 }
 Expr9 :: { Expr }
@@ -231,14 +253,16 @@ AssignOperator : ':=' { AbsE.OpAssign }
                | '^=' { AbsE.OpPower }
 Type :: { Type }
 Type : 'bool' { AbsE.TypeBool }
-     | 'double' { AbsE.TypeDouble }
+     | 'float' { AbsE.TypeFloat }
      | 'int' { AbsE.TypeInt }
      | 'void' { AbsE.TypeVoid }
      | 'char' { AbsE.TypeChar }
      | 'string' { AbsE.TypeString }
-     | CompoundType { AbsE.TypeCompound $1 }
-CompoundType :: { CompoundType }
-CompoundType : Type '*' { AbsE.TypePointer $1 }
+     | CType { AbsE.TypeCompound $1 }
+CType :: { CType }
+CType : Type '*' { AbsE.TypePointer $1 }
+      | Type '&' { AbsE.TypeAddress $1 }
+      | Type '[' ListRange ']' { AbsE.TypeArray $1 $3 }
 {
 
 returnM :: a -> Err a

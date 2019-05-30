@@ -66,10 +66,8 @@ transGuard x = case x of
 transStmt :: Stmt -> Result
 transStmt x = case x of
   StmtExpr expr -> failure x
-  StmtVarInit pident guard expr -> failure x
-  StmtVarArrInit ranges pident guard array -> failure x
-  StmtDefInit pident guard expr -> failure x
-  StmtDefArrInit ranges pident guard array -> failure x
+  StmtVarInit pident guard complexexpr -> failure x
+  StmtDefInit pident guard complexexpr -> failure x
   StmtReturn preturn expr -> failure x
   StmtNoReturn preturn -> failure x
   SComp compstmt -> failure x
@@ -79,14 +77,11 @@ transStmt x = case x of
   StmtBreak pbreak -> failure x
   StmtContinue pcontinue -> failure x
   StmtWhile expr compstmt -> failure x
-  StmtFor pident forrange compstmt -> failure x
-transArray :: Array -> Result
-transArray x = case x of
-  ExprArray expr -> failure x
-  ExprMultiArray arrays -> failure x
-transRange :: Range -> Result
-transRange x = case x of
-  ExprRange pinteger -> failure x
+  StmtFor pident range compstmt -> failure x
+transComplexExpr :: ComplexExpr -> Result
+transComplexExpr x = case x of
+  ExprSimple expr -> failure x
+  ExprArray complexexprs -> failure x
 transCompStmt :: CompStmt -> Result
 transCompStmt x = case x of
   StmtBlock decls -> failure x
@@ -96,9 +91,9 @@ transNormCase x = case x of
 transDfltCase :: DfltCase -> Result
 transDfltCase x = case x of
   CaseDefault compstmt -> failure x
-transForRange :: ForRange -> Result
-transForRange x = case x of
-  ExprForRange forid1 forid2 -> failure x
+transRange :: Range -> Result
+transRange x = case x of
+  ExprRange forid1 forid2 -> failure x
 transForId :: ForId -> Result
 transForId x = case x of
   ForIdent pident -> failure x
@@ -147,8 +142,8 @@ transArr x = case x of
   LArrExpr pident aexpr -> failure x
 transAExpr :: AExpr -> Result
 transAExpr x = case x of
-  ArrSing expr -> failure x
-  ArrMul aexpr expr -> failure x
+  ArrSing pinteger -> failure x
+  ArrMul aexpr pinteger -> failure x
 transAssignOperator :: AssignOperator -> Result
 transAssignOperator x = case x of
   OpAssign -> failure x
@@ -164,16 +159,26 @@ transAssignOperator x = case x of
   OpPower -> failure x
 transType :: Type -> Result
 transType x = case x of
+  TypeBasicType basictype -> failure x
+  TypeCompoundType compoundtype -> failure x
+transBasicType :: BasicType -> Result
+transBasicType x = case x of
   TypeBool -> failure x
   TypeFloat -> failure x
   TypeInt -> failure x
   TypeVoid -> failure x
   TypeChar -> failure x
   TypeString -> failure x
-  TypeCompound ctype -> failure x
-transCType :: CType -> Result
-transCType x = case x of
-  TypePointer type_ -> failure x
-  TypeAddress type_ -> failure x
-  TypeArray type_ ranges -> failure x
+transCompoundType :: CompoundType -> Result
+transCompoundType x = case x of
+  CompoundTypeArrayType arraytype -> failure x
+  CompoundTypePtr ptr -> failure x
+transArrayType :: ArrayType -> Result
+transArrayType x = case x of
+  ArrDefBase pintegers basictype -> failure x
+  ArrDefPtr pintegers ptr -> failure x
+transPtr :: Ptr -> Result
+transPtr x = case x of
+  Pointer basictype -> failure x
+  Pointer2Pointer ptr -> failure x
 
