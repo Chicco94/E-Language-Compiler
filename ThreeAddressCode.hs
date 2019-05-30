@@ -148,28 +148,30 @@ generateStmt env@(program, temp_count, variables,labels,labels_count,scope) type
     StmtContinue continue -> addTACList env [Goto (Label ("guard",scope-1) )] 
 
      -- while stmt    
-    StmtWhile bexpr (StmtBlock decls) -> 
-      (addTACList 
-        (generateExpr 
-          (addTACList 
-            (generateTAC_int 
-              ([Lbl (Label ("body",labels_count)),Goto (Label ("gaurd",scope))]++program, temp_count,variables,labels,labels_count,scope+1) 
-              (PDefs decls)
-            ) 
-            [Lbl (Label ("guard",scope))]
-          ) 
-          TypeBool 
-          bexpr
-        ) 
-        [If (Temp (0,TypeBool)) (Label ("body",labels_count)),Lbl (Label ("end_cycle",scope))]
-      )
+    StmtWhile bexpr (StmtBlock decls) -> (addTACList (generateExpr (addTACList (generateTAC_int ([Lbl (Label ("body",scope)),Goto (Label ("gaurd",scope))]++program, temp_count,variables,labels,labels_count,scope+1) (PDefs decls)) [Lbl (Label ("guard",scope))]) TypeBool bexpr) [If (Temp (0,TypeBool)) (Label ("body",scope)),Lbl (Label ("end_cycle",scope))])
     
     -- TODO for
-    StmtFor id (ExprRange start_for end_for) stmts -> env --do
---      let env1 = generateAssign (generateExpr env typeInt start_for) typeInt id OpAssign
+    StmtFor id@(PIdent (pos,name)) (ExprRange start_for end_for) (StmtBlock decls) -> do
+      let (env1, var) = findVar env (Var (name,pos,TypeInt)) -- trovo la variabile
+      let  env2@(program1, temp_count1, variables1, labels1, labels_count1, scope1) = generateAssign (generateExpr env1 TypeInt (for_bound_identifier env start_for)) TypeInt id OpAssign -- la valorizzo con start_for
+      let  env3      = (generateTAC_int 
+                            ([Lbl (Label ("body",scope)),Goto (Label ("gaurd",scope))]++program1, temp_count1,variables1,labels1,labels_count1,scope1+1) 
+                            (PDefs decls)
+                          )
+                           
+      let env4        = generateExpr env3 TypeInt (ExprAssign (LExprId id) OpAssign (ExprPlus (ExprLeft (LExprId id)) (ExprInt (PInteger ((0,0),"1")))))
+      let env5        = (addTACList  -- ciclo 
+                            env4
+                          [Lbl (Label ("guard",scope))]
+                        )
+      let env6        = generateExpr env5 TypeBool (ExprLt (ExprLeft (LExprId id)) (for_bound_identifier env end_for))
+      (addTACList env6 [If (Temp (0,TypeBool)) (Label ("body",scope)),Lbl (Label ("end_cycle",scope))])
 
-    
-
+for_bound_identifier :: Env -> ForId -> Expr
+for_bound_identifier env for_id =
+  case for_id of
+    ForInteger val -> ExprInt val
+    ForIdent   id  -> ExprLeft (LExprId id)
 
 generateCases :: Env -> BasicType -> [NormCase] -> Env
 generateCases env _ [] = env 
