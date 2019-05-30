@@ -299,15 +299,15 @@ instance Print Ptr where
 instance Show Program where
   show p = case p of
     --PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
-    TACProgram [] -> ""
+    TACProgram []   -> ""
     TACProgram tacs -> (show tacs)
 
 instance Show TAC where
   show t = case t of
     {-mettere \n dopo return-}
-    FuncDef (Var (name,pos@(row,col),type_)) -> "\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\tFunction:\n\tType: " ++ show type_ ++ "\n\tStatements:\n"
-    Return  temp                   -> "\treturn_" ++ show temp ++"\n\tEnd Function\n\n"
-    FuncCall (Var (name,pos@(row,col),type_)) temp-> "\t" ++ show temp ++ " = " ++ show type_ ++ " call " ++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col++"\n"
+    FuncDef (Var (name,pos@(row,col),type_))       -> "\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\tFunction:\n\tType: " ++ show type_ ++ "\n\tStatements:\n"
+    Return  temp                                   -> "\treturn_" ++ show temp ++"\n\tEnd Function\n\n"
+    FuncCall (Var (name,pos@(row,col),type_)) temp -> "\t" ++ show temp ++ " = " ++ show type_ ++ " call " ++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col++"\n"
 
 
     AssignIntVar    var  val             -> "\t" ++ show var   ++ " = int "    ++ show val ++ "\n"
@@ -330,16 +330,6 @@ instance Show TAC where
     AssignV2V       var1 var2            -> "\t" ++ show var1 ++ " = " ++ show var2 ++ "\n"
     AssignT2P       temp                 -> "\t" ++ "param_"  ++ show temp ++ "\n"
     
-    BinOp BOpOr        tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " || " ++ show temp2 ++ "\n"
-    BinOp BOpAnd       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " && " ++ show temp2 ++ "\n"
-
-    BinOp BOpLt        tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " less_than "           ++ show temp2 ++ "\n"
-    BinOp BOpGt        tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " greater_than "        ++ show temp2 ++ "\n"
-    BinOp BOpLtEq      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " less_equal_than "     ++ show temp2 ++ "\n"
-    BinOp BOpGtEq      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " greater_equal_than "  ++ show temp2 ++ "\n"
-    BinOp BOpEq        tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " equal "               ++ show temp2 ++ "\n"
-    BinOp BOpNeq       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " not_equal "           ++ show temp2 ++ "\n"
-
     BinOp BOpPlus      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2  ++ "\n"
     BinOp BOpMinus     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " - " ++ show temp2  ++ "\n"
     BinOp BOpMul       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " * " ++ show temp2  ++ "\n"
@@ -349,21 +339,29 @@ instance Show TAC where
     BinOp BOpModulo    tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " %% " ++ show temp2 ++ "\n"
     BinOp BOpPower     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " ^ " ++ show temp2  ++ "\n"
 
-    Goto label -> "\tgoto " ++ show label  ++ "\n"
-    Lbl label -> show label
-    If      bexpr label ->"\tif "      ++ show bexpr ++ " goto "++show label++"\n"
-    IfFalse bexpr label ->"\tifFalse " ++ show bexpr ++ " goto "++show label++"\n"
-      --prPrec i 0 (concatD [prt 0 var, doc (showString "="),prt 0 integer, doc (showString "\n")])
-    _ -> "comando non trovato\n" -- prPrec i 0 (concatD [doc (showString "_")]) --TODO
+    BoolOp BOpOr             temp1 temp2 -> show temp1 ++ " or "                  ++ show temp2
+    BoolOp BOpAnd            temp1 temp2 -> show temp1 ++ " and "                 ++ show temp2
+    BoolOp BOpLt             temp1 temp2 -> show temp1 ++ " less_than "           ++ show temp2
+    BoolOp BOpGt             temp1 temp2 -> show temp1 ++ " greater_than "        ++ show temp2
+    BoolOp BOpLtEq           temp1 temp2 -> show temp1 ++ " less_equal_than "     ++ show temp2
+    BoolOp BOpGtEq           temp1 temp2 -> show temp1 ++ " greater_equal_than "  ++ show temp2
+    BoolOp BOpEq             temp1 temp2 -> show temp1 ++ " equal "               ++ show temp2
+    BoolOp BOpNeq            temp1 temp2 -> show temp1 ++ " not_equal "           ++ show temp2
+
+    Goto label                           -> "\tgoto " ++ show label  ++ "\n"
+    Lbl  label                           -> show label
+    If      bexpr label                  ->"\tif "      ++ show bexpr ++ " goto "++show label++"\n"
+    IfFalse bexpr label                  ->"\tifFalse " ++ show bexpr ++ " goto "++show label++"\n"
+    _ -> "comando non trovato\n"
 
 instance Show Var where --Var = (String,(Int,Int),Type)
   show (Var (name,pos@(row,col),type_)) = show type_ ++ "  "++   filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col
-  --prt i (Var (name,pos@(row,col),type_)) = prPrec i 0 (concatD [prt 0 type_,prt 0 name, doc (showString "@"),prt 0 row, doc (showString ","),prt 0 col])
 
-instance Show Temp where --Temp = (Int,Type)
-  show (Temp (num,type_)) = show type_ ++ "  t" ++ show num
-  --prt i (Temp (num,type_)) = prPrec i 0 (concatD [prt 0 type_,doc (showString "t"),prt 0 num])
+instance Show Temp where --Temp = Temp (Int,BasicType) | TempT PTrue | TempF PFalse
+  show temp  = case temp of
+    (Temp (num,type_)) -> show type_ ++ "  t" ++ show num
+    (TempT _) -> show TypeBool ++ "  true"
+    (TempF _) -> show TypeBool ++ "  false"
   
 instance Show Label where --Label = (Int,Type)
   show (Label (name,id)) = filter (/='\"') (show name) ++ "@" ++ show id
---prt i (Temp (num,type_)) = prPrec i 0 (concatD [prt 0 type_,doc (showString "t"),prt 0 num])

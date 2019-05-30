@@ -182,7 +182,7 @@ data Label = Label (String,Int)
   deriving (Eq, Ord, Read)
 
 -- temporal variables: 't'id_numeber
-data Temp = Temp (Int,BasicType)
+data Temp = Temp (Int,BasicType) | TempT PTrue | TempF PFalse
   deriving (Eq, Ord, Read)
 -- user variables: var_name@line_number
 data Var  = Var  (String,(Int,Int),BasicType)
@@ -209,20 +209,30 @@ data TAC
   | AssignV2V Var  Var
   | AssignT2P Temp
 
-  | BinOp BinaryOperator Temp Temp Temp
+  | BinOp  BinaryOperator  Temp Temp Temp
   | UnaryOp UnaryOp Temp Temp
+  | BoolOp BinaryOperator Temp Temp
 
   | FuncDef Var
   | FuncCall Var Temp
   | Return Temp
   | Goto Label
   | Lbl Label
-  | If Temp Label
-  | IfFalse Temp Label
+  | If TAC Label
+  | IfFalse TAC Label
   deriving (Eq, Ord, Read)
 
 data BinaryOperator
   = BOpAssign
+  | BOpPlus
+  | BOpMinus
+  | BOpMul
+  | BOpIntDiv
+  | BOpFloatDiv
+  | BOpRemainder
+  | BOpModulo
+  | BOpPower
+
   | BOpOr
   | BOpAnd
   
@@ -232,15 +242,6 @@ data BinaryOperator
   | BOpGtEq
   | BOpEq
   | BOpNeq
-
-  | BOpPlus
-  | BOpMinus
-  | BOpMul
-  | BOpIntDiv
-  | BOpFloatDiv
-  | BOpRemainder
-  | BOpModulo
-  | BOpPower
   deriving (Eq, Ord, Read)
 
 data UnaryOp
