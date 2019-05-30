@@ -82,15 +82,16 @@ addTACList env@(program, temp_count, variables,labels,labels_count,scope) (tac:r
 addTAC :: Env -> TAC -> Env
 addTAC env@(program, temp_count, variables,labels,labels_count,scope) tac =
   case tac of
-    Return (Temp (_,type_)) -> ([Return (Temp (temp_count-1,type_))] ++ program,temp_count,variables,labels,labels_count,scope)
-    Lbl lbl                 -> ([Lbl lbl]++program , temp_count, variables, (Set.insert lbl labels),labels_count+1,scope)
-    IfFalse temp (Label (name,id)) -> do
+    Return (Temp (_,type_))            -> ([Return (Temp (temp_count-1,type_))] ++ program,temp_count,variables,labels,labels_count,scope)
+    Lbl (Label ("end_stmt",_) )       -> ([Lbl (Label ("end_stmt",scope-1) )]++program , temp_count, variables, (Set.insert (Label ("end_stmt",scope-1) ) labels),labels_count+1,scope-1)
+    Lbl lbl                            -> ([Lbl lbl]++program , temp_count, variables, (Set.insert lbl labels),labels_count+1,scope)
+    IfFalse temp (Label (name,id))     -> do
       let ((_, _, _,labels1,labels_count1,_),lbl_new) = addLbl env name (Just id)
       ([IfFalse (Temp (temp_count-1,TypeBool)) lbl_new]++program, temp_count, variables, labels1, labels_count1,scope)
-    If temp (Label (name,id)) -> do
+    If temp (Label (name,id))          -> do
       let ((_, _, _,labels1,labels_count1,_),lbl_new) = addLbl env name (Just id)
       ([If      (Temp (temp_count-1,TypeBool)) lbl_new]++program, temp_count, variables, labels1, labels_count1,scope)
-    _                       -> ([tac]++program , temp_count, variables, labels,labels_count,scope)
+    _                                  -> ([tac]++program , temp_count, variables, labels,labels_count,scope)
 
 
 
@@ -129,43 +130,32 @@ generateStmt env@(program, temp_count, variables,labels,labels_count,scope) type
     
     -- switch case del default prendo solo il primo
     StmtSwitchCase expr norm_cases ((CaseDefault dflt_stms):_) -> do
-      --TODO controllare puntamenti ed etichette (program1, temp_count1, variables1,labels1)
-      let env1 = addTACList (generateExpr env type_ expr) [Goto (Label ("case_conditions",labels_count) )]
+      let env1 = (addTACList env [Goto (Label ("case_conditions",labels_count) )])
       -- normcases   -> stmts + jump_to_end
-      let env2 = generateCases env1 type_ norm_cases
-      let env3 = addTACList (generateStmt (addTACList env2 [Lbl (Label ("match_dflt", labels_count) )]) type_ (SComp dflt_stms)) [Goto (Label ("end_case",labels_count) )]
-      let env4 = addTACList env3 [Lbl (Label ("case_conditions", labels_count) )]
-      let env5 = generateCasesCond env4 type_ norm_cases
+      let env2 = generateCases env1 type_ norm_cases (Label ("end_case",labels_count) )
+      let env3 = addTACList (generateStmt (addTACList env2 [Lbl (Label ("match_dflt", labels_count) )]) type_ (SComp dflt_stms)) [Goto (Label ("end_case",scope) )]
+      let (program4, temp_count4, variables4, labels4, _, _) = addTACList env3 [Lbl (Label ("case_conditions", labels_count) )]
+      let env5 = generateCasesCond (program4, temp_count4, variables4, labels4,labels_count,scope) expr type_ norm_cases
       -- condition jump
       let env6 = addTACList env5 [Goto (Label ("match_dflt",labels_count) )]
       -- end case
       addTACList env6 [Lbl (Label ("end_case", labels_count) )]
     
     -- break stmt
-    StmtBreak break -> addTACList env [Goto (Label ("end_cycle",scope-1) )]
+    StmtBreak break -> addTACList env [Goto (Label ("end_stmt",scope-1) )]
     
     -- continue stmt
     StmtContinue continue -> addTACList env [Goto (Label ("guard",scope-1) )] 
 
      -- while stmt    
-    StmtWhile bexpr (StmtBlock decls) -> (addTACList (generateExpr (addTACList (generateTAC_int ([Lbl (Label ("body",scope)),Goto (Label ("gaurd",scope))]++program, temp_count,variables,labels,labels_count,scope+1) (PDefs decls)) [Lbl (Label ("guard",scope))]) TypeBool bexpr) [If (Temp (0,TypeBool)) (Label ("body",scope)),Lbl (Label ("end_cycle",scope))])
+    StmtWhile bexpr (StmtBlock decls) -> (addTACList (generateExpr (addTACList (generateTAC_int ([Lbl (Label ("body",scope)),Goto (Label ("gaurd",scope))]++program, temp_count,variables,labels,labels_count,scope+1) (PDefs decls)) [Lbl (Label ("guard",scope))]) TypeBool bexpr) [If (Temp (0,TypeBool)) (Label ("body",scope)),Lbl (Label ("end_stmt",scope))])
     
-    -- TODO for
+    -- for stmt
     StmtFor id@(PIdent (pos,name)) (ExprRange start_for end_for) (StmtBlock decls) -> do
-      let (env1, var) = findVar env (Var (name,pos,TypeInt)) -- trovo la variabile
-      let  env2@(program1, temp_count1, variables1, labels1, labels_count1, scope1) = generateAssign (generateExpr env1 TypeInt (for_bound_identifier env start_for)) TypeInt id OpAssign -- la valorizzo con start_for
-      let  env3      = (generateTAC_int 
-                            ([Lbl (Label ("body",scope)),Goto (Label ("gaurd",scope))]++program1, temp_count1,variables1,labels1,labels_count1,scope1+1) 
-                            (PDefs decls)
-                          )
-                           
-      let env4        = generateExpr env3 TypeInt (ExprAssign (LExprId id) OpAssign (ExprPlus (ExprLeft (LExprId id)) (ExprInt (PInteger ((0,0),"1")))))
-      let env5        = (addTACList  -- ciclo 
-                            env4
-                          [Lbl (Label ("guard",scope))]
-                        )
-      let env6        = generateExpr env5 TypeBool (ExprLt (ExprLeft (LExprId id)) (for_bound_identifier env end_for))
-      (addTACList env6 [If (Temp (0,TypeBool)) (Label ("body",scope)),Lbl (Label ("end_cycle",scope))])
+      let (env1, var) = findVar env (Var (name,pos,TypeInt))
+      let (program1, temp_count1, variables1, labels1, labels_count1, scope1) = generateAssign (generateExpr env1 TypeInt (for_bound_identifier env start_for)) TypeInt id OpAssign
+      (addTACList (generateExpr (addTACList (generateExpr (generateTAC_int ([Lbl (Label ("body",scope)),Goto (Label ("gaurd",scope))]++program1, temp_count1,variables1,labels1,labels_count1,scope1+1) (PDefs decls)) TypeInt (ExprAssign (LExprId id) OpAssign (ExprPlus (ExprLeft (LExprId id)) (ExprInt (PInteger ((0,0),"1")))))) [Lbl (Label ("guard",scope))]) TypeBool (ExprLt (ExprLeft (LExprId id)) (for_bound_identifier env end_for))) [If (Temp (0,TypeBool)) (Label ("body",scope)),Lbl (Label ("end_stmt",scope))])
+
 
 for_bound_identifier :: Env -> ForId -> Expr
 for_bound_identifier env for_id =
@@ -173,16 +163,19 @@ for_bound_identifier env for_id =
     ForInteger val -> ExprInt val
     ForIdent   id  -> ExprLeft (LExprId id)
 
-generateCases :: Env -> BasicType -> [NormCase] -> Env
-generateCases env _ [] = env 
-generateCases env@(program, temp_count, variables,labels,labels_count,scope) type_ ((CaseNormal _ stmts):rest) = 
-  generateCases ( addTACList (generateStmt (addTACList env [Lbl (Label ("match_", labels_count) )]) type_ (SComp stmts)) [Goto (Label ("end_case",labels_count) )] ) type_ rest 
 
-generateCasesCond :: Env -> BasicType -> [NormCase] -> Env
-generateCasesCond env _ [] = env 
-generateCasesCond env@(program, temp_count, variables,labels,labels_count,scope) type_ ((CaseNormal expr _):rest) = 
-  generateCasesCond (addTACList (generateExpr env type_ expr) [If (Temp (0,TypeBool)) (Label ("match_", labels_count) )]) type_ rest 
+generateCases :: Env -> BasicType -> [NormCase] -> Label -> Env
+generateCases env _ [] _ = env 
+generateCases env@(program, temp_count, variables,labels,labels_count,scope) type_ ((CaseNormal _ stmts):rest) end_label = 
+  generateCases ( addTACList (generateStmt (addTACList env [Lbl (Label ("match_", labels_count) )]) type_ (SComp stmts)) [Goto end_label] ) type_ rest end_label
+
+generateCasesCond :: Env -> Expr -> BasicType -> [NormCase] -> Env
+generateCasesCond env _ _ [] = env 
+generateCasesCond env@(program, temp_count, variables, labels, labels_count, scope) expr_v type_ ((CaseNormal expr _):rest) = do
+  let (program, temp_count, variables, labels, labels_count, scope) = (binaryExpr (generateExpr (generateExpr env type_ expr_v) type_ expr) type_ BOpEq) 
+  generateCasesCond ([If (Temp (0,TypeBool)) (Label ("match_", labels_count)) ]++program, temp_count, variables, labels, labels_count+1, scope) expr_v type_ rest 
   
+
 generateExpr :: Env -> BasicType -> Expr -> Env
 generateExpr env@(program, temp_count, variables,labels,labels_count,scope) type_ expr = 
     case expr of
