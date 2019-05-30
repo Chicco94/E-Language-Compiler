@@ -16,6 +16,11 @@ instance Show PFloat    where show (PFloat    (_, val)) = filter (/='\"') (show 
 instance Show PChar     where show (PChar     (_, val)) = filter (/='\"') (show val)
 instance Show PString   where show (PString   (_, val)) =                 (show val)
 
+instance Show Type where 
+  show e = case e of 
+    TypeBasicType    t -> show t
+    TypeCompoundType c -> show c
+
 instance Show BasicType where 
   show t = case t of 
     TypeBool   -> "bool"
@@ -24,6 +29,23 @@ instance Show BasicType where
     TypeVoid   -> "void"
     TypeChar   -> "char"
     TypeString -> "string"
+
+instance Show CompoundType where 
+  show t = case t of 
+    CompoundTypeArrayType a -> show a
+    CompoundTypePtr       p -> show p
+
+instance Show ArrayType where
+  show t = case t of
+    ArrDefBase dim bt -> "[]" ++ show bt
+    ArrDefPtr  dim p  -> "[]" ++ show p
+
+instance Show Ptr where
+  show t = case t of
+    Pointer         bt -> "*" ++ show bt
+    Pointer2Pointer p  -> "*" ++ show p
+        
+
 
 newtype PTrue = PTrue ((Int,Int),String)
   deriving (Eq, Ord, Read)
@@ -160,7 +182,7 @@ data AssignOperator
   deriving (Eq, Ord, Show, Read)
 
 data Type = TypeBasicType BasicType | TypeCompoundType CompoundType
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 data BasicType
     = TypeBool | TypeFloat | TypeInt | TypeVoid | TypeChar | TypeString
@@ -168,24 +190,27 @@ data BasicType
 
 data CompoundType
     = CompoundTypeArrayType ArrayType | CompoundTypePtr Ptr
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 data ArrayType
     = ArrDefBase [PInteger] BasicType | ArrDefPtr [PInteger] Ptr
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 data Ptr = Pointer BasicType | Pointer2Pointer Ptr
-  deriving (Eq, Ord, Show, Read)
-
+  deriving (Eq, Ord, Read)
 
 data Label = Label (String,Int)
   deriving (Eq, Ord, Read)
 
 -- temporal variables: 't'id_numeber
-data Temp = Temp (Int,BasicType) | TempT PTrue | TempF PFalse
+data Temp = Temp (Int,Type) | TempT PTrue | TempF PFalse
   deriving (Eq, Ord, Read)
 -- user variables: var_name@line_number
-data Var  = Var  (String,(Int,Int),BasicType)
+-- [] -> usual variable
+-- [int] -> one dim array
+-- [int,int] -> matrix
+-- [int,...,int] -> etc...
+data Var  = Var  (String,(Int,Int),Type)
   deriving (Eq, Ord, Read)
 
 data TAC 
@@ -204,6 +229,7 @@ data TAC
   | AssignFloatVar  Var  PFloat
 
   | AssignT2V Var  Temp
+  | AssignT2A Var  Temp  Int
   | AssignT2T Temp Temp
   | AssignV2T Temp Var
   | AssignV2V Var  Var

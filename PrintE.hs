@@ -325,6 +325,7 @@ instance Show TAC where
     AssignFloatTemp temp val             -> "\t" ++ show temp  ++ " = float "  ++ show val ++ "\n"
             
     AssignT2V       var  temp            -> "\t" ++ show var  ++ " = " ++ show temp ++ "\n"
+    AssignT2A       var  temp pos        -> "\t" ++ show var  ++ "[" ++ show pos ++ "] = " ++ show temp ++ "\n"
     AssignT2T       tmp1 tmp2            -> "\t" ++ show tmp1 ++ " = " ++ show tmp2 ++ "\n"
     AssignV2T       temp var             -> "\t" ++ show temp ++ " = " ++ show var  ++ "\n"
     AssignV2V       var1 var2            -> "\t" ++ show var1 ++ " = " ++ show var2 ++ "\n"
