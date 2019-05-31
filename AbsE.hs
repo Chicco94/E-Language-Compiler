@@ -14,7 +14,7 @@ instance Show PIdent    where show (PIdent    (_, val)) = filter (/='\"') (show 
 instance Show PInteger  where show (PInteger  (_, val)) = filter (/='\"') (show val)
 instance Show PFloat    where show (PFloat    (_, val)) = filter (/='\"') (show val)
 instance Show PChar     where show (PChar     (_, val)) = filter (/='\"') (show val)
-instance Show PString   where show (PString   (_, val)) =                 (show val)
+instance Show PString   where show (PString   (_, val)) = "\"" ++ filter (/='\\') (filter (/='\"') (show val) ) ++ "\"" 
 
 instance Show Type where 
   show e = case e of 
@@ -206,10 +206,6 @@ data Label = Label (String,Int)
 data Temp = Temp (Int,Type) | TempT PTrue | TempF PFalse
   deriving (Eq, Ord, Read)
 -- user variables: var_name@line_number
--- [] -> usual variable
--- [int] -> one dim array
--- [int,int] -> matrix
--- [int,...,int] -> etc...
 data Var  = Var  (String,(Int,Int),Type)
   deriving (Eq, Ord, Read)
 
