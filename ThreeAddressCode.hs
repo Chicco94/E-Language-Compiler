@@ -69,8 +69,8 @@ module ThreeAddressCode where
       IfFalse tac lbl             -> ([IfFalse (head program) lbl        ]++(drop 1 program), temp_count    , variables, labels  ,scope  )
       If      tac lbl             -> ([If      (head program) lbl        ]++(drop 1 program), temp_count    , variables, labels  ,scope  )
       AssignV2T temp var step     -> ([AssignV2T   temp var step         ]++program         , (temp_count+1), variables, labels  ,scope  )
+      AssignT2V var (Temp (_,type_)) step -> ([AssignT2V  var (Temp (temp_count-1,type_))  step]++program         , (temp_count), variables, labels  ,scope  )
       _                           -> ([tac                               ]++program         , temp_count    , variables, labels  ,scope  )
-  
       
   
   generateStmt :: Env  -> Type -> Stmt -> Env 
@@ -176,7 +176,7 @@ module ThreeAddressCode where
         ExprAddition  expr       -> unaryExpr (generateExpr env type_ expr) type_ UOpPlus
 
         -- deref
-        --ExprReference (LExprId id@(PIdent (pos,name)))                            -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref
+        ExprReference lexpr -> unaryExpr (generateExpr env type_ (ExprLeft lexpr)) type_ UOpDeref
         --ExprReference (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing step))) -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref
         --ExprReference (LExprId id@(PIdent (pos,name))) -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref
         
@@ -213,7 +213,7 @@ module ThreeAddressCode where
   binaryExpr env@(program, temp_count, variables,labels,scope) type_ op  = ([BinOp   op (Temp (temp_count,type_))   (Temp (temp_count-2,type_)) (Temp (temp_count-1,type_))] ++ program, (temp_count+1), variables,labels,scope)
   
   unaryExpr  :: Env -> Type -> UnaryOperator -> Env
-  unaryExpr  env@(program, temp_count, variables,labels,scope) type_ op  = ([UnaryOp op (Temp (temp_count-1,type_)) (Temp (temp_count,type_))  ]++program, (temp_count+1), variables, labels, scope)
+  unaryExpr  env@(program, temp_count, variables,labels,scope) type_ op  = ([UnaryOp op (Temp (temp_count,type_))   (Temp (temp_count-1,type_))]++program, (temp_count+1), variables, labels, scope)
 
   booleanExpr :: Env -> Type -> BinaryOperator -> Env
   booleanExpr env@(program, temp_count, variables,labels,scope) type_ op = ([BoolOp  op (Temp (temp_count-2,type_)) (Temp (temp_count-1,type_))]++program, (temp_count+1), variables, labels, scope)
@@ -224,7 +224,7 @@ module ThreeAddressCode where
   generateAssign env@(program, temp_count, variables,labels,scope) type_ id@(PIdent (pos,name)) op (expr:[]) step = do
     let (env1@(_, _, new_variables,_,_), var) = findVar env (Var (name,pos,type_))
     case op of
-      OpAssign    -> (addTACList (generateExpr env (type2BasicType type_) expr) [AssignT2V  var (Temp (temp_count,(type2BasicType type_))) (step)])
+      OpAssign    -> (addTACList (generateExpr env (type2BasicType type_) expr) [AssignT2V  var (Temp (undefined,(type2BasicType type_))) (step)])
       _           -> generateAssign (binaryExpr (addTACList (generateExpr env (type2BasicType type_) expr) [AssignV2T (Temp (temp_count,(type2BasicType type_))) var (step)]) type_ op1) type_ id OpAssign undefined step
                       where op1 = case op of 
                                     OpOr        -> BOpOr
@@ -238,7 +238,7 @@ module ThreeAddressCode where
                                     OpModulo    -> BOpModulo    
                                     OpPower     -> BOpPower     
   generateAssign env@(program, temp_count, variables,labels,scope) type_ id@(PIdent (pos,name)) op (expr:rest) step = 
-    (generateAssign (addTACList (generateExpr env (type2BasicType type_) expr) [AssignT2V  var (Temp (temp_count,(type2BasicType type_))) step]) type_ id op rest (step+(sizeOf type_)))
+    (generateAssign (addTACList (generateExpr env (type2BasicType type_) expr) [AssignT2V  var (Temp (undefined,(type2BasicType type_))) step]) type_ id op rest (step+(sizeOf type_)))
       where (env1@(_, _, new_variables,_,_), var) = findVar env (Var (name,pos,type_))
 
 
