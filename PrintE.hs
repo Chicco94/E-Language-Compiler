@@ -324,11 +324,9 @@ instance Show TAC where
     AssignFalseTemp temp val             -> "\t" ++ show temp  ++ " = bool "   ++ show val ++ "\n"
     AssignFloatTemp temp val             -> "\t" ++ show temp  ++ " = float "  ++ show val ++ "\n"
             
-    AssignT2V       var  temp            -> "\t" ++ show var  ++ " = " ++ show temp ++ "\n"
-    AssignT2A       var  temp pos        -> "\t" ++ show var  ++ "[" ++ show pos ++ "] = " ++ show temp ++ "\n"
+    AssignT2V       var  temp pos        -> "\t" ++ show var  ++ (if pos /= -1 then "[" ++ show pos ++ "] = " else show " = ") ++ show temp ++ "\n"
     AssignT2T       tmp1 tmp2            -> "\t" ++ show tmp1 ++ " = " ++ show tmp2 ++ "\n"
-    AssignV2T       temp var             -> "\t" ++ show temp ++ " = " ++ show var  ++ "\n"
-    AssignV2V       var1 var2            -> "\t" ++ show var1 ++ " = " ++ show var2 ++ "\n"
+    AssignV2T       temp var  pos        -> "\t" ++ show temp ++ (if pos /= -1 then "[" ++ show pos ++ "] = " else show " = ") ++ show var  ++ "\n"
     AssignT2P       temp                 -> "\t" ++ "param_"  ++ show temp ++ "\n"
     
     BinOp BOpPlus      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2  ++ "\n"

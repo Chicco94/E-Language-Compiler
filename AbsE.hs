@@ -228,11 +228,9 @@ data TAC
   | AssignFalseVar  Var  PFalse
   | AssignFloatVar  Var  PFloat
 
-  | AssignT2V Var  Temp
-  | AssignT2A Var  Temp  Int
+  | AssignT2V Var  Temp  Int
   | AssignT2T Temp Temp
-  | AssignV2T Temp Var
-  | AssignV2V Var  Var
+  | AssignV2T Temp Var   Int
   | AssignT2P Temp
 
   | BinOp  BinaryOperator  Temp Temp Temp
