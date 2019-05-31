@@ -109,16 +109,8 @@ module ThreeAddressCode where
       
       -- switch case del default prendo solo il primo
       StmtSwitchCase expr norm_cases ((CaseDefault dflt_stms):_) -> do
-        let env1 = (addTACList env [Goto (Label ("case_conditions",labels) )])
-        -- normcases   -> stmts + jump_to_end
-        let env2 = generateCases env1 type_ norm_cases (Label ("end_case",labels) )
-        let env3 = addTACList (generateStmt (addTACList env2 [Lbl (Label ("match_dflt", labels) )]) type_ (SComp dflt_stms)) [Goto (Label ("end_case",scope) )]
-        let (program4, temp_count4, variables4, labels4, _) = addTACList env3 [Lbl (Label ("case_conditions", labels) )]
-        let env5 = generateCasesCond (program4, temp_count4, variables4, labels4,scope) expr type_ norm_cases
-        -- condition jump
-        let env6 = addTACList env5 [Goto (Label ("match_dflt",labels) )]
-        -- end case
-        addTACList env6 [Lbl (Label ("end_case", labels) )]
+        let (program4, temp_count4, variables4, labels4, scope4) = addTACList (addTACList (generateStmt (addTACList (generateCases ((addTACList env [Goto (Label ("case_conditions",labels) )])) type_ norm_cases (Label ("end_case",labels) )) [Lbl (Label ("match_dflt", labels) )]) type_ (SComp dflt_stms)) [Goto (Label ("end_case",scope) )]) [Lbl (Label ("case_conditions", labels) )]
+        addTACList (addTACList (generateCasesCond (program4, temp_count4, variables4, labels,scope) expr type_ norm_cases) [Goto (Label ("match_dflt",labels) )]) [Lbl (Label ("end_case", labels) )]
       
       -- break stmt
       StmtBreak break -> addTACList env [Goto (Label ("end_stmt",scope-1) )]
@@ -151,7 +143,7 @@ module ThreeAddressCode where
   generateCasesCond :: Env -> Expr -> Type -> [NormCase] -> Env
   generateCasesCond env _ _ [] = env 
   generateCasesCond env@(program, temp_count, variables, labels, scope) expr_v type_ ((CaseNormal expr _):rest) = do
-    let (program, temp_count, variables, labels, scope) = (binaryExpr (generateExpr (generateExpr env type_ expr_v) type_ expr) type_ BOpEq) 
+    let (program, temp_count, variables, labels, scope) = (booleanExpr (generateExpr (generateExpr env type_ expr_v) type_ expr) type_ BOpEq) 
     generateCasesCond ([If (head program) (Label ("match_", labels)) ]++(drop 1 program), temp_count, variables, labels+1, scope) expr_v type_ rest 
     
   
