@@ -160,7 +160,7 @@ module ThreeAddressCode where
           where (env1@(_, _, new_variables,_,_), var@(Var (_,_,type_v))) = findVar env (Var (name,pos,undefined))
         ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing step)))  -> (addTACList env1 [AssignV2T   (Temp (temp_count,type_v)) var ((pInt2Int step)*(sizeOf type_))]) 
           where (env1@(_, _, new_variables,_,_), var@(Var (_,_,type_v))) = findVar env (Var (name,pos,undefined))
-        ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrMul a step))) -> (addTACList env1 [AssignV2T   (Temp (temp_count,type_v)) var ((getStep a (pInt2Int step) (type2Dims type_v))*(sizeOf type_))]) 
+        ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrMul a step))) -> (addTACList env1 [AssignV2T   (Temp (temp_count,type_v)) var ((getStep a (pInt2Int step) (reverse (type2Dims type_v)))*(sizeOf type_))]) 
           where (env1@(_, _, new_variables,_,_), var@(Var (_,_,type_v))) = findVar env (Var (name,pos,undefined))
             
         ExprInt      val         -> ([AssignIntTemp   (Temp (temp_count,(TypeBasicType TypeInt)   )) val] ++ program, (temp_count+1), variables, labels, scope)
@@ -297,6 +297,6 @@ module ThreeAddressCode where
 
   getStep :: AExpr -> Int -> [PInteger] -> Int
   getStep a int (dim:rest) = case a of
-    (ArrSing step)          -> int+((pInt2Int step)*(pInt2Int dim))
+    (ArrSing step)   -> int+((pInt2Int step)*(pInt2Int dim))
     (ArrMul a1 step) -> (getStep a1 (int+((pInt2Int step)*(pInt2Int dim))) rest)
    
