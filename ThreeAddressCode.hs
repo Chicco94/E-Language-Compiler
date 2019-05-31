@@ -87,7 +87,7 @@ module ThreeAddressCode where
           (ExprSimple (ExprFloat  val))             -> (addTACList  env1 [AssignFloatVar  var val])
           (ExprSimple (ExprTrue   val))             -> (addTACList  env1 [AssignTrueVar   var val])
           (ExprSimple (ExprFalse  val))             -> (addTACList  env1 [AssignFalseVar  var val])
-          (ExprArray  expr)                         -> (arrayAssign env1 (getGuardType guard) id OpAssign expr 0)
+          (ExprArray  expr)                         -> (arrayAssign env1 (getGuardType guard) id OpAssign (complex2SimpleExpr expr) 0)
           -- effettivo assegnamento con espressione complessa a destra
           (ExprSimple expr_int)                     -> generateAssign (generateExpr env1 (getGuardType guard) expr_int) (getGuardType guard) id OpAssign
       
@@ -228,18 +228,17 @@ module ThreeAddressCode where
                                     OpPower     -> BOpPower     
   
   
-  -- todo flat [complexexpr]
-  arrayAssign :: Env -> Type -> PIdent -> AssignOperator -> [ComplexExpr] -> Int -> Env
+  arrayAssign :: Env -> Type -> PIdent -> AssignOperator -> [Expr] -> Int -> Env
   arrayAssign env _ _ _ [] _ = env
-  arrayAssign env@(program, temp_count, variables,labels,scope) type_ id@(PIdent (pos,name)) op ((ExprSimple expr):rest) step = do
+  arrayAssign env@(program, temp_count, variables,labels,scope) type_ id@(PIdent (pos,name)) op (expr:rest) step = do
     let (env1@(_, _, new_variables,_,_), var) = findVar env (Var (name,pos,type_))
+    let 
     (arrayAssign (addTACList (generateExpr env (type2BasicType type_) expr) [AssignT2A  var (Temp (temp_count,(type2BasicType type_))) (step*dim)]) type_ id op rest (step+1))
       where dim = case (type2BasicType type_) of 
-                  (TypeBasicType TypeBool  ) -> 1
+                  (TypeBasicType TypeBool  ) -> 1 -- vado a botte di parole
                   (TypeBasicType TypeFloat ) -> 4
                   (TypeBasicType TypeInt   ) -> 4
                   (TypeBasicType TypeChar  ) -> 1
-                  (TypeBasicType TypeString) -> 1
 
   -- DeclFun LExpr [Arg] Guard CompStmt
   generateDeclFunc :: Env -> LExpr -> [Arg] -> Guard -> CompStmt -> Env
@@ -260,6 +259,11 @@ module ThreeAddressCode where
   type2BasicType (TypeBasicType t) = (TypeBasicType t)
   type2BasicType (TypeCompoundType (CompoundTypeArrayType (ArrDefBase _ t))) = (TypeBasicType t)
   --type2BasicType (TypeCompoundType (CompoundTypeArrayType (ArrDefPtr  _ t))) = t
+
+  complex2SimpleExpr :: [ComplexExpr] -> [Expr]
+  complex2SimpleExpr [] = []
+  complex2SimpleExpr ((ExprSimple expr): rest) = expr : (complex2SimpleExpr rest)
+  complex2SimpleExpr ((ExprArray  expr): rest) = (complex2SimpleExpr expr)++(complex2SimpleExpr rest)
   
   -- use temp variables as parameters
   generateCallFunc :: Env -> PIdent -> [Expr] -> Type -> Env
