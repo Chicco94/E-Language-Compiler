@@ -338,6 +338,11 @@ instance Show TAC where
     BinOp BOpModulo    tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " %% " ++ show temp2 ++ "\n"
     BinOp BOpPower     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " ^ " ++ show temp2  ++ "\n"
 
+    UnaryOp UOpMinus         temp1 temp2 -> "\t" ++ show temp1 ++ " = 0 - " ++ show temp2 ++ "\n"       
+    UnaryOp UOpPlus          temp1 temp2 -> "\t" ++ show temp1 ++ " = 0 + " ++ show temp2 ++ "\n"
+    UnaryOp UOpNegate        temp1 temp2 -> "\t" ++ show temp1 ++ " = not " ++ show temp2 ++ "\n"
+    UnaryOp UOpDeref         temp1 temp2 -> "\t" ++ show temp1 ++ " = &" ++ show temp2 ++ "\n"
+
     BoolOp BOpOr             temp1 temp2 -> show temp1 ++ " or "                  ++ show temp2
     BoolOp BOpAnd            temp1 temp2 -> show temp1 ++ " and "                 ++ show temp2
     BoolOp BOpLt             temp1 temp2 -> show temp1 ++ " less_than "           ++ show temp2

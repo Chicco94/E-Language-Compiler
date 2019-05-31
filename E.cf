@@ -79,7 +79,7 @@ SComp.          Stmt ::= CompStmt ;
 
 StmtIfThenElse. Stmt     ::= "if" "(" Expr ")" CompStmt "else" CompStmt ;
 StmtIfThen.     Stmt     ::= "if" "(" Expr ")" CompStmt ;
-StmtSwitchCase.    Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
+StmtSwitchCase. Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
 CaseNormal.     NormCase ::= "match" Expr CompStmt ;
 CaseDefault.    DfltCase ::= "match _" CompStmt ;
 separator NormCase "" ;

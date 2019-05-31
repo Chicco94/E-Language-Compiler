@@ -234,7 +234,7 @@ data TAC
   | AssignT2P Temp
 
   | BinOp  BinaryOperator  Temp Temp Temp
-  | UnaryOp UnaryOp Temp Temp
+  | UnaryOp UnaryOperator Temp Temp
   | BoolOp BinaryOperator Temp Temp
 
   | FuncDef Var
@@ -268,9 +268,12 @@ data BinaryOperator
   | BOpNeq
   deriving (Eq, Ord, Read)
 
-data UnaryOp
+data UnaryOperator
 -- Assign
   = UOpMinus
+  | UOpPlus
 -- Logical
   | UOpNegate
+-- Address
+  | UOpDeref
   deriving (Eq, Ord, Show, Read)

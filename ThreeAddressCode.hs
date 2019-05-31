@@ -88,6 +88,7 @@ module ThreeAddressCode where
           (ExprSimple (ExprFloat  val))             -> (addTACList  env1 [AssignFloatVar  var val])
           (ExprSimple (ExprTrue   val))             -> (addTACList  env1 [AssignTrueVar   var val])
           (ExprSimple (ExprFalse  val))             -> (addTACList  env1 [AssignFalseVar  var val])
+          -- assegnamento di un array
           (ExprArray  expr)                         -> (generateAssign env1 (getGuardType guard) id OpAssign (complex2SimpleExpr expr) 0)
           -- effettivo assegnamento con espressione complessa a destra
           (ExprSimple expr_int)                     -> (generateAssign env1 (getGuardType guard) id OpAssign [expr_int] (-1))
@@ -150,7 +151,7 @@ module ThreeAddressCode where
   generateExpr :: Env -> Type -> Expr -> Env
   generateExpr env@(program, temp_count, variables,labels,scope) type_ expr = do
     case expr of
-        -- assign expression to variable
+        -- assign
         ExprAssign   (LExprId id) op re                                -> generateAssign env type_ id op [re] (-1)
         ExprAssign   (LExprArr (LArrExpr id (ArrSing step ))) op re    -> generateAssign env type_ id op [re] ((pInt2Int step)*(sizeOf type_))
         --ExprAssign   (LExprArr (LArrExpr id (ArrMul a step))) op re    -> generateAssign env type_ id op re ((pInt2Int step)*(sizeOf type_))
@@ -169,29 +170,37 @@ module ThreeAddressCode where
     
         ExprFunCall  fun params  -> (generateCallFunc env fun params type_) 
 
+        -- unary
+        ExprBoolNot   expr       -> unaryExpr (generateExpr env type_ expr) type_ UOpNegate
+        ExprNegation  expr       -> unaryExpr (generateExpr env type_ expr) type_ UOpMinus
+        ExprAddition  expr       -> unaryExpr (generateExpr env type_ expr) type_ UOpPlus
+
+        -- deref
+        --ExprReference (LExprId id@(PIdent (pos,name)))                            -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref
+        --ExprReference (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing step))) -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref
+        --ExprReference (LExprId id@(PIdent (pos,name))) -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref
+        
+        -- arithmetic
         ExprPower    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPower
         ExprMul      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMul
         ExprFloatDiv expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpFloatDiv
         ExprIntDiv   expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpIntDiv
         ExprReminder expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpRemainder
         ExprModulo   expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpModulo
-  
         ExprPlus     expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPlus
         ExprMinus    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMinus
   
+        -- boolean
         ExprLt       expr1 expr2 -> booleanExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpLt  
         ExprGt       expr1 expr2 -> booleanExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpGt  
         ExprLtEq     expr1 expr2 -> booleanExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpLtEq
         ExprGtEq     expr1 expr2 -> booleanExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpGtEq
         ExprEq       expr1 expr2 -> booleanExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpEq  
         ExprNeq      expr1 expr2 -> booleanExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpNeq 
-
-        
         ExprOr       expr1 expr2 -> do--binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpOr
           let (program1, temp_count1, variables1, labels1,_) = (generateExpr env type_ expr1)
           let (program2, temp_count2, variables2, labels2,_) = (generateExpr ([If      (head program1) (Label ("true_or"  , labels1) )]++(drop 1 program1),temp_count1, variables1, labels1+1,scope) type_ expr2)
           ([(BoolOp BOpEq (Temp (temp_count2,(TypeBasicType TypeBool))) (TempT (PTrue ((0,0),"true")))), Lbl (Label ("end_or" ,labels1)),AssignTrueTemp  (Temp (temp_count2,(TypeBasicType TypeBool))) (PTrue ((0,0),"true")),  Lbl (Label ("true_or",  labels1) ),Goto (Label ("end_or", labels1) ),AssignFalseTemp (Temp (temp_count2,(TypeBasicType TypeBool))) (PFalse ((0,0),"false")), If      (head program2) (Label ("true_or"  , labels1) )]++(drop 1 program2),temp_count2+1, variables2, labels2+1,scope)
-        
         ExprAnd      expr1 expr2 -> do --binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpAnd
           let (program1, temp_count1, variables1, labels1,_) = (generateExpr env type_ expr1)
           let (program2, temp_count2, variables2, labels2,_) = (generateExpr ([IfFalse (head program1) (Label ("false_and", labels1) )]++(drop 1 program1),temp_count1, variables1, labels1+1,scope) type_ expr2)
@@ -201,10 +210,13 @@ module ThreeAddressCode where
 
   -- Build the binary operator using the last two temporaneus variable
   binaryExpr :: Env -> Type -> BinaryOperator -> Env
-  binaryExpr env@(program, temp_count, variables,labels,scope) type_ op  = ([BinOp  op (Temp (temp_count,type_)) (Temp (temp_count-2,type_)) (Temp (temp_count-1,type_))] ++ program, (temp_count+1), variables,labels,scope)
+  binaryExpr env@(program, temp_count, variables,labels,scope) type_ op  = ([BinOp   op (Temp (temp_count,type_))   (Temp (temp_count-2,type_)) (Temp (temp_count-1,type_))] ++ program, (temp_count+1), variables,labels,scope)
   
+  unaryExpr  :: Env -> Type -> UnaryOperator -> Env
+  unaryExpr  env@(program, temp_count, variables,labels,scope) type_ op  = ([UnaryOp op (Temp (temp_count-1,type_)) (Temp (temp_count,type_))  ]++program, (temp_count+1), variables, labels, scope)
+
   booleanExpr :: Env -> Type -> BinaryOperator -> Env
-  booleanExpr env@(program, temp_count, variables,labels,scope) type_ op = ([BoolOp op (Temp (temp_count-2,type_)) (Temp (temp_count-1,type_))]++program, (temp_count+1), variables, labels, scope)
+  booleanExpr env@(program, temp_count, variables,labels,scope) type_ op = ([BoolOp  op (Temp (temp_count-2,type_)) (Temp (temp_count-1,type_))]++program, (temp_count+1), variables, labels, scope)
   
   --StmtAssign LExpr AssignOperator Expr
   generateAssign :: Env -> Type -> PIdent -> AssignOperator -> [Expr] -> Int -> Env
@@ -239,7 +251,7 @@ module ThreeAddressCode where
   -- use temp variables as parameters
   generateCallFunc :: Env -> PIdent -> [Expr] -> Type -> Env
   generateCallFunc  env@(program, temp_count, variables,labels,scope) (PIdent (pos, name)) params type_ = do
-    let (_, var)              = findVar env (Var (name,pos,type_)) -- prendo il tipo della funzione
+    let (_, var)    = findVar env (Var (name,pos,type_)) -- prendo il tipo della funzione
     (addTACList (generateParams env params) [FuncCall var (Temp (temp_count,type_))])
   
   generateParams :: Env -> [Expr] -> Env
@@ -264,7 +276,7 @@ module ThreeAddressCode where
   type2BasicType :: Type -> Type
   type2BasicType (TypeBasicType t) = (TypeBasicType t)
   type2BasicType (TypeCompoundType (CompoundTypeArrayType (ArrDefBase _ t))) = (TypeBasicType t)
-  --type2BasicType (TypeCompoundType (CompoundTypeArrayType (ArrDefPtr  _ t))) = t
+  type2BasicType (TypeCompoundType (CompoundTypePtr       (Pointer  t)))     = (TypeBasicType t)
 
   complex2SimpleExpr :: [ComplexExpr] -> [Expr]
   complex2SimpleExpr [] = []
