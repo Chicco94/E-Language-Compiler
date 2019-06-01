@@ -234,10 +234,12 @@ data TAC
   | FuncDef Var
   | FuncCall Var Temp
   | Return Temp
+  | EndFunction
   | Goto Label
   | Lbl Label
   | If TAC Label
   | IfFalse TAC Label
+  | Empty
   deriving (Eq, Ord, Read)
 
 data BinaryOperator

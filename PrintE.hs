@@ -306,7 +306,8 @@ instance Show TAC where
   show t = case t of
     {-mettere \n dopo return-}
     FuncDef (Var (name,pos@(row,col),type_))       -> "\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\tFunction:\n\tType: " ++ show type_ ++ "\n\tStatements:\n"
-    Return  temp                                   -> "\treturn_" ++ show temp ++"\n\tEnd Function\n\n"
+    Return  temp                                   -> "\treturn_" ++ show temp ++"\n"
+    EndFunction                                    -> "\tEnd Function\n\n"
     FuncCall (Var (name,pos@(row,col),type_)) temp -> "\t" ++ show temp ++ " = " ++ show type_ ++ " call " ++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col++"\n"
 
 
