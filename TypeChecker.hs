@@ -609,23 +609,47 @@ module TypeChecker where
       Ok funDef@(mods,t) -> 
         if length args == length mods --
           then do
-            case checkFunCallArgs (env, prog) pident mods args of
+            case checkFunCallArgs env pident mods args of
               Ok _  -> Ok (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr (ExprFunCall pident args))))]) prog)
               Bad s -> fail s
           else fail $ show p ++ ": function " ++ printTree ident ++ " doesn't match the numerosity of its parameters"
       _                  -> fail $ show p ++ ": function " ++ printTree ident ++ " is not defined" 
   
-  checkFunCallArgs :: (Env, [Program]) -> PIdent -> [(Modality, Type)] -> [Expr] -> Err String
-  checkFunCallArgs (env, prog) _ [] [] = Ok "fun call arguments are ok"
-  checkFunCallArgs (env, prog) pident@(PIdent (p, ident)) (x@(mod,tdecl):xs) (expr:exprs) = do
+  checkFunCallArgs :: Env -> PIdent -> [(Modality, Type)] -> [Expr] -> Err String
+  checkFunCallArgs env _ [] [] = Ok "fun call arguments are ok"
+  checkFunCallArgs env@(sig, blocks) pident@(PIdent (p, ident)) (x@(mod,tdecl):xs) (expr:exprs) = do
     targ <- inferExpr env expr
+    --fail $ "|targ| = " ++ show (length (getBoundsFromType targ)) ++ " |tdecl| = " ++ show (length (getBoundsFromType tdecl))
     if ((getInitLevel expr) + (getTypeLevel targ)) == (getTypeLevel tdecl)
      then do
        if (getInnerType targ) `isCompatibleWith` (getInnerType tdecl)
          then do
-           if (getBoundsFromType targ) `areConsistentWithBounds` (getBoundsFromType tdecl)
-             then checkFunCallArgs (env, prog) pident xs exprs
-             else fail $ show (getExprPosition expr) ++ ": expression argument " ++ printTree expr ++ " has bounds " ++ show (getBoundsFromType targ) ++ ", but the declaration of function " ++ printTree ident ++ " requires to have bounds " ++ show (getBoundsFromType tdecl)
+           case expr of
+             ExprLeft lexpr -> do
+               case lookupVar blocks (findLExprName lexpr) of
+                 Ok (m,t) -> do
+                   if (length (getBoundsFromType targ)) == (length (getBoundsFromType t))
+                     then checkFunCallArgs env pident xs exprs
+                     else fail $ show p ++ ": function " ++ show ident ++ " is called with argument " ++ printTree lexpr ++ " that has bounds " ++ show (getBoundsFromType targ) ++ " but the definition of such argument requires to have bounds " ++ show (getBoundsFromType t)
+                 _    -> fail $ show p ++ ": variable " ++ show ident ++ " is not declared"
+             _ -> do checkFunCallArgs env pident xs exprs
+            
+          {-  case lookupVar blocks (findLExprName (ExprLeft expr)) of
+             Ok (m,t) -> do
+               if (getBoundsFromType targ) `areConsistentWithBounds` (getBoundsFromType t)
+                 then checkFunCallArgs env pident xs exprs
+                 else fail $ "1 |targ| = " ++ show ((getBoundsFromType targ)) ++ " |t| = " ++ show ((getBoundsFromType t))
+             _    -> fail $ show p ++ ": variable " ++ show ident ++ " is not declared" -}
+           --if (getBoundsFromType targ) `areConsistentWithBounds` (getBoundsFromType tdecl)
+             --then do
+               --if (length (getBoundsFromType targ)) == (length (getBoundsFromType tdecl)) 
+                 --then checkFunCallArgs env pident xs exprs
+                 --else fail $ "1 |targ| = " ++ show ((getBoundsFromType targ)) ++ " |tdecl| = " ++ show ((getBoundsFromType tdecl))
+             --then checkFunCallArgs (env, prog) pident xs exprs
+  {- if (getNumberOfArgsFromArrayAccess aexpr) == (length (getBoundsFromPInts pints))
+                      then Ok tid
+                      else fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " (i.e., " ++ show (length (getBoundsFromPInts pints)) ++ " indices), but you are trying to access an element of such array through " ++ show (getNumberOfArgsFromArrayAccess aexpr) ++ " indices" -}
+             --else fail $ show (getExprPosition expr) ++ ": expression argument " ++ printTree expr ++ " has bounds " ++ show (getBoundsFromType targ) ++ ", but the declaration of function " ++ printTree ident ++ " requires to have bounds " ++ show (getBoundsFromType tdecl)
        else fail $ show (getExprPosition expr) ++ ": expression argument " ++ printTree expr ++ " has type " ++ printTree targ ++ " but the declaration of the function requires to have type " ++ printTree tdecl
      else do
        if ((getInitLevel expr) + (getTypeLevel targ)) < (getTypeLevel tdecl)
@@ -690,18 +714,20 @@ module TypeChecker where
       ExprAnd e1 e2      -> inferBoolBinOp env expr e1 e2
       ExprOr e1 e2       -> inferBoolBinOp env expr e1 e2
       _ -> fail $ "inferExpr: fatal error"
-    
   
   -- Infer function call.
   inferFunCall :: Env -> Expr -> Err Type
-  inferFunCall env@(sig, blocks) (ExprFunCall (PIdent pident@(p,ident)) args) = do
+  inferFunCall env@(sig, blocks) (ExprFunCall pident@(PIdent (p,ident)) args) = do
     case lookupFun sig ident of
       Ok (mods,t) -> do
         if length args == length mods -- TODO: I suppose it is not necessary to do this check because we are just inferring the type, think about it
-          then Ok t
+          --then Ok t
+          then do
+            case checkFunCallArgs env pident mods args of
+              Ok _  -> Ok t
+              Bad s -> fail s 
           else fail $ show p ++ ": function " ++ printTree ident ++ " is declared with " ++ show (length mods) ++ " parameters, passing " ++ show (length args) ++ " arguments to the function is not wise"
       _ -> fail $ show p ++ ": function " ++ printTree ident ++ " not defined" 
-  
   
   getBoundsFromType :: Type -> [Int]
   getBoundsFromType t =
@@ -710,11 +736,16 @@ module TypeChecker where
       TypeCompoundType (CompoundTypeArrayType (ArrDefPtr pints _))  -> getBoundsFromPInts pints
       _                                                             -> []
   
-  getBoundsFromArrayAccess :: AExpr -> [Int]
-  getBoundsFromArrayAccess aexpr =
+  --getBoundsFromArrayAccess :: AExpr -> [Int]
+  --getBoundsFromArrayAccess aexpr =
+  --  case aexpr of
+  --    ArrSing pint@(PInteger (p, int))      -> [read int :: Int]
+  --    ArrMul aexpr pint@(PInteger (p, int)) -> getBoundsFromArrayAccess aexpr ++ [read int :: Int]
+  getNumberOfArgsFromArrayAccess :: AExpr -> Int
+  getNumberOfArgsFromArrayAccess aexpr =
     case aexpr of
-      ArrSing pint@(PInteger (p, int))      -> [read int :: Int]
-      ArrMul aexpr pint@(PInteger (p, int)) -> getBoundsFromArrayAccess aexpr ++ [read int :: Int]
+      ArrSing _ -> 1
+      ArrMul ae _ -> getNumberOfArgsFromArrayAccess ae + 1
   
   areConsistentWithBounds :: [Int] -> [Int] -> Bool
   areConsistentWithBounds [] [] = True
@@ -740,13 +771,13 @@ module TypeChecker where
               TypeCompoundType (CompoundTypeArrayType t) -> do
                 case t of
                   ArrDefBase pints _ -> do
-                    case (getBoundsFromArrayAccess aexpr) `areConsistentWithBounds` (getBoundsFromPInts pints) of
-                      True  -> Ok tid
-                      False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ ", accessing an element outside these bounds is not allowed"
-                  ArrDefPtr pints _ -> do 
-                    case (getBoundsFromArrayAccess aexpr) `areConsistentWithBounds` (getBoundsFromPInts pints) of
-                      True  -> Ok tid
-                      False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ ", accessing an element outside these bounds is not allowed"
+                    if (getNumberOfArgsFromArrayAccess aexpr) == (length (getBoundsFromPInts pints))
+                      then Ok tid
+                      else fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " (i.e., " ++ show (length (getBoundsFromPInts pints)) ++ " indices), but you are trying to access an element of such array through " ++ show (getNumberOfArgsFromArrayAccess aexpr) ++ " indices" 
+                  ArrDefPtr pints _ -> do
+                    if (getNumberOfArgsFromArrayAccess aexpr) == (length (getBoundsFromPInts pints))
+                      then Ok tid
+                      else fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " (i.e., " ++ show (length (getBoundsFromPInts pints)) ++ " indices), but you are trying to access an element of such array through " ++ show (getNumberOfArgsFromArrayAccess aexpr) ++ " indices" 
               _                                -> fail $ "inferLExpr: tid not typecompound"
           _ -> fail $ show p ++ ": variable " ++ printTree ident ++ " not defined"
   

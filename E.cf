@@ -79,7 +79,7 @@ SComp.          Stmt ::= CompStmt ;
 
 StmtIfThenElse. Stmt     ::= "if" "(" Expr ")" CompStmt "else" CompStmt ;
 StmtIfThen.     Stmt     ::= "if" "(" Expr ")" CompStmt ;
-StmtSwitchCase. Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
+StmtSwitchCase.    Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
 CaseNormal.     NormCase ::= "match" Expr CompStmt ;
 CaseDefault.    DfltCase ::= "match _" CompStmt ;
 separator NormCase "" ;
@@ -115,10 +115,8 @@ LRefExpr.       Ref   ::= "*" LExpr;
 --LArrExpr.       Arr   ::= PIdent "[" Expr "]"; -- Changing PIdent with LExpr => +2 s/r conflicts
 LArrExpr. Arr ::= PIdent "[" AExpr "]" ;         -- How we access an array element.
 
-ArrSing. AExpr ::= PInteger ;
-ArrMul.  AExpr ::= AExpr "," PInteger ;
---coercions LExpr 1;
---_. LExpr ::= "(" LExpr ")" ;
+ArrSing. AExpr ::= Expr ;
+ArrMul.  AExpr ::= AExpr "," Expr ;
 
 -- (Right) Expressions
 ExprLeft.     Expr17 ::= LExpr ;
@@ -136,7 +134,7 @@ ExprBoolNot.  Expr14  ::= "!" Expr15 ;
 ExprNegation. Expr14  ::= "-" Expr15 ;
 ExprAddition. Expr14  ::= "+" Expr15 ;
 
-ExprPower.    Expr13 ::= Expr14 "^"  Expr13 ;
+ExprPower.    Expr13 ::= Expr14 "**"  Expr13 ;
 
 ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
 ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
@@ -181,7 +179,7 @@ OpIntDiv.     AssignOperator ::= "//=" ;
 OpFloatDiv.   AssignOperator ::= "/=" ;
 OpRemainder.  AssignOperator ::= "%=" ;
 OpModulo.     AssignOperator ::= "%%=" ;
-OpPower.      AssignOperator ::= "^=" ;
+OpPower.      AssignOperator ::= "**=" ;
 
 
 rules Type ::= BasicType | CompoundType ;
