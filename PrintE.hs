@@ -213,7 +213,7 @@ instance Print Expr where
     ExprBoolNot expr -> prPrec i 14 (concatD [doc (showString "!"), prt 15 expr])
     ExprNegation expr -> prPrec i 14 (concatD [doc (showString "-"), prt 15 expr])
     ExprAddition expr -> prPrec i 14 (concatD [doc (showString "+"), prt 15 expr])
-    ExprPower expr1 expr2 -> prPrec i 13 (concatD [prt 14 expr1, doc (showString "**"), prt 13 expr2])
+    ExprPower expr1 expr2 -> prPrec i 13 (concatD [prt 14 expr1, doc (showString "^"), prt 13 expr2])
     ExprMul expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "*"), prt 13 expr2])
     ExprFloatDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "/"), prt 13 expr2])
     ExprIntDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "//"), prt 13 expr2])
@@ -264,7 +264,7 @@ instance Print AssignOperator where
     OpFloatDiv -> prPrec i 0 (concatD [doc (showString "/=")])
     OpRemainder -> prPrec i 0 (concatD [doc (showString "%=")])
     OpModulo -> prPrec i 0 (concatD [doc (showString "%%=")])
-    OpPower -> prPrec i 0 (concatD [doc (showString "**=")])
+    OpPower -> prPrec i 0 (concatD [doc (showString "^=")])
 
 instance Print Type where
   prt i e = case e of

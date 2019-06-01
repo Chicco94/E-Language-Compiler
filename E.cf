@@ -21,7 +21,7 @@ terminator Decl "" ;
 --terminator AnnotatedDecl "";
 
 
--- An annotated declaration is a declaration.
+-- An annotated declaration is a declaration. Using the 'internal' keyword will force the parser to ignore such rule, and we use it to print the annotated tree.
 internal TypedDecl. Decl ::= AnnotatedDecl ;
 
 

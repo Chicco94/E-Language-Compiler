@@ -180,20 +180,17 @@ data AssignOperator
     | OpModulo
     | OpPower
   deriving (Eq, Ord, Show, Read)
-
+  
 data Type = TypeBasicType BasicType | TypeCompoundType CompoundType
   deriving (Eq, Ord, Read)
 
-data BasicType
-    = TypeBool | TypeFloat | TypeInt | TypeVoid | TypeChar | TypeString
+data BasicType = TypeBool | TypeFloat | TypeInt | TypeVoid | TypeChar | TypeString
   deriving (Eq, Ord, Read)
 
-data CompoundType
-    = CompoundTypeArrayType ArrayType | CompoundTypePtr Ptr
+data CompoundType = CompoundTypeArrayType ArrayType | CompoundTypePtr Ptr
   deriving (Eq, Ord, Read)
 
-data ArrayType
-    = ArrDefBase [PInteger] BasicType | ArrDefPtr [PInteger] Ptr
+data ArrayType = ArrDefBase [PInteger] BasicType | ArrDefPtr [PInteger] Ptr
   deriving (Eq, Ord, Read)
 
 data Ptr = Pointer BasicType | Pointer2Pointer Ptr

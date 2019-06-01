@@ -212,7 +212,7 @@ module ThreeAddressCode where
     let (env1@(_, _, new_variables,_,_), var) = findVar env (Var (name,pos,type_))
     case op of
       OpAssign    -> (addTACList (generateExpr env (type2BasicType type_) expr) [AssignT2V  var last_temp (step)])
-      _           -> generateAssign (binaryExpr (addTACList (generateExpr env (type2BasicType type_) expr) [AssignV2T (Temp (t_c+1,(type2BasicType type_))) var (step)]) type_ op1) type_ id OpAssign undefined step
+      _           -> generateAssign (binaryExpr (addTACList (generateExpr env (type2BasicType type_) expr) [AssignV2T (Temp (t_c+1,(type2BasicType type_))) var (step)]) type_ op1) type_ id OpAssign [] step
                       where op1 = case op of 
                                     OpOr        -> BOpOr
                                     OpAnd       -> BOpAnd       
@@ -305,6 +305,29 @@ module ThreeAddressCode where
   getPointerFromType :: Type -> Type
   -- TODO aggiungere tutti gli altri tipi
   getPointerFromType (TypeBasicType t) = (TypeCompoundType (CompoundTypePtr (Pointer t)))
+  getPointerFromType (TypeCompoundType (CompoundTypePtr p)) = (TypeCompoundType (CompoundTypePtr (Pointer2Pointer p)))
+  getPointerFromType (TypeCompoundType (CompoundTypeArrayType (ArrDefBase _ t))) = (TypeCompoundType (CompoundTypePtr (Pointer t)))
+  getPointerFromType (TypeCompoundType (CompoundTypeArrayType (ArrDefPtr _ p))) = (TypeCompoundType (CompoundTypePtr (Pointer2Pointer p)))
+{-
+data Type = TypeBasicType BasicType | TypeCompoundType CompoundType
+  deriving (Eq, Ord, Read)
+
+data BasicType = TypeBool | TypeFloat | TypeInt | TypeVoid | TypeChar | TypeString
+  deriving (Eq, Ord, Read)
+
+data CompoundType = CompoundTypeArrayType ArrayType | CompoundTypePtr Ptr
+  deriving (Eq, Ord, Read)
+
+data ArrayType = ArrDefBase [PInteger] BasicType | ArrDefPtr [PInteger] Ptr
+  deriving (Eq, Ord, Read)
+
+data Ptr = Pointer BasicType | Pointer2Pointer Ptr
+  deriving (Eq, Ord, Read)
+
+-}
+
+
+
 
   sizeOf :: Type -> Int
   sizeOf type_ = case (type2BasicType type_) of 

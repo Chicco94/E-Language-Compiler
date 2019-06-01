@@ -213,7 +213,7 @@ instance Print Expr where
     ExprBoolNot expr -> prPrec i 14 (concatD [doc (showString "!"), prt 15 expr])
     ExprNegation expr -> prPrec i 14 (concatD [doc (showString "-"), prt 15 expr])
     ExprAddition expr -> prPrec i 14 (concatD [doc (showString "+"), prt 15 expr])
-    ExprPower expr1 expr2 -> prPrec i 13 (concatD [prt 14 expr1, doc (showString "^"), prt 13 expr2])
+    ExprPower expr1 expr2 -> prPrec i 13 (concatD [prt 14 expr1, doc (showString "**"), prt 13 expr2])
     ExprMul expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "*"), prt 13 expr2])
     ExprFloatDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "/"), prt 13 expr2])
     ExprIntDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "//"), prt 13 expr2])
@@ -264,7 +264,7 @@ instance Print AssignOperator where
     OpFloatDiv -> prPrec i 0 (concatD [doc (showString "/=")])
     OpRemainder -> prPrec i 0 (concatD [doc (showString "%=")])
     OpModulo -> prPrec i 0 (concatD [doc (showString "%%=")])
-    OpPower -> prPrec i 0 (concatD [doc (showString "^=")])
+    OpPower -> prPrec i 0 (concatD [doc (showString "**=")])
 
 instance Print Type where
   prt i e = case e of
@@ -295,3 +295,77 @@ instance Print Ptr where
     Pointer basictype -> prPrec i 0 (concatD [prt 0 basictype, doc (showString "*")])
     Pointer2Pointer ptr -> prPrec i 0 (concatD [prt 0 ptr, doc (showString "*")])
 
+
+instance Show Program where
+  show p = case p of
+    --PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
+    TACProgram []   -> ""
+    TACProgram tacs -> (show tacs)
+
+instance Show TAC where
+  show t = case t of
+    {-mettere \n dopo return-}
+    FuncDef (Var (name,pos@(row,col),type_))       -> "\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\tFunction:\n\tType: " ++ show type_ ++ "\n\tStatements:\n"
+    Return  temp                                   -> "\treturn_" ++ show temp ++"\n\tEnd Function\n\n"
+    FuncCall (Var (name,pos@(row,col),type_)) temp -> "\t" ++ show temp ++ " = " ++ show type_ ++ " call " ++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col++"\n"
+
+
+    AssignIntVar    var  val             -> "\t" ++ show var   ++ " = int "    ++ show val ++ "\n"
+    AssignChrVar    var  val             -> "\t" ++ show var   ++ " = char "   ++ show val ++ "\n"
+    AssignStrVar    var  val             -> "\t" ++ show var   ++ " = string " ++ show val ++ "\n"
+    AssignTrueVar   var  val             -> "\t" ++ show var   ++ " = bool "   ++ show val ++ "\n"
+    AssignFalseVar  var  val             -> "\t" ++ show var   ++ " = bool "   ++ show val ++ "\n"
+    AssignFloatVar  var  val             -> "\t" ++ show var   ++ " = float "  ++ show val ++ "\n"
+              
+    AssignIntTemp   temp val             -> "\t" ++ show temp  ++ " = int "    ++ show val ++ "\n"
+    AssignChrTemp   temp val             -> "\t" ++ show temp  ++ " = char "   ++ show val ++ "\n"
+    AssignStrTemp   temp val             -> "\t" ++ show temp  ++ " = string " ++ show val ++ "\n"
+    AssignTrueTemp  temp val             -> "\t" ++ show temp  ++ " = bool "   ++ show val ++ "\n"
+    AssignFalseTemp temp val             -> "\t" ++ show temp  ++ " = bool "   ++ show val ++ "\n"
+    AssignFloatTemp temp val             -> "\t" ++ show temp  ++ " = float "  ++ show val ++ "\n"
+            
+    AssignT2V       var  temp pos        -> "\t" ++ show var  ++ (if pos /= -1 then "[" ++ show pos ++ "] = " else " = ") ++ show temp ++ "\n"
+    AssignT2T       tmp1 tmp2            -> "\t" ++ show tmp1 ++ " = " ++ show tmp2 ++ "\n"
+    AssignV2T       temp var  pos        -> "\t" ++ show temp ++ " = " ++ show var  ++ (if pos /= -1 then "[" ++ show pos ++ "]\n" else "\n")
+    AssignT2P       temp                 -> "\t" ++ "param_"  ++ show temp ++ "\n"
+    
+    BinOp BOpPlus      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " add " ++ show temp2  ++ "\n"
+    BinOp BOpMinus     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " sub " ++ show temp2  ++ "\n"
+    BinOp BOpMul       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " mul " ++ show temp2  ++ "\n"
+    BinOp BOpIntDiv    tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " divi " ++ show temp2 ++ "\n"
+    BinOp BOpFloatDiv  tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " divf " ++ show temp2  ++ "\n"
+    BinOp BOpRemainder tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " rmd " ++ show temp2  ++ "\n"
+    BinOp BOpModulo    tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " mod " ++ show temp2 ++ "\n"
+    BinOp BOpPower     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " pow " ++ show temp2  ++ "\n"
+
+    UnaryOp UOpMinus         temp1 temp2 -> "\t" ++ show temp1 ++ " = 0 sub "  ++ show temp2 ++ "\n"       
+    UnaryOp UOpPlus          temp1 temp2 -> "\t" ++ show temp1 ++ " = 0 add "  ++ show temp2 ++ "\n"
+    UnaryOp UOpNegate        temp1 temp2 -> "\t" ++ show temp1 ++ " = not "  ++ show temp2 ++ "\n"
+    DerefOp UOpDeref         temp1 var   -> "\t" ++ show temp1 ++ " = addr_" ++ show var   ++ "\n"
+
+    BoolOp BOpOr             temp1 temp2 -> show temp1 ++ " or "                  ++ show temp2
+    BoolOp BOpAnd            temp1 temp2 -> show temp1 ++ " and "                 ++ show temp2
+    BoolOp BOpLt             temp1 temp2 -> show temp1 ++ " less_than "           ++ show temp2
+    BoolOp BOpGt             temp1 temp2 -> show temp1 ++ " greater_than "        ++ show temp2
+    BoolOp BOpLtEq           temp1 temp2 -> show temp1 ++ " less_equal_than "     ++ show temp2
+    BoolOp BOpGtEq           temp1 temp2 -> show temp1 ++ " greater_equal_than "  ++ show temp2
+    BoolOp BOpEq             temp1 temp2 -> show temp1 ++ " equal "               ++ show temp2
+    BoolOp BOpNeq            temp1 temp2 -> show temp1 ++ " not_equal "           ++ show temp2
+
+    Goto label                           -> "\tgoto " ++ show label  ++ "\n"
+    Lbl  label                           -> show label
+    If      bexpr label                  ->"\tif "      ++ show bexpr ++ " goto "++show label++"\n"
+    IfFalse bexpr label                  ->"\tifFalse " ++ show bexpr ++ " goto "++show label++"\n"
+    _ -> "comando non trovato\n"
+
+instance Show Var where --Var = (String,(Int,Int),Type)
+  show (Var (name,pos@(row,col),type_)) = show type_ ++ "  "++   filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col
+
+instance Show Temp where --Temp = Temp (Int,BasicType) | TempT PTrue | TempF PFalse
+  show temp  = case temp of
+    (Temp (num,type_)) -> show type_ ++ " t" ++ show num
+    (TempT _) -> show TypeBool ++ "  true"
+    (TempF _) -> show TypeBool ++ "  false"
+  
+instance Show Label where --Label = (Int,Type)
+  show (Label (name,id)) = filter (/='\"') (show name) ++ "@" ++ show id
