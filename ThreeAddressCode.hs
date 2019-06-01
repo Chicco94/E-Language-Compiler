@@ -178,10 +178,10 @@ module ThreeAddressCode where
         ExprAddition  expr       -> unaryExpr (generateExpr env type_ expr) type_ UOpPlus
 
         -- deref
-        ExprReference (LExprId id@(PIdent (pos,name))) -> ([DerefOp UOpDeref (Temp (temp_count,type_))  var ]++program, (temp_count+1), variables, labels, scope)
+        ExprReference (LExprId id@(PIdent (pos,name))) -> ([DerefOp UOpDeref (Temp (temp_count,(getPointerFromType type_v)))  var ]++program, (temp_count+1), variables, labels, scope)
           where (env1@(_, _, new_variables,_,_), var@(Var (_,_,type_v))) = findVar env (Var (name,pos,undefined))
         --ExprReference (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing step))) -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref
-        --ExprReference (LExprId id@(PIdent (pos,name))) -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref
+        --ExprReference (LExprId id@(PIdent (pos,name))) -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref  
         
         -- arithmetic
         ExprPower    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPower
@@ -285,6 +285,10 @@ module ThreeAddressCode where
   complex2SimpleExpr [] = []
   complex2SimpleExpr ((ExprSimple expr): rest) = expr : (complex2SimpleExpr rest)
   complex2SimpleExpr ((ExprArray  expr): rest) = (complex2SimpleExpr expr)++(complex2SimpleExpr rest)
+
+  getPointerFromType :: Type -> Type
+  -- TODO aggiungere tutti gli altri tipi
+  getPointerFromType (TypeBasicType t) = (TypeCompoundType (CompoundTypePtr (Pointer t)))
 
   sizeOf :: Type -> Int
   sizeOf type_ = case (type2BasicType type_) of 
