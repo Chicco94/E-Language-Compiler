@@ -341,7 +341,7 @@ instance Show TAC where
     UnaryOp UOpMinus         temp1 temp2 -> "\t" ++ show temp1 ++ " = 0 - "  ++ show temp2 ++ "\n"       
     UnaryOp UOpPlus          temp1 temp2 -> "\t" ++ show temp1 ++ " = 0 + "  ++ show temp2 ++ "\n"
     UnaryOp UOpNegate        temp1 temp2 -> "\t" ++ show temp1 ++ " = not "  ++ show temp2 ++ "\n"
-    UnaryOp UOpDeref         temp1 temp2 -> "\t" ++ show temp1 ++ " = addr_" ++ show temp2 ++ "\n"
+    DerefOp UOpDeref         temp1 var   -> "\t" ++ show temp1 ++ " = addr_" ++ show var   ++ "\n"
 
     BoolOp BOpOr             temp1 temp2 -> show temp1 ++ " or "                  ++ show temp2
     BoolOp BOpAnd            temp1 temp2 -> show temp1 ++ " and "                 ++ show temp2

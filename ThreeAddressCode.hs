@@ -178,7 +178,8 @@ module ThreeAddressCode where
         ExprAddition  expr       -> unaryExpr (generateExpr env type_ expr) type_ UOpPlus
 
         -- deref
-        ExprReference lexpr -> unaryExpr (generateExpr env type_ (ExprLeft lexpr)) type_ UOpDeref
+        ExprReference (LExprId id@(PIdent (pos,name))) -> ([DerefOp UOpDeref (Temp (temp_count,type_))  var ]++program, (temp_count+1), variables, labels, scope)
+          where (env1@(_, _, new_variables,_,_), var@(Var (_,_,type_v))) = findVar env (Var (name,pos,undefined))
         --ExprReference (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing step))) -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref
         --ExprReference (LExprId id@(PIdent (pos,name))) -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref
         
@@ -291,6 +292,7 @@ module ThreeAddressCode where
                   (TypeBasicType TypeFloat ) -> 4
                   (TypeBasicType TypeInt   ) -> 4
                   (TypeBasicType TypeChar  ) -> 1
+                  (TypeBasicType TypeString) -> 4 -- Se stringa metto lo spazio per un puntatore a stringa
 
   pInt2Int :: PInteger -> Int
   pInt2Int (PInteger (pos,value)) = read value :: Int

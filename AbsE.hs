@@ -42,8 +42,8 @@ instance Show ArrayType where
 
 instance Show Ptr where
   show t = case t of
-    Pointer         bt -> "*" ++ show bt
-    Pointer2Pointer p  -> "*" ++ show p
+    Pointer         bt -> show bt ++ "*"
+    Pointer2Pointer p  -> show p  ++ "*"
         
 
 
@@ -231,6 +231,7 @@ data TAC
 
   | BinOp  BinaryOperator  Temp Temp Temp
   | UnaryOp UnaryOperator Temp Temp
+  | DerefOp UnaryOperator Temp Var
   | BoolOp BinaryOperator Temp Temp
 
   | FuncDef Var
