@@ -21,7 +21,7 @@ terminator Decl "" ;
 --terminator AnnotatedDecl "";
 
 
--- An annotated declaration is a declaration.
+-- An annotated declaration is a declaration. Using the 'internal' keyword will force the parser to ignore such rule, and we use it to print the annotated tree.
 internal TypedDecl. Decl ::= AnnotatedDecl ;
 
 
@@ -136,7 +136,7 @@ ExprBoolNot.  Expr14  ::= "!" Expr15 ;
 ExprNegation. Expr14  ::= "-" Expr15 ;
 ExprAddition. Expr14  ::= "+" Expr15 ;
 
-ExprPower.    Expr13 ::= Expr14 "^"  Expr13 ;
+ExprPower.    Expr13 ::= Expr14 "**"  Expr13 ;
 
 ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
 ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
@@ -181,7 +181,7 @@ OpIntDiv.     AssignOperator ::= "//=" ;
 OpFloatDiv.   AssignOperator ::= "/=" ;
 OpRemainder.  AssignOperator ::= "%=" ;
 OpModulo.     AssignOperator ::= "%%=" ;
-OpPower.      AssignOperator ::= "^=" ;
+OpPower.      AssignOperator ::= "**=" ;
 
 
 rules Type ::= BasicType | CompoundType ;
