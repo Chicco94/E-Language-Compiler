@@ -63,9 +63,9 @@ module ThreeAddressCode where
           (ExprSimple (ExprTrue   val))             -> (addTACList  env1 [AssignTrueVar   var val])
           (ExprSimple (ExprFalse  val))             -> (addTACList  env1 [AssignFalseVar  var val])
           -- assegnamento di un array
-          (ExprArray  expr)                         -> (generateAssign env1 (getGuardType guard) id OpAssign (complex2SimpleExpr expr) 0)
+          (ExprArray  expr)                         -> (generateAssign env1 (getGuardType guard) id OpAssign (complex2SimpleExpr expr) undefined)
           -- effettivo assegnamento con espressione complessa a destra
-          (ExprSimple expr_int)                     -> (generateAssign env1 (getGuardType guard) id OpAssign [expr_int] (-1))
+          (ExprSimple expr_int)                     -> (generateAssign env1 (getGuardType guard) id OpAssign [expr_int] (Temp (-1,(TypeBasicType TypeInt))))
       
       -- constant inizialization or assignement
       StmtDefInit id guard expr                     -> generateStmt env type_ (StmtVarInit id guard expr) 
@@ -99,7 +99,7 @@ module ThreeAddressCode where
       -- for stmt
       StmtFor id@(PIdent (pos,name)) (ExprRange start_for end_for) (StmtBlock decls) -> do
         let (env1, var) = findVar env (Var (name,pos,(TypeBasicType TypeInt)))
-        let (program1, last_temp1, variables1, labels1, scope1) = generateAssign env1 (TypeBasicType TypeInt) id OpAssign [(for_bound_identifier env start_for)] (-1)
+        let (program1, last_temp1, variables1, labels1, scope1) = generateAssign env1 (TypeBasicType TypeInt) id OpAssign [(for_bound_identifier env start_for)] (Temp (-1,(TypeBasicType TypeInt)))
         (addTACList (generateExpr (addTACList (generateExpr (generateTAC_int ([Lbl (Label ("body",scope)),Goto (Label ("gaurd",scope))]++program1, last_temp1,variables1,labels1,scope1+1) (PDefs decls)) (TypeBasicType TypeInt) (ExprAssign (LExprId id) OpAssign (ExprPlus (ExprLeft (LExprId id)) (ExprInt (PInteger ((0,0),"1")))))) [Lbl (Label ("guard",scope))]) (TypeBasicType TypeBool) (ExprLt (ExprLeft (LExprId id)) (for_bound_identifier env end_for))) [If Empty (Label ("body",scope)),Lbl (Label ("end_stmt",scope))])
   
 
@@ -120,17 +120,26 @@ module ThreeAddressCode where
   generateExpr :: Env -> Type -> Expr -> Env
   generateExpr env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ expr = do
     case expr of
-        -- assign
-        ExprAssign   (LExprId id) op re                                -> generateAssign env type_ id op [re] (-1)
-        ExprAssign   (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing step ))) op re    -> generateAssign env type_ id op [re] ((pInt2Int step)*(sizeOf type_v))
+        -- assign val to variable
+        ExprAssign   (LExprId id) op re                                -> generateAssign env type_ id op [re] (Temp (-1,(TypeBasicType TypeInt)))
+        -- assign val to array shortcut per tipi definiti
+        ExprAssign   (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing expr_step ))) op re    -> do
+          let env2@(program,step_temp,variables,labels,scope) = generateExpr env1 (TypeBasicType TypeInt) (ExprMul expr_step (ExprInt (int2PInt (sizeOf type_v)))) -- (step)*(sizeOf type_v)
+          generateAssign (generateExpr env2 type_ expr) type_ id op [re] step_temp 
+            where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
+        -- use of variable
+        ExprLeft     (LExprId id@(PIdent (pos,name)))                   -> (addTACList env1 [AssignV2T   (Temp (t_c+1,type_v)) var (Temp (-1,(TypeBasicType TypeInt)))])
           where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
-        --ExprAssign   (LExprArr (LArrExpr id (ArrMul a step))) op re    -> generateAssign env type_ id op [re] ((pInt2Int step)*(sizeOf type_))
-        -- variable inside expression ExprLeft ( LExprId PIdent | LExprRef Ref | LExprArr LArrExpr id (ArrSing PInteger | ArrMul arr PInteger))
-        ExprLeft     (LExprId id@(PIdent (pos,name)))                         -> (addTACList env1 [AssignV2T   (Temp (t_c+1,type_v)) var (-1)])
+        -- use of array 
+        ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing expr_step)))  -> do 
+          let env2@(_,step_temp,_,_,_) = generateExpr env1 (TypeBasicType TypeInt) (ExprMul expr_step (ExprInt (int2PInt (sizeOf type_v))))
+          (addTACList env2 [AssignV2T   (Temp (t_c+1,type_v)) var step_temp]) 
           where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
-        ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing step)))  -> (addTACList env1 [AssignV2T   (Temp (t_c+1,type_v)) var ((pInt2Int step)*(sizeOf type_v))]) 
-          where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
-        ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrMul a step))) -> (addTACList env1 [AssignV2T   (Temp (t_c+1,type_v)) var ((getStep a (pInt2Int step) (reverse (type2Dims type_v)))*(sizeOf type_v))]) 
+        -- use of multiarray
+        ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) a)) -> do
+          let env2@(program1,temp1@(Temp (t_c1,t_t1)),variables1,labels1,scope1) = (getStep env1 a  (reverse (type2Dims type_v)))
+          let env3@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = ([BinOp   BOpMul (Temp (t_c1+2,t_t1)) (Temp (t_c1+1,(TypeBasicType TypeInt))) temp1, AssignIntTemp (Temp (t_c1+1,(TypeBasicType TypeInt))) (int2PInt (sizeOf type_v))] ++ program1, (Temp (t_c1+2,t_t1)), variables1,labels1,scope1)
+          (addTACList env3 [AssignV2T (Temp (t_c2+1,t_t2)) var temp2]) 
           where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
             
         ExprInt      val         -> ([AssignIntTemp   (Temp (t_c+1,(TypeBasicType TypeInt)   )) val] ++ program, (Temp (t_c+1,(TypeBasicType TypeInt)   )), variables, labels, scope)
@@ -208,8 +217,7 @@ module ThreeAddressCode where
       _                     -> (unaryExpr env (TypeBasicType TypeBool) UOpNegate)
 
   --StmtAssign LExpr AssignOperator Expr
-  generateAssign :: Env -> Type -> PIdent -> AssignOperator -> [Expr] -> Int -> Env
-  generateAssign env _ _ _ [] _ = env
+  generateAssign :: Env -> Type -> PIdent -> AssignOperator -> [Expr] -> Temp -> Env
   generateAssign env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ id@(PIdent (pos,name)) op (expr:[]) step = do
     let (env1@(_, _, new_variables,_,_), var) = findVar env (Var (name,pos,type_))
     case op of
@@ -226,11 +234,14 @@ module ThreeAddressCode where
                                     OpRemainder -> BOpRemainder 
                                     OpModulo    -> BOpModulo    
                                     OpPower     -> BOpPower     
-  generateAssign env@(program, last_temp, variables,labels,scope) type_ id@(PIdent (pos,name)) op (expr:rest) step = 
-    (generateAssign (addTACList (generateExpr env (type2BasicType type_) expr) [AssignT2V  var last_temp step]) type_ id op rest (step+(sizeOf type_)))
-      where (env1@(_, _, new_variables,_,_), var) = findVar env (Var (name,pos,type_))
+  -- usata solo all'assegnamento dell'array
+  generateAssign env type_ id op (expr:rest) _ = generateAssign_int env type_ id op (expr:rest) 0
 
-
+  generateAssign_int :: Env -> Type -> PIdent -> AssignOperator -> [Expr] -> Int -> Env
+  generateAssign_int env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ id@(PIdent (pos,name)) op (expr:[]) step = (addTACList (generateExpr env (type2BasicType type_) expr) [AssignT2V  var last_temp (Temp (step,(TypeBasicType TypeVoid)))])
+    where (env1@(_, _, new_variables,_,_), var) = findVar env (Var (name,pos,type_))
+  generateAssign_int env@(program, last_temp, variables,labels,scope) type_ id@(PIdent (pos,name)) op (expr:rest) step = (generateAssign_int (addTACList (generateExpr env (type2BasicType type_) expr) [AssignT2V  var last_temp (Temp (step,(TypeBasicType TypeVoid)))]) type_ id op rest (step+(sizeOf type_)))
+    where (env1@(_, _, new_variables,_,_), var) = findVar env (Var (name,pos,type_))
 
   -- DeclFun LExpr [Arg] Guard CompStmt
   generateDeclFunc :: Env -> LExpr -> [Arg] -> Guard -> CompStmt -> Env
@@ -326,13 +337,24 @@ module ThreeAddressCode where
   int2PInt :: Int -> PInteger
   int2PInt value = (PInteger ((0,0),show value))
 
-  getStep :: AExpr -> Int -> [PInteger] -> Int
-  getStep a int (dim:rest) = case a of
-    (ArrSing step)   -> int+((pInt2Int step)*(pInt2Int dim))
-    (ArrMul a1 step) -> (getStep a1 (int+((pInt2Int step)*(pInt2Int dim))) rest)
-   
+
+  getStep :: Env -> AExpr -> [PInteger] -> Env
+  getStep env@(program, last_temp, variables, labels, scope) a (dim:rest) = case a of
+    (ArrSing step)   -> (generateExpr env (TypeBasicType TypeInt) step)
+    (ArrMul a1 step) -> do
+    -- valuto l'espressione
+    let env1@(program1,temp1@(Temp (t_c1,t_t1)),variables1,labels1,scope1) = (generateExpr env (TypeBasicType TypeInt) step)
+    -- carico la dimensione di una riga e la moltiplico per l'espressione calcolata
+    let env2@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = ([BinOp   BOpMul (Temp (t_c1+2,t_t1)) temp1 (Temp (t_c1+1,t_t1)), AssignIntTemp (Temp (t_c1+1,t_t1)) dim] ++ program1, (Temp (t_c1+2,t_t1)), variables1,labels1,scope1)
+    -- valuto il resto delle espressioni
+    let env3@(program3,temp3@(Temp (t_c3,t_t3)),variables3,labels3,scope3) = (getStep  env2 a1 rest)
+    -- sommo 
+    ([BinOp   BOpPlus (Temp (t_c3+1,t_t3)) temp3 temp2] ++ program3, (Temp (t_c3+1,t_t3)), variables3,labels3,scope3)
+  
   for_bound_identifier :: Env -> ForId -> Expr
   for_bound_identifier env for_id =
     case for_id of
       ForInteger val -> ExprInt val
       ForIdent   id  -> ExprLeft (LExprId id)
+
+      

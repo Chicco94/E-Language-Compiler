@@ -142,8 +142,8 @@ transArr x = case x of
   LArrExpr pident aexpr -> failure x
 transAExpr :: AExpr -> Result
 transAExpr x = case x of
-  ArrSing pinteger -> failure x
-  ArrMul aexpr pinteger -> failure x
+  ArrSing expr -> failure x
+  ArrMul aexpr expr -> failure x
 transAssignOperator :: AssignOperator -> Result
 transAssignOperator x = case x of
   OpAssign -> failure x

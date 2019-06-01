@@ -164,7 +164,7 @@ data Ref = LRefExpr LExpr
 data Arr = LArrExpr PIdent AExpr
   deriving (Eq, Ord, Show, Read)
 
-data AExpr = ArrSing PInteger | ArrMul AExpr PInteger
+data AExpr = ArrSing Expr | ArrMul AExpr Expr
   deriving (Eq, Ord, Show, Read)
 
 data AssignOperator
@@ -180,7 +180,7 @@ data AssignOperator
     | OpModulo
     | OpPower
   deriving (Eq, Ord, Show, Read)
-  
+
 data Type = TypeBasicType BasicType | TypeCompoundType CompoundType
   deriving (Eq, Ord, Read)
 
@@ -221,9 +221,9 @@ data TAC
   | AssignFalseVar  Var  PFalse
   | AssignFloatVar  Var  PFloat
 
-  | AssignT2V Var  Temp  Int
+  | AssignT2V Var  Temp  Temp
   | AssignT2T Temp Temp
-  | AssignV2T Temp Var   Int
+  | AssignV2T Temp Var   Temp
   | AssignT2P Temp
 
   | BinOp  BinaryOperator  Temp Temp Temp
