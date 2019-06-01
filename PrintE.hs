@@ -363,7 +363,7 @@ instance Show Var where --Var = (String,(Int,Int),Type)
 
 instance Show Temp where --Temp = Temp (Int,BasicType) | TempT PTrue | TempF PFalse
   show temp  = case temp of
-    (Temp (num,type_)) -> show type_ ++ "  t" ++ show num
+    (Temp (num,type_)) -> show type_ ++ " t" ++ show num
     (TempT _) -> show TypeBool ++ "  true"
     (TempF _) -> show TypeBool ++ "  false"
   
