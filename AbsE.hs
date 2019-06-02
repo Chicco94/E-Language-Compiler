@@ -206,7 +206,9 @@ data Temp = Temp (Int,Type) | TempT PTrue | TempF PFalse
 data Var  = Var  (String,(Int,Int),Type)
   deriving (Eq, Ord, Read)
 
+-- istruzioni TAC  
 data TAC 
+  -- assegnamento di valore a temporaneo
   = AssignIntTemp   Temp PInteger
   | AssignChrTemp   Temp PChar
   | AssignStrTemp   Temp PString
@@ -214,6 +216,7 @@ data TAC
   | AssignFalseTemp Temp PFalse
   | AssignFloatTemp Temp PFloat
 
+-- assegnamento di valore a variabile
   | AssignIntVar    Var  PInteger
   | AssignChrVar    Var  PChar
   | AssignStrVar    Var  PString
@@ -221,27 +224,38 @@ data TAC
   | AssignFalseVar  Var  PFalse
   | AssignFloatVar  Var  PFloat
 
+-- assegnamenti tra temporanei e variabili
   | AssignT2V Var  Temp  Temp
   | AssignT2T Temp Temp
   | AssignV2T Temp Var   Temp
   | AssignT2P Temp
 
+-- operazioni varie
   | BinOp  BinaryOperator  Temp Temp Temp
   | UnaryOp UnaryOperator Temp Temp
   | DerefOp UnaryOperator Temp Var
   | BoolOp BinaryOperator Temp Temp
 
+-- funzioni
   | FuncDef Var
   | FuncCall Var Temp
   | Return Temp
   | EndFunction
+-- salti
   | Goto Label
   | Lbl Label
+
+-- condizioni
   | If TAC Label
   | IfFalse TAC Label
+-- ammetto qualunque TAC, tanto il controllo che sia un operazione booleana
+-- è stato già fatto
+
+-- placeholder
   | Empty
   deriving (Eq, Ord, Read)
 
+-- operatori binari
 data BinaryOperator
   = BOpAssign
   | BOpPlus
