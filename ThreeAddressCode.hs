@@ -112,7 +112,8 @@ module ThreeAddressCode where
   generateCasesCond :: Env -> Expr -> Type -> [NormCase] -> Env
   generateCasesCond env _ _ [] = env 
   generateCasesCond env@(program, last_temp, variables, labels, scope) expr_v type_ ((CaseNormal expr _):rest) = do
-    let (program, last_temp, variables, labels, scope) = (booleanExpr (generateExpr (generateExpr env type_ expr_v) type_ expr) type_ BOpEq) 
+    let env1@(_,r1,_,_,_) = (generateExpr env type_ expr_v)
+    let (program, last_temp, variables, labels, scope) = (booleanExpr (generateExpr env1 type_ expr) type_ BOpEq r1) 
     generateCasesCond ([If (head program) (Label ("match_", labels)) ]++(drop 1 program), last_temp, variables, labels+1, scope) expr_v type_ rest 
     
   
@@ -165,44 +166,75 @@ module ThreeAddressCode where
         --ExprReference (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing step))) -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref
         --ExprReference (LExprId id@(PIdent (pos,name))) -> unaryExpr (generateExpr env type_ expr) type_ UOpDeref  
         
+        -- binary operations
         -- arithmetic
-        ExprPower    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPower
-        ExprMul      expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMul
-        ExprFloatDiv expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpFloatDiv
-        ExprIntDiv   expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpIntDiv
-        ExprReminder expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpRemainder
-        ExprModulo   expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpModulo
-        ExprPlus     expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpPlus
-        ExprMinus    expr1 expr2 -> binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpMinus
-  
-        -- boolean
-        ExprLt       expr1 expr2 -> booleanExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpLt  
-        ExprGt       expr1 expr2 -> booleanExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpGt  
-        ExprLtEq     expr1 expr2 -> booleanExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpLtEq
-        ExprGtEq     expr1 expr2 -> booleanExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpGtEq
-        ExprEq       expr1 expr2 -> booleanExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpEq  
-        ExprNeq      expr1 expr2 -> booleanExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpNeq 
+        (ExprPower expr1 expr2) -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          binaryExpr  (generateExpr env1 type_ expr2) type_ BOpPower     r1 
         
-        ExprOr       expr1 expr2 -> do--binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpOr
+        ExprMul      expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          binaryExpr  (generateExpr env1 type_ expr2) type_ BOpMul       r1
+        ExprFloatDiv expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          binaryExpr  (generateExpr env1 type_ expr2) type_ BOpFloatDiv  r1
+        ExprModulo   expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          binaryExpr  (generateExpr env1 type_ expr2) type_ BOpModulo    r1
+        ExprIntDiv   expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          binaryExpr  (generateExpr env1 type_ expr2) type_ BOpIntDiv    r1
+        ExprPlus     expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          binaryExpr  (generateExpr env1 type_ expr2) type_ BOpPlus      r1 
+        ExprReminder expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          binaryExpr  (generateExpr env1 type_ expr2) type_ BOpRemainder r1
+        ExprMinus    expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          binaryExpr  (generateExpr env1 type_ expr2) type_ BOpMinus     r1  
+
+        -- boolean
+        ExprLt       expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          booleanExpr (generateExpr env1 type_ expr2) type_ BOpLt        r1 
+        ExprGt       expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          booleanExpr (generateExpr env1 type_ expr2) type_ BOpGt        r1 
+        ExprLtEq     expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          booleanExpr (generateExpr env1 type_ expr2) type_ BOpLtEq      r1 
+        ExprGtEq     expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          booleanExpr (generateExpr env1 type_ expr2) type_ BOpGtEq      r1 
+        ExprEq       expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          booleanExpr (generateExpr env1 type_ expr2) type_ BOpEq        r1
+        ExprNeq      expr1 expr2 -> do
+          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+          booleanExpr (generateExpr env1 type_ expr2) type_ BOpNeq       r1 
+
+        ExprOr       expr1 expr2 -> do
           let (program1, last_temp1, variables1, labels1,_) = (generateExpr env type_ expr1)
           let (program2, last_temp2@(Temp (t_c,t_t)), variables2, labels2,_) = (generateExpr ([If (BoolOp  BOpEq last_temp1 (TempT (PTrue ((0,0),"true")))) (Label ("true_or", labels1) )]++program1,last_temp1, variables1, labels1+1,scope) type_ expr2)
           ([Lbl (Label ("end_or", labels1)),AssignTrueTemp  (Temp (t_c+1,(TypeBasicType TypeBool))) (PTrue ((0,0),"true")), Lbl (Label ("true_or", labels1)), Goto (Label ("end_or", labels1)), AssignFalseTemp (Temp (t_c+1,(TypeBasicType TypeBool))) (PFalse ((0,0),"false")), If (BoolOp BOpEq last_temp2 (TempT (PTrue ((0,0),"true")))) (Label ("true_or", labels1))]++program2, (Temp (t_c+1,(TypeBasicType TypeBool))), variables2, labels2+1,scope)
-        ExprAnd      expr1 expr2 -> do --binaryExpr (generateExpr (generateExpr env type_ expr1) type_ expr2) type_ BOpAnd
+        ExprAnd      expr1 expr2 -> do 
           let (program1, last_temp1, variables1, labels1,_) = (generateExpr env type_ expr1)
           let (program2, last_temp2@(Temp (t_c,t_t)), variables2, labels2,_) = (generateExpr ([If (BoolOp BOpEq last_temp1 (TempF (PFalse ((0,0),"false")))) (Label ("false_and", labels1) )]++program1,last_temp1, variables1, labels1+1,scope) type_ expr2)
           ([Lbl (Label ("end_and",labels1)),AssignFalseTemp (Temp (t_c+1,(TypeBasicType TypeBool))) (PFalse ((0,0),"false")), Lbl (Label ("false_and",labels1) ),Goto (Label ("end_and",labels1) ), AssignTrueTemp  (Temp (t_c+1,(TypeBasicType TypeBool))) (PTrue ((0,0),"true")), If (BoolOp BOpEq last_temp2 (TempF (PFalse ((0,0),"false")))) (Label ("false_and", labels1) )]++program2,(Temp (t_c+1,(TypeBasicType TypeBool))), variables2, labels2+1,scope)
-      
-        _ -> env 
+        -- espressione non gestita
+        _ -> env
+          
 
   -- Build the binary operator using the last two temporaneus variable
-  binaryExpr :: Env -> Type -> BinaryOperator -> Env
-  binaryExpr env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ op  = ([BinOp   op (Temp (t_c+1,t_t)) (Temp (t_c-1,t_t)) last_temp] ++ program, (Temp (t_c+1,t_t)), variables,labels,scope)
+  binaryExpr :: Env -> Type -> BinaryOperator -> Temp-> Env
+  binaryExpr env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ op t1 = ([BinOp   op (Temp (t_c+1,t_t)) t1 last_temp] ++ program, (Temp (t_c+1,t_t)), variables,labels,scope)
   
   unaryExpr  :: Env -> Type -> UnaryOperator -> Env
   unaryExpr  env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ op  = ([UnaryOp op (Temp (t_c+1,t_t)) last_temp]++program, (Temp (t_c+1,t_t)), variables, labels, scope)
 
-  booleanExpr :: Env -> Type -> BinaryOperator -> Env
-  booleanExpr env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ op = ([BoolOp  op (Temp (t_c-1,t_t)) last_temp]++program, (Temp (t_c-1,t_t)), variables, labels, scope)
+  booleanExpr :: Env -> Type -> BinaryOperator -> Temp -> Env
+  booleanExpr env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ op t1 = ([BoolOp  op t1 last_temp]++program, last_temp, variables, labels, scope)
 
   -- switch the last boolean Expr
   notExpr :: Env -> Env
@@ -222,7 +254,7 @@ module ThreeAddressCode where
     let (env1@(_, _, new_variables,_,_), var) = findVar env (Var (name,pos,type_))
     case op of
       OpAssign    -> (addTACList (generateExpr env (type2BasicType type_) expr) [AssignT2V  var last_temp (step)])
-      _           -> generateAssign (binaryExpr (addTACList (generateExpr env (type2BasicType type_) expr) [AssignV2T (Temp (t_c+1,(type2BasicType type_))) var (step)]) type_ op1) type_ id OpAssign [] step
+      _           -> generateAssign (binaryExpr (addTACList (generateExpr env (type2BasicType type_) expr) [AssignV2T (Temp (t_c+1,(type2BasicType type_))) var (step)]) type_ op1 (Temp (t_c+1,(type2BasicType type_)))) type_ id OpAssign [] step
                       where op1 = case op of 
                                     OpOr        -> BOpOr
                                     OpAnd       -> BOpAnd       

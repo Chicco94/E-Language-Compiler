@@ -213,7 +213,7 @@ instance Print Expr where
     ExprBoolNot expr -> prPrec i 14 (concatD [doc (showString "!"), prt 15 expr])
     ExprNegation expr -> prPrec i 14 (concatD [doc (showString "-"), prt 15 expr])
     ExprAddition expr -> prPrec i 14 (concatD [doc (showString "+"), prt 15 expr])
-    ExprPower expr1 expr2 -> prPrec i 13 (concatD [prt 14 expr1, doc (showString "**"), prt 13 expr2])
+    ExprPower expr1 expr2 -> prPrec i 13 (concatD [prt 14 expr1, doc (showString "^"), prt 13 expr2])
     ExprMul expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "*"), prt 13 expr2])
     ExprFloatDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "/"), prt 13 expr2])
     ExprIntDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "//"), prt 13 expr2])
@@ -264,7 +264,7 @@ instance Print AssignOperator where
     OpFloatDiv -> prPrec i 0 (concatD [doc (showString "/=")])
     OpRemainder -> prPrec i 0 (concatD [doc (showString "%=")])
     OpModulo -> prPrec i 0 (concatD [doc (showString "%%=")])
-    OpPower -> prPrec i 0 (concatD [doc (showString "**=")])
+    OpPower -> prPrec i 0 (concatD [doc (showString "^=")])
 
 instance Print Type where
   prt i e = case e of
@@ -306,7 +306,8 @@ instance Show TAC where
   show t = case t of
     {-mettere \n dopo return-}
     FuncDef (Var (name,pos@(row,col),type_))       -> "\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\tFunction:\n\tType: " ++ show type_ ++ "\n\tStatements:\n"
-    Return  temp                                   -> "\treturn_" ++ show temp ++"\n\tEnd Function\n\n"
+    Return  temp                                   -> "\treturn_" ++ show temp ++"\n"
+    EndFunction                                    -> "\tEnd Function\n\n"
     FuncCall (Var (name,pos@(row,col),type_)) temp -> "\t" ++ show temp ++ " = " ++ show type_ ++ " call " ++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col++"\n"
 
 
@@ -329,17 +330,17 @@ instance Show TAC where
     AssignV2T       temp var  pos        -> "\t" ++ show temp ++ " = " ++ show var  ++ (if pos /= -1 then "[" ++ show pos ++ "]\n" else "\n")
     AssignT2P       temp                 -> "\t" ++ "param_"  ++ show temp ++ "\n"
     
-    BinOp BOpPlus      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " add " ++ show temp2  ++ "\n"
-    BinOp BOpMinus     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " sub " ++ show temp2  ++ "\n"
-    BinOp BOpMul       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " mul " ++ show temp2  ++ "\n"
-    BinOp BOpIntDiv    tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " divi " ++ show temp2 ++ "\n"
-    BinOp BOpFloatDiv  tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " divf " ++ show temp2  ++ "\n"
-    BinOp BOpRemainder tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " rmd " ++ show temp2  ++ "\n"
-    BinOp BOpModulo    tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " mod " ++ show temp2 ++ "\n"
-    BinOp BOpPower     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " pow " ++ show temp2  ++ "\n"
+    BinOp BOpPlus      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2  ++ "\n"
+    BinOp BOpMinus     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " - " ++ show temp2  ++ "\n"
+    BinOp BOpMul       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " * " ++ show temp2  ++ "\n"
+    BinOp BOpIntDiv    tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " // " ++ show temp2 ++ "\n"
+    BinOp BOpFloatDiv  tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " / " ++ show temp2  ++ "\n"
+    BinOp BOpRemainder tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " % " ++ show temp2  ++ "\n"
+    BinOp BOpModulo    tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " %% " ++ show temp2 ++ "\n"
+    BinOp BOpPower     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " **" ++ show temp2  ++ "\n"
 
-    UnaryOp UOpMinus         temp1 temp2 -> "\t" ++ show temp1 ++ " = 0 sub "  ++ show temp2 ++ "\n"       
-    UnaryOp UOpPlus          temp1 temp2 -> "\t" ++ show temp1 ++ " = 0 add "  ++ show temp2 ++ "\n"
+    UnaryOp UOpMinus         temp1 temp2 -> "\t" ++ show temp1 ++ " = 0 - "  ++ show temp2 ++ "\n"       
+    UnaryOp UOpPlus          temp1 temp2 -> "\t" ++ show temp1 ++ " = 0 + "  ++ show temp2 ++ "\n"
     UnaryOp UOpNegate        temp1 temp2 -> "\t" ++ show temp1 ++ " = not "  ++ show temp2 ++ "\n"
     DerefOp UOpDeref         temp1 var   -> "\t" ++ show temp1 ++ " = addr_" ++ show var   ++ "\n"
 

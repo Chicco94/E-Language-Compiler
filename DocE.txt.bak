@@ -68,13 +68,13 @@ The symbols used in E are the following:
   | , | : | ; | :=
   | ] | { | } | match _
   | .. | * | ! | -
-  | + | ** | / | //
+  | + | ^ | / | //
   | % | %% | & | <
   | > | <= | >= | ==
   | != | && | || | |=
   | &= | += | -= | *=
   | //= | /= | %= | %%=
-  | **= |  |  | 
+  | ^= |  |  | 
 
 ===Comments===
 Single-line comments begin with #.Multiple-line comments are  enclosed with /* and */.
@@ -154,7 +154,7 @@ All other symbols are terminals.
   |  |  **|**  | ``-`` //Expr15// 
   |  |  **|**  | ``+`` //Expr15// 
   |  |  **|**  | //Expr15// 
-  | //Expr13// | -> | //Expr14// ``**`` //Expr13// 
+  | //Expr13// | -> | //Expr14// ``^`` //Expr13// 
   |  |  **|**  | //Expr14// 
   | //Expr12// | -> | //Expr12// ``*`` //Expr13// 
   |  |  **|**  | //Expr12// ``/`` //Expr13// 
@@ -197,7 +197,7 @@ All other symbols are terminals.
   |  |  **|**  | ``/=`` 
   |  |  **|**  | ``%=`` 
   |  |  **|**  | ``%%=`` 
-  |  |  **|**  | ``**=`` 
+  |  |  **|**  | ``^=`` 
   | //Type// | -> | //BasicType// 
   |  |  **|**  | //CompoundType// 
   | //BasicType// | -> | ``bool`` 

@@ -25,30 +25,30 @@ import ErrM
   '(' { PT _ (TS _ 10) }
   ')' { PT _ (TS _ 11) }
   '*' { PT _ (TS _ 12) }
-  '*=' { PT _ (TS _ 13) }
-  '+' { PT _ (TS _ 14) }
-  '+=' { PT _ (TS _ 15) }
-  ',' { PT _ (TS _ 16) }
-  '-' { PT _ (TS _ 17) }
-  '-=' { PT _ (TS _ 18) }
-  '..' { PT _ (TS _ 19) }
-  '/' { PT _ (TS _ 20) }
-  '//' { PT _ (TS _ 21) }
-  '//=' { PT _ (TS _ 22) }
-  '/=' { PT _ (TS _ 23) }
-  ':' { PT _ (TS _ 24) }
-  ':=' { PT _ (TS _ 25) }
-  ':]' { PT _ (TS _ 26) }
-  ';' { PT _ (TS _ 27) }
-  '<' { PT _ (TS _ 28) }
-  '<=' { PT _ (TS _ 29) }
-  '==' { PT _ (TS _ 30) }
-  '>' { PT _ (TS _ 31) }
-  '>=' { PT _ (TS _ 32) }
-  '[' { PT _ (TS _ 33) }
-  ']' { PT _ (TS _ 34) }
-  '^' { PT _ (TS _ 35) }
-  '^=' { PT _ (TS _ 36) }
+  '**' { PT _ (TS _ 13) }
+  '**=' { PT _ (TS _ 14) }
+  '*=' { PT _ (TS _ 15) }
+  '+' { PT _ (TS _ 16) }
+  '+=' { PT _ (TS _ 17) }
+  ',' { PT _ (TS _ 18) }
+  '-' { PT _ (TS _ 19) }
+  '-=' { PT _ (TS _ 20) }
+  '..' { PT _ (TS _ 21) }
+  '/' { PT _ (TS _ 22) }
+  '//' { PT _ (TS _ 23) }
+  '//=' { PT _ (TS _ 24) }
+  '/=' { PT _ (TS _ 25) }
+  ':' { PT _ (TS _ 26) }
+  ':=' { PT _ (TS _ 27) }
+  ':]' { PT _ (TS _ 28) }
+  ';' { PT _ (TS _ 29) }
+  '<' { PT _ (TS _ 30) }
+  '<=' { PT _ (TS _ 31) }
+  '==' { PT _ (TS _ 32) }
+  '>' { PT _ (TS _ 33) }
+  '>=' { PT _ (TS _ 34) }
+  '[' { PT _ (TS _ 35) }
+  ']' { PT _ (TS _ 36) }
   'bool' { PT _ (TS _ 37) }
   'char' { PT _ (TS _ 38) }
   'def' { PT _ (TS _ 39) }
@@ -170,8 +170,8 @@ Ref : '*' LExpr { AbsE.LRefExpr $2 }
 Arr :: { Arr }
 Arr : PIdent '[' AExpr ']' { AbsE.LArrExpr $1 $3 }
 AExpr :: { AExpr }
-AExpr : PInteger { AbsE.ArrSing $1 }
-      | AExpr ',' PInteger { AbsE.ArrMul $1 $3 }
+AExpr : Expr { AbsE.ArrSing $1 }
+      | AExpr ',' Expr { AbsE.ArrMul $1 $3 }
 Expr17 :: { Expr }
 Expr17 : LExpr { AbsE.ExprLeft $1 } | '(' Expr ')' { $2 }
 Expr16 :: { Expr }
@@ -191,7 +191,8 @@ Expr14 : '!' Expr15 { AbsE.ExprBoolNot $2 }
        | '+' Expr15 { AbsE.ExprAddition $2 }
        | Expr15 { $1 }
 Expr13 :: { Expr }
-Expr13 : Expr14 '^' Expr13 { AbsE.ExprPower $1 $3 } | Expr14 { $1 }
+Expr13 : Expr14 '**' Expr13 { AbsE.ExprPower $1 $3 }
+       | Expr14 { $1 }
 Expr12 :: { Expr }
 Expr12 : Expr12 '*' Expr13 { AbsE.ExprMul $1 $3 }
        | Expr12 '/' Expr13 { AbsE.ExprFloatDiv $1 $3 }
@@ -245,7 +246,7 @@ AssignOperator : ':=' { AbsE.OpAssign }
                | '/=' { AbsE.OpFloatDiv }
                | '%=' { AbsE.OpRemainder }
                | '%%=' { AbsE.OpModulo }
-               | '^=' { AbsE.OpPower }
+               | '**=' { AbsE.OpPower }
 Type :: { Type }
 Type : BasicType { AbsE.TypeBasicType $1 }
      | CompoundType { AbsE.TypeCompoundType $1 }
