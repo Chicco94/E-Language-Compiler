@@ -32,11 +32,7 @@ data Guard = GuardVoid | GuardType Type
 
 data Stmt
     = StmtExpr Expr
-<<<<<<< HEAD
-    | StmtDecl LExpr Guard
-=======
     | StmtVarDecl LExpr Guard
->>>>>>> d776251cb588553880f5209d74cb8552b7ee84eb
     | StmtIterDecl LExpr Guard
     | StmtVarInit LExpr Guard Expr
     | StmtDefInit LExpr Guard Expr
@@ -68,11 +64,7 @@ data Expr
     | ExprString String
     | ExprTrue
     | ExprFalse
-<<<<<<< HEAD
-    | ExprFunCall PIdent [Arg]
-=======
     | ExprFunCall PIdent [Expr]
->>>>>>> d776251cb588553880f5209d74cb8552b7ee84eb
     | ExprBoolNot Expr
     | ExprDeref LExpr
     | ExprNegation Expr
