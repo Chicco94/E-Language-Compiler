@@ -213,7 +213,7 @@ instance Print Expr where
     ExprBoolNot expr -> prPrec i 14 (concatD [doc (showString "!"), prt 15 expr])
     ExprNegation expr -> prPrec i 14 (concatD [doc (showString "-"), prt 15 expr])
     ExprAddition expr -> prPrec i 14 (concatD [doc (showString "+"), prt 15 expr])
-    ExprPower expr1 expr2 -> prPrec i 13 (concatD [prt 14 expr1, doc (showString "^"), prt 13 expr2])
+    ExprPower expr1 expr2 -> prPrec i 13 (concatD [prt 14 expr1, doc (showString "**"), prt 13 expr2])
     ExprMul expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "*"), prt 13 expr2])
     ExprFloatDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "/"), prt 13 expr2])
     ExprIntDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "//"), prt 13 expr2])
@@ -249,8 +249,8 @@ instance Print Arr where
 
 instance Print AExpr where
   prt i e = case e of
-    ArrSing pinteger -> prPrec i 0 (concatD [prt 0 pinteger])
-    ArrMul aexpr pinteger -> prPrec i 0 (concatD [prt 0 aexpr, doc (showString ","), prt 0 pinteger])
+    ArrSing expr -> prPrec i 0 (concatD [prt 0 expr])
+    ArrMul aexpr expr -> prPrec i 0 (concatD [prt 0 aexpr, doc (showString ","), prt 0 expr])
 
 instance Print AssignOperator where
   prt i e = case e of
@@ -264,7 +264,7 @@ instance Print AssignOperator where
     OpFloatDiv -> prPrec i 0 (concatD [doc (showString "/=")])
     OpRemainder -> prPrec i 0 (concatD [doc (showString "%=")])
     OpModulo -> prPrec i 0 (concatD [doc (showString "%%=")])
-    OpPower -> prPrec i 0 (concatD [doc (showString "^=")])
+    OpPower -> prPrec i 0 (concatD [doc (showString "**=")])
 
 instance Print Type where
   prt i e = case e of
@@ -298,17 +298,17 @@ instance Print Ptr where
 
 instance Show Program where
   show p = case p of
-    --PDefs decls -> prPrec i 0 (concatD [prt 0 decls])
     TACProgram []   -> ""
     TACProgram tacs -> (show tacs)
 
 instance Show TAC where
   show t = case t of
     {-mettere \n dopo return-}
-    FuncDef (Var (name,pos@(row,col),type_))       -> "\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\tFunction:\n\tType: " ++ show type_ ++ "\n\tStatements:\n"
-    Return  temp                                   -> "\treturn_" ++ show temp ++"\n"
-    EndFunction                                    -> "\tEnd Function\n\n"
-    FuncCall (Var (name,pos@(row,col),type_)) temp -> "\t" ++ show temp ++ " = " ++ show type_ ++ " call " ++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col++"\n"
+    FuncDef (Var (name,pos@(row,col),type_))         -> "\n\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\tFunction:\n\tType: " ++ show type_ ++ "\n\tStatements:\n"
+    Return  temp                                     -> "\treturn_" ++ show temp ++"\n"
+    EndFunction                                      -> "\tEnd Function\n\n"
+    FuncCall (Var ("main",pos@(row,col),type_)) temp -> "\tcall main@"++ show row ++ "-"++show col++"\n\texit\n"
+    FuncCall (Var (name,pos@(row,col),type_))   temp -> "\t" ++ show temp ++ " = " ++ show type_  ++ " call " ++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col++"\n"
 
 
     AssignIntVar    var  val             -> "\t" ++ show var   ++ " = int "    ++ show val ++ "\n"
@@ -325,10 +325,11 @@ instance Show TAC where
     AssignFalseTemp temp val             -> "\t" ++ show temp  ++ " = bool "   ++ show val ++ "\n"
     AssignFloatTemp temp val             -> "\t" ++ show temp  ++ " = float "  ++ show val ++ "\n"
             
-    AssignT2V       var  temp pos        -> "\t" ++ show var  ++ (if pos /= -1 then "[" ++ show pos ++ "] = " else " = ") ++ show temp ++ "\n"
-    AssignT2T       tmp1 tmp2            -> "\t" ++ show tmp1 ++ " = " ++ show tmp2 ++ "\n"
-    AssignV2T       temp var  pos        -> "\t" ++ show temp ++ " = " ++ show var  ++ (if pos /= -1 then "[" ++ show pos ++ "]\n" else "\n")
-    AssignT2P       temp                 -> "\t" ++ "param_"  ++ show temp ++ "\n"
+    AssignT2V   var  temp (Temp (pos,(TypeBasicType TypeVoid))) -> "\t" ++ show var  ++ (if pos /= -1 then "[" ++ show pos ++ "] = " else " = ") ++ show temp ++ "\n"
+    AssignT2V   var  temp (Temp (pos,_)) -> "\t" ++ show var  ++ (if pos /= -1 then "[t" ++ show pos ++ "] = " else " = ") ++ show temp ++ "\n"
+    AssignT2T   tmp1 tmp2                -> "\t" ++ show tmp1 ++ " = " ++ show tmp2 ++ "\n"
+    AssignV2T   temp var  (Temp (pos,t)) -> "\t" ++ show temp ++ " = " ++ show var  ++ (if pos /= -1 then "[t" ++ show pos ++ "]\n" else "\n")
+    AssignT2P   temp                     -> "\t" ++ "param_"  ++ show temp ++ "\n"
     
     BinOp BOpPlus      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2  ++ "\n"
     BinOp BOpMinus     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " - " ++ show temp2  ++ "\n"
