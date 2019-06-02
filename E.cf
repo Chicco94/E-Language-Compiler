@@ -15,17 +15,11 @@ PDefs.     Program ::= [Decl] ;
 terminator Decl "" ;
 
 
--- Include in the abstract syntax a type annotated version of expressions.
---internal ExprTyped. Expr ::= "[" Type "]" Expr ;
---PTDefs. Program ::=  [AnnotatedDecl] ;
---terminator AnnotatedDecl "";
-
-
 -- An annotated declaration is a declaration. Using the 'internal' keyword will force the parser to ignore such rule, and we use it to print the annotated tree.
 internal TypedDecl. Decl ::= AnnotatedDecl ;
 
 
--- A program may containt (C-like) comments, which are ignored by the parser.
+-- A program may containt comments, which are ignored by the parser.
 comment "#" ;
 comment "/*" "*/" ;
 
@@ -34,7 +28,6 @@ comment "/*" "*/" ;
 DeclFun.   Decl          ::= "def" LExpr "(" [Arg] ")" Guard CompStmt ;
 ADecl.     AnnotatedDecl ::= "["Type ":]" Decl ;
 separator  Arg "," ;
---terminator Stmt "" ;
 
 
 -- An argument declaration has a type and an identifier.
@@ -57,16 +50,9 @@ StmtExpr.       Stmt     ::= Expr ";" ;
 StmtVarInit.         Stmt     ::= "var" PIdent Guard ":=" ComplexExpr ";" ;         -- Variable initialization.
 StmtDefInit.         Stmt     ::= "def" PIdent Guard ":=" ComplexExpr ";" ;         -- Constant initialization.
 
---StmtVarArrInit. Stmt ::= "var" PIdent Guard ":=" "[" Array "]" ";" ; -- Variable array initialization.
---StmtDefArrInit. Stmt ::= "def" PIdent Guard ":=" "[" Array "]" ";" ; -- Constant array initialization.
-
 ExprSimple.         ComplexExpr ::= Expr ;
 ExprArray.          ComplexExpr ::= "[" [ComplexExpr] "]" ;
-separator       nonempty ComplexExpr "," ;
-
---ExprArray.      Array ::= Expr ;
---ExprMultiArray. Array ::= "[" [Array] "]" ;
---separator Array "," ;
+separator nonempty ComplexExpr "," ;
 separator PInteger "," ;
 
 StmtReturn.     Stmt     ::= PReturn "(" Expr ")" ";" ;
@@ -102,17 +88,9 @@ DeclStmt.       Decl ::= Stmt ;
 
 -- (Left) Expressions
 LExprId.        LExpr ::= PIdent ;
---LExprDeref.     LExpr ::= Deref ;
 LExprRef.       LExpr ::= Ref ;
 LExprArr.       LExpr ::= Arr ;
--- # 1 shift/reduce conflict with Arr
--- # when I read a LExpr followed by a "[" I shift to read a LArrExpr
--- # (The reducing rule is used after reading all that rule)
---LDerefExpr.     Deref ::= "&" LExpr;
--- # 1 shift/reduce conflict
--- # same as before
 LRefExpr.       Ref   ::= "*" LExpr;
---LArrExpr.       Arr   ::= PIdent "[" Expr "]"; -- Changing PIdent with LExpr => +2 s/r conflicts
 LArrExpr. Arr ::= PIdent "[" AExpr "]" ;         -- How we access an array element.
 
 ArrSing. AExpr ::= Expr ;
@@ -145,11 +123,6 @@ ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
 ExprReference. Expr11 ::= "&" LExpr ;
 ExprPlus.      Expr11 ::= Expr11 "+"  Expr12 ;
 ExprMinus.     Expr11 ::= Expr11 "-"  Expr12 ;
-
--- Tolti per ridurre i conflitti reduce reduce con Array
--- Potrebbero essere richiesti
--- ExprIntInc.   Expr10 ::= Expr10 ".."  Expr11 ;
--- ExprIntExc.   Expr10 ::= Expr10 "..!" Expr11 ;
 
 ExprLt.       Expr9  ::= Expr9  "<"   Expr10 ;
 ExprGt.       Expr9  ::= Expr9  ">"   Expr10 ;
@@ -200,11 +173,6 @@ ArrDefPtr.   ArrayType ::= "[" [PInteger] "]" Ptr ;
 
 Pointer.         Ptr       ::= BasicType "*" ;
 Pointer2Pointer. Ptr       ::= Ptr "*" ;
-
--- Compound types.
---TypeCompound. Type  ::= CType ;
---TypePointer.  CType ::= Type "*" ; 					-- Pointer type.
---TypeArray.    CType ::= Type "[" [PInteger] "]" ;		-- Array type.
 
 
 -- The entry point is the program.

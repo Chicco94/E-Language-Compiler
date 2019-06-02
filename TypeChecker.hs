@@ -17,6 +17,7 @@ type Context   = Map.Map String (Mutability, Type)         -- Variables context:
 data Mutability = MutConst | MutVar
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
+-- Block types.
 data BlockType = NormBlock | FunBlock PIdent Type | IterBlock | SelBlock
   deriving(Eq, Ord, Show, Read)
 
@@ -53,7 +54,7 @@ checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId pident@(P
                                                Ok (e', p') -> Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))]) prog)
                                                Bad s -> Bad s
                   Bad s -> Bad s
-    GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " must have a type to be well defined" -- TODO: add it as void type?
+    GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " must have a type to be well defined"
 
 -- Check argument(s) declaration.
 checkArgDecl :: (Env, [Program]) -> [Arg] -> Err (Env, [Program])  
@@ -87,6 +88,7 @@ checkDeclStmt (env, prog) stmt =
     StmtFor pident range cstmt        -> checkFor (env, prog) pident range cstmt
     StmtSwitchCase expr norm dflt     -> checkStmtSwitchCase (env, prog) expr norm dflt
 
+-- Check switch case statement.
 checkStmtSwitchCase :: (Env, [Program]) -> Expr -> [NormCase] -> [DfltCase] -> Err (Env, [Program])
 checkStmtSwitchCase (env@(sig@(x:xs), blocks), prog) expr norm dflt = do
   case checkNormalCases (env, prog) expr norm [] of
@@ -96,6 +98,7 @@ checkStmtSwitchCase (env@(sig@(x:xs), blocks), prog) expr norm dflt = do
         Bad s      -> Bad s
     Bad s       -> Bad s
 
+-- Check normal cases
 checkNormalCases :: (Env, [Program]) -> Expr -> [NormCase] -> [NormCase] -> Err [NormCase]
 checkNormalCases (env, prog) _ [] acc = Ok acc
 checkNormalCases (env@(sig@(x:xs), blocks), prog) expr (y@(CaseNormal e cstmt):ys) acc = do
@@ -106,14 +109,14 @@ checkNormalCases (env@(sig@(x:xs), blocks), prog) expr (y@(CaseNormal e cstmt):y
       (e', p') <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), prog) cstmt
       checkNormalCases (env, prog) expr ys (acc ++ [CaseNormal e (StmtBlock (getDecls p'))])
     else fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has " ++ printTree texpr ++ " type, but the matching expression " ++ printTree e ++ " " ++ show (getExprPosition e) ++ " has " ++ printTree tcase ++ " type"
-      
+
+-- Check default cases.
 checkDefaultCases :: (Env, [Program]) -> Expr -> [DfltCase] -> [DfltCase] -> Err [DfltCase]
 checkDefaultCases (env, prog) _ [] acc = Ok acc
 checkDefaultCases (env@(sig@(x:xs), blocks), prog) expr (y@(CaseDefault cstmt):ys) acc = do
   texpr <- inferExpr env expr
   (e', p') <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), prog) cstmt
   checkDefaultCases (env, prog) expr ys (acc ++ [CaseDefault (StmtBlock (getDecls p'))])
-
 
 -- Check if-then-else statement.
 checkIfThenElse :: (Env, [Program]) -> Expr -> CompStmt -> CompStmt -> Err (Env, [Program]) 
@@ -248,47 +251,7 @@ checkFor (env@(xs, blocks@((blockType, context):ys)), prog) pident@(PIdent (p,id
                                else fail "checkFor: fatal error"
     _ -> fail $ show p ++ ": the variable " ++ printTree ident ++ " is not declared"
 
-getTypeLevel :: Type -> Int
-getTypeLevel t = case t of
-  TypeCompoundType (CompoundTypePtr (Pointer _)) -> 1
-  TypeCompoundType (CompoundTypePtr (Pointer2Pointer p2p)) -> (getTypeLevel (TypeCompoundType (CompoundTypePtr p2p))) + 1
-  TypeCompoundType (CompoundTypeArrayType (ArrDefPtr _ (Pointer _))) -> 1
-  TypeCompoundType (CompoundTypeArrayType (ArrDefPtr _ (Pointer2Pointer p2p))) -> (getTypeLevel (TypeCompoundType (CompoundTypePtr p2p))) + 1
-  _                            -> 0      
-
-getLeftLevel :: LExpr -> Int
-getLeftLevel le = case le of
-  LExprRef (LRefExpr le) -> (getLeftLevel le) - 1
-  _                      -> 0
-
-getInitLevel :: Expr -> Int
-getInitLevel e = case e of
-  ExprReference le                  -> 1
-  ExprLeft (LExprRef (LRefExpr le)) -> (getLeftLevel le) - 1
-  _                                 -> 0
-
-getInnerType :: Type -> Type
-getInnerType t = case t of
-  TypeCompoundType (CompoundTypePtr p) -> TypeBasicType $ decomposePtr p
-  TypeCompoundType (CompoundTypeArrayType arr) -> TypeBasicType $ decomposeArr arr
-  basicType -> basicType
-
-decomposePtr :: Ptr -> BasicType
-decomposePtr p = case p of
-  (Pointer t)           -> t
-  (Pointer2Pointer p2p) -> decomposePtr p2p
-
-decomposeArr :: ArrayType -> BasicType
-decomposeArr arr = case arr of
-  ArrDefBase pints basicType -> basicType
-  ArrDefPtr pints p          -> decomposePtr p
-
-getExprFromComplexExpr :: ComplexExpr -> Err Expr
-getExprFromComplexExpr cexpr = case cexpr of
-  ExprSimple expr -> Ok expr
-  ExprArray _     -> fail $ "cannot get expression from array"
-
--- TODO: compact the code for TypeCompoundType (CompoundTypePtr ptr) and TypeBasicType basicType
+-- Check initialization statement.
 checkStmtInit :: (Env, [Program]) -> PIdent -> Guard -> ComplexExpr -> Mutability -> Err (Env, [Program])
 checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) pident@(PIdent (p, ident)) guard cexpr mut = case guard of
   GuardVoid        -> fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ printTree TypeVoid ++ " is not allowed)"
@@ -354,81 +317,6 @@ checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) pident@(PIdent
                   if ((getInitLevel expr) + (getTypeLevel texpr)) > (getTypeLevel tguard)
                     then fail $ show p ++ ": variable " ++ show ident ++ " has a pointer level " ++ show (getTypeLevel tguard) ++ " which is incompatible with expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
                     else fail $ "checkStmtInit: fatal error"
-
-controlArrayTypes :: Type -> [(Int, Type)] -> Err Type
-controlArrayTypes t [] = Ok t 
-controlArrayTypes t1 (typ@(i,t2):types) =
-  if (getTypeLevel t1) == (i + (getTypeLevel t2)) 
-    then 
-      if (getInnerType t2) `isCompatibleWith` (getInnerType t1)
-        then controlArrayTypes t1 types
-        else fail $ printTree t2 
-    else 
-     if (getTypeLevel t1) < (i + (getTypeLevel t2)) 
-       then fail $ printTree t2
-       else fail $ printTree t2
-
--- Infer array type.
-inferArray :: Env -> ComplexExpr -> Type -> Err Type
-inferArray env@(sig, blocks) arr tguard = let types = inferArr env arr
-                                          in controlArrayTypes tguard types
-
-inferArr :: Env -> ComplexExpr -> [(Int, Type)] 
-inferArr env arr = do
-  case arr of
-    ExprArray multiArray@(x:xs) -> inferArr env x ++ inferArrs env xs
-    ExprSimple expr -> case inferExpr env expr of 
-                         Ok t -> case expr of
-                                   ExprReference _ -> [(1, t)]
-                                   _               -> [((getInitLevel expr), t)]
-                         _    -> []
-
-inferArrs :: Env -> [ComplexExpr] -> [(Int, Type)]
-inferArrs _ [] = []
-inferArrs env (x:xs) = do
-  case x of
-    ExprArray multiArr@(y:ys) -> inferArr env x ++ inferArr env y ++ inferArrs env xs ++ inferArrs env ys
-    ExprSimple expr -> case inferExpr env expr of 
-                         Ok t -> case expr of 
-                                   ExprReference _ -> [(1, t)] ++ inferArrs env xs
-                                   _               -> [((getInitLevel expr), t)] ++ inferArrs env xs
-                         _    -> []  ++ inferArrs env xs
-
-checkArrayInitBounds :: [Int] -> ComplexExpr -> Bool
-checkArrayInitBounds [] _ = True
-checkArrayInitBounds (int:ints) arr =
-  case arr of
-    ExprArray multiArr@(x:xs) -> (checkLengthArray int multiArr) && 
-                                 (checkArrayInitBounds ints x) && 
-                                 (checkNestedArrayBounds ((int-1):ints) xs)
-    ExprSimple expr -> True
-
-checkNestedArrayBounds :: [Int] -> [ComplexExpr] -> Bool
-checkNestedArrayBounds _ [] = True
-checkNestedArrayBounds (int:ints) (x:xs) =
-  case x of
-    ExprArray multiArr@(y:ys) -> (checkLengthArray int (x:xs))  && 
-                                 (checkLengthArray (head ints) (y:ys)) && 
-                                 --(checkArrays  ints (y:ys)) &&  <<-- TODO: necessary? 
-                                 (checkArrayInitBounds (tail ints) y) && 
-                                 (checkNestedArrayBounds (((head ints)-1):(tail ints)) ys) && 
-                                 (checkNestedArrayBounds ((int-1):ints) xs)
-    ExprSimple expr -> True
-
-getBoundsFromPInts :: [PInteger] -> [Int]
-getBoundsFromPInts [] = []
-getBoundsFromPInts ((PInteger (p, int)):xs) = (read int :: Int) : getBoundsFromPInts xs
-
-checkLengthArray :: Int -> [ComplexExpr] -> Bool
-checkLengthArray int arr = length arr == int
-
-
-findLExprName :: LExpr -> String
-findLExprName lexpr =
-  case lexpr of
-    LExprId (PIdent (p,ident))               -> ident
-    LExprRef (LRefExpr le)                   -> findLExprName le
-    LExprArr (LArrExpr (PIdent (p,ident)) _) -> ident
 
 -- Check (right) expression.
 checkExpr :: (Env, [Program]) -> Expr -> Err (Env, [Program])
@@ -545,6 +433,7 @@ checkAssignOp (env, prog) lexpr op expr = do
             then fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
             else fail $ "checkAssignOp: fatal error"
 
+-- Check assignment boolean operator.
 checkAssignBoolOp :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignBoolOp (env, prog) lexpr op expr = do
   tlexpr <- inferLExpr env lexpr
@@ -564,6 +453,7 @@ checkAssignBoolOp (env, prog) lexpr op expr = do
             then fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
             else fail $ "checkAssignBoolOp: fatal error"
 
+-- Check assignment division operator.
 checkAssignOpDiv :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Type -> Err (Env, [Program])
 checkAssignOpDiv (env, prog) lexpr op expr t = do
   tlexpr <- inferLExpr env lexpr
@@ -583,6 +473,7 @@ checkAssignOpDiv (env, prog) lexpr op expr t = do
             then fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
             else fail $ "checkAssignOpDiv: fatal error"
 
+-- Check modulo and remainder operators.
 checkAssignOpMod :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignOpMod (env, prog) lexpr op expr = do
   tlexpr <- inferLExpr env lexpr
@@ -615,11 +506,11 @@ checkFunCall (env@(sig, _), prog) (ExprFunCall pident@(PIdent (p,ident)) args) =
         else fail $ show p ++ ": function " ++ printTree ident ++ " doesn't match the numerosity of its parameters"
     _                  -> fail $ show p ++ ": function " ++ printTree ident ++ " is not defined" 
 
+-- Check the arguments of a function call.
 checkFunCallArgs :: Env -> PIdent -> [(Modality, Type)] -> [Expr] -> Err String
 checkFunCallArgs env _ [] [] = Ok "fun call arguments are ok"
 checkFunCallArgs env@(sig, blocks) pident@(PIdent (p, ident)) (x@(mod,tdecl):xs) (expr:exprs) = do
   targ <- inferExpr env expr
-  --fail $ "|targ| = " ++ show (length (getBoundsFromType targ)) ++ " |tdecl| = " ++ show (length (getBoundsFromType tdecl))
   if ((getInitLevel expr) + (getTypeLevel targ)) == (getTypeLevel tdecl)
    then do
      if (getInnerType targ) `isCompatibleWith` (getInnerType tdecl)
@@ -633,23 +524,6 @@ checkFunCallArgs env@(sig, blocks) pident@(PIdent (p, ident)) (x@(mod,tdecl):xs)
                    else fail $ show p ++ ": function " ++ show ident ++ " is called with argument " ++ printTree lexpr ++ " that has bounds " ++ show (getBoundsFromType targ) ++ " but the definition of such argument requires to have bounds " ++ show (getBoundsFromType t)
                _    -> fail $ show p ++ ": variable " ++ show ident ++ " is not declared"
            _ -> do checkFunCallArgs env pident xs exprs
-          
-        {-  case lookupVar blocks (findLExprName (ExprLeft expr)) of
-           Ok (m,t) -> do
-             if (getBoundsFromType targ) `areConsistentWithBounds` (getBoundsFromType t)
-               then checkFunCallArgs env pident xs exprs
-               else fail $ "1 |targ| = " ++ show ((getBoundsFromType targ)) ++ " |t| = " ++ show ((getBoundsFromType t))
-           _    -> fail $ show p ++ ": variable " ++ show ident ++ " is not declared" -}
-         --if (getBoundsFromType targ) `areConsistentWithBounds` (getBoundsFromType tdecl)
-           --then do
-             --if (length (getBoundsFromType targ)) == (length (getBoundsFromType tdecl)) 
-               --then checkFunCallArgs env pident xs exprs
-               --else fail $ "1 |targ| = " ++ show ((getBoundsFromType targ)) ++ " |tdecl| = " ++ show ((getBoundsFromType tdecl))
-           --then checkFunCallArgs (env, prog) pident xs exprs
-{- if (getNumberOfArgsFromArrayAccess aexpr) == (length (getBoundsFromPInts pints))
-                    then Ok tid
-                    else fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " (i.e., " ++ show (length (getBoundsFromPInts pints)) ++ " indices), but you are trying to access an element of such array through " ++ show (getNumberOfArgsFromArrayAccess aexpr) ++ " indices" -}
-           --else fail $ show (getExprPosition expr) ++ ": expression argument " ++ printTree expr ++ " has bounds " ++ show (getBoundsFromType targ) ++ ", but the declaration of function " ++ printTree ident ++ " requires to have bounds " ++ show (getBoundsFromType tdecl)
      else fail $ show (getExprPosition expr) ++ ": expression argument " ++ printTree expr ++ " has type " ++ printTree targ ++ " but the declaration of the function requires to have type " ++ printTree tdecl
    else do
      if ((getInitLevel expr) + (getTypeLevel targ)) < (getTypeLevel tdecl)
@@ -662,8 +536,6 @@ checkFunCallArgs env@(sig, blocks) pident@(PIdent (p, ident)) (x@(mod,tdecl):xs)
 -- #######################################
 -- 					Inference functions:
 -- #######################################
-
-
 
 -- Infer (right) expression.
 inferExpr :: Env -> Expr -> Err Type
@@ -720,40 +592,13 @@ inferFunCall :: Env -> Expr -> Err Type
 inferFunCall env@(sig, blocks) (ExprFunCall pident@(PIdent (p,ident)) args) = do
   case lookupFun sig ident of
     Ok (mods,t) -> do
-      if length args == length mods -- TODO: I suppose it is not necessary to do this check because we are just inferring the type, think about it
-        --then Ok t
+      if length args == length mods
         then do
           case checkFunCallArgs env pident mods args of
             Ok _  -> Ok t
             Bad s -> fail s 
         else fail $ show p ++ ": function " ++ printTree ident ++ " is declared with " ++ show (length mods) ++ " parameters, passing " ++ show (length args) ++ " arguments to the function is not wise"
     _ -> fail $ show p ++ ": function " ++ printTree ident ++ " not defined" 
-
-getBoundsFromType :: Type -> [Int]
-getBoundsFromType t =
-  case t of
-    TypeCompoundType (CompoundTypeArrayType (ArrDefBase pints _)) -> getBoundsFromPInts pints
-    TypeCompoundType (CompoundTypeArrayType (ArrDefPtr pints _))  -> getBoundsFromPInts pints
-    _                                                             -> []
-
---getBoundsFromArrayAccess :: AExpr -> [Int]
---getBoundsFromArrayAccess aexpr =
---  case aexpr of
---    ArrSing pint@(PInteger (p, int))      -> [read int :: Int]
---    ArrMul aexpr pint@(PInteger (p, int)) -> getBoundsFromArrayAccess aexpr ++ [read int :: Int]
-getNumberOfArgsFromArrayAccess :: AExpr -> Int
-getNumberOfArgsFromArrayAccess aexpr =
-  case aexpr of
-    ArrSing _ -> 1
-    ArrMul ae _ -> getNumberOfArgsFromArrayAccess ae + 1
-
-areConsistentWithBounds :: [Int] -> [Int] -> Bool
-areConsistentWithBounds [] [] = True
-areConsistentWithBounds _ [] = False
-areConsistentWithBounds [] _ = False
-(x:xs) `areConsistentWithBounds` (y:ys) =
-  if x < y then xs `areConsistentWithBounds` ys
-           else False
 
 -- Infer left expression. 
 inferLExpr :: Env -> LExpr -> Err Type
@@ -854,7 +699,6 @@ inferBoolBinOp env expr e1 e2 = do
 -- 					Auxiliary functions:
 -- #######################################
 
-
 tInt    = TypeBasicType TypeInt    :: Type
 tChar   = TypeBasicType TypeChar   :: Type
 tString = TypeBasicType TypeString :: Type
@@ -935,6 +779,7 @@ getMostGeneric t1 t2
   | tString `elem` [t1,t2] = Ok tString
   | tChar `elem` [t1,t2]   = Ok tChar
 
+-- Get list of declarations from list of program.
 getDecls :: [Program] -> [Decl]
 getDecls [] = []
 getDecls (prog:progs) = case prog of
@@ -942,6 +787,7 @@ getDecls (prog:progs) = case prog of
   PDefs [DeclStmt stmt] -> (DeclStmt stmt) : getDecls progs 
   _ -> []
 
+-- Get (right) expression position.
 getExprPosition :: Expr -> (Int, Int)
 getExprPosition e =
   case e of
@@ -981,6 +827,7 @@ getExprPosition e =
     ExprAnd e1 e2             -> getExprPosition e1
     ExprOr e1 e2              -> getExprPosition e1
  
+-- Get left expression position.
 getLExprPosition :: LExpr -> (Int, Int)
 getLExprPosition e =
   case e of
@@ -1004,6 +851,160 @@ findIterBlock (block@(blockType, context):blocks) =
     IterBlock -> Ok ()
     _         -> findIterBlock blocks
 
+-- Get type level.
+getTypeLevel :: Type -> Int
+getTypeLevel t = case t of
+  TypeCompoundType (CompoundTypePtr (Pointer _)) -> 1
+  TypeCompoundType (CompoundTypePtr (Pointer2Pointer p2p)) -> (getTypeLevel (TypeCompoundType (CompoundTypePtr p2p))) + 1
+  TypeCompoundType (CompoundTypeArrayType (ArrDefPtr _ (Pointer _))) -> 1
+  TypeCompoundType (CompoundTypeArrayType (ArrDefPtr _ (Pointer2Pointer p2p))) -> (getTypeLevel (TypeCompoundType (CompoundTypePtr p2p))) + 1
+  _                            -> 0      
+
+-- Get left expression level.
+getLeftLevel :: LExpr -> Int
+getLeftLevel le = case le of
+  LExprRef (LRefExpr le) -> (getLeftLevel le) - 1
+  _                      -> 0
+
+-- Get initial level.
+getInitLevel :: Expr -> Int
+getInitLevel e = case e of
+  ExprReference le                  -> 1
+  ExprLeft (LExprRef (LRefExpr le)) -> (getLeftLevel le) - 1
+  _                                 -> 0
+
+-- Get inner type.
+getInnerType :: Type -> Type
+getInnerType t = case t of
+  TypeCompoundType (CompoundTypePtr p) -> TypeBasicType $ decomposePtr p
+  TypeCompoundType (CompoundTypeArrayType arr) -> TypeBasicType $ decomposeArr arr
+  basicType -> basicType
+
+-- Decompose pointer.
+decomposePtr :: Ptr -> BasicType
+decomposePtr p = case p of
+  (Pointer t)           -> t
+  (Pointer2Pointer p2p) -> decomposePtr p2p
+
+-- Decompose array.
+decomposeArr :: ArrayType -> BasicType
+decomposeArr arr = case arr of
+  ArrDefBase pints basicType -> basicType
+  ArrDefPtr pints p          -> decomposePtr p
+
+-- Get expression from complex expression.
+getExprFromComplexExpr :: ComplexExpr -> Err Expr
+getExprFromComplexExpr cexpr = case cexpr of
+  ExprSimple expr -> Ok expr
+  ExprArray _     -> fail $ "cannot get expression from array"
+
+-- Control types of an array.
+controlArrayTypes :: Type -> [(Int, Type)] -> Err Type
+controlArrayTypes t [] = Ok t 
+controlArrayTypes t1 (typ@(i,t2):types) =
+  if (getTypeLevel t1) == (i + (getTypeLevel t2)) 
+    then 
+      if (getInnerType t2) `isCompatibleWith` (getInnerType t1)
+        then controlArrayTypes t1 types
+        else fail $ printTree t2 
+    else 
+     if (getTypeLevel t1) < (i + (getTypeLevel t2)) 
+       then fail $ printTree t2
+       else fail $ printTree t2
+
+-- Infer array type.
+inferArray :: Env -> ComplexExpr -> Type -> Err Type
+inferArray env@(sig, blocks) arr tguard = let types = inferArr env arr
+                                          in controlArrayTypes tguard types
+
+-- Infer array.
+inferArr :: Env -> ComplexExpr -> [(Int, Type)] 
+inferArr env arr = do
+  case arr of
+    ExprArray multiArray@(x:xs) -> inferArr env x ++ inferArrs env xs
+    ExprSimple expr -> case inferExpr env expr of 
+                         Ok t -> case expr of
+                                   ExprReference _ -> [(1, t)]
+                                   _               -> [((getInitLevel expr), t)]
+                         _    -> []
+
+-- Infer arrays.
+inferArrs :: Env -> [ComplexExpr] -> [(Int, Type)]
+inferArrs _ [] = []
+inferArrs env (x:xs) = do
+  case x of
+    ExprArray multiArr@(y:ys) -> inferArr env x ++ inferArr env y ++ inferArrs env xs ++ inferArrs env ys
+    ExprSimple expr -> case inferExpr env expr of 
+                         Ok t -> case expr of 
+                                   ExprReference _ -> [(1, t)] ++ inferArrs env xs
+                                   _               -> [((getInitLevel expr), t)] ++ inferArrs env xs
+                         _    -> []  ++ inferArrs env xs
+
+-- Check array initialization bounds.
+checkArrayInitBounds :: [Int] -> ComplexExpr -> Bool
+checkArrayInitBounds [] _ = True
+checkArrayInitBounds (int:ints) arr =
+  case arr of
+    ExprArray multiArr@(x:xs) -> (checkLengthArray int multiArr) && 
+                                 (checkArrayInitBounds ints x) && 
+                                 (checkNestedArrayBounds ((int-1):ints) xs)
+    ExprSimple expr -> True
+
+-- Check nested array bounds.
+checkNestedArrayBounds :: [Int] -> [ComplexExpr] -> Bool
+checkNestedArrayBounds _ [] = True
+checkNestedArrayBounds (int:ints) (x:xs) =
+  case x of
+    ExprArray multiArr@(y:ys) -> (checkLengthArray int (x:xs))  && 
+                                 (checkLengthArray (head ints) (y:ys)) && 
+                                 --(checkArrays  ints (y:ys)) &&  <<-- TODO: necessary? 
+                                 (checkArrayInitBounds (tail ints) y) && 
+                                 (checkNestedArrayBounds (((head ints)-1):(tail ints)) ys) && 
+                                 (checkNestedArrayBounds ((int-1):ints) xs)
+    ExprSimple expr -> True
+
+-- Get bounds from PIntegers.
+getBoundsFromPInts :: [PInteger] -> [Int]
+getBoundsFromPInts [] = []
+getBoundsFromPInts ((PInteger (p, int)):xs) = (read int :: Int) : getBoundsFromPInts xs
+
+-- Check length of an array.
+checkLengthArray :: Int -> [ComplexExpr] -> Bool
+checkLengthArray int arr = length arr == int
+
+-- Find left expression name.
+findLExprName :: LExpr -> String
+findLExprName lexpr =
+  case lexpr of
+    LExprId (PIdent (p,ident))               -> ident
+    LExprRef (LRefExpr le)                   -> findLExprName le
+    LExprArr (LArrExpr (PIdent (p,ident)) _) -> ident
+
+-- Get bounds from type.
+getBoundsFromType :: Type -> [Int]
+getBoundsFromType t =
+  case t of
+    TypeCompoundType (CompoundTypeArrayType (ArrDefBase pints _)) -> getBoundsFromPInts pints
+    TypeCompoundType (CompoundTypeArrayType (ArrDefPtr pints _))  -> getBoundsFromPInts pints
+    _                                                             -> []
+
+-- Get number of arguments from array access.
+getNumberOfArgsFromArrayAccess :: AExpr -> Int
+getNumberOfArgsFromArrayAccess aexpr =
+  case aexpr of
+    ArrSing _ -> 1
+    ArrMul ae _ -> getNumberOfArgsFromArrayAccess ae + 1
+
+-- INTS `areConsistentWithBounds` INTS ?
+areConsistentWithBounds :: [Int] -> [Int] -> Bool
+areConsistentWithBounds [] [] = True
+areConsistentWithBounds _ [] = False
+areConsistentWithBounds [] _ = False
+(x:xs) `areConsistentWithBounds` (y:ys) =
+  if x < y then xs `areConsistentWithBounds` ys
+           else False
+
+-- Extend environment.
 extendEnv :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
 extendEnv (env@(s, y), prog) (StmtBlock decls) = do 
   (e@((sig:sigs), b@(block:blocks)), p) <- foldM checkDecl (env, prog) decls
