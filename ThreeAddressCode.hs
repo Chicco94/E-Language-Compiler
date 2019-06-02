@@ -9,38 +9,47 @@ module ThreeAddressCode where
   import qualified Data.Map as Map
   
   -- Environment = (Program, tempValue, variables, Scope)
-  type Env          = ([TAC], LastTemp, VariablesMap, LabelsCount, Scope)
+  type Env          = ( TACProg, LastTemp, VariablesMap, LabelsCount, Scope)
+  type TACProg      = [TAC]
   type LastTemp     = Temp
   type VariablesMap = Map.Map String Var         -- Variables context: String -> Var
   type LabelsCount  = Int
-  type Scope        = Int
+  type Scope        = (Int,Int) -- scope globale, scope interno
   
   
    -- Initialize the tacprogram with an empty list.
   generateTAC :: [Program] -> Env
-  generateTAC progs = generateTAC_int ([],(Temp (-1,(TypeBasicType TypeVoid))), Map.empty,0,0) (PDefs (initTAC progs))
+  generateTAC progs = (generateTAC_int' ([],(Temp (-1,(TypeBasicType TypeVoid))), Map.empty,0,(0,0)) (PDefs (initTAC progs)))
   
   initTAC :: [Program] -> [Decl]
   initTAC [] = []
   initTAC (prog@(PDefs defs):progs) = defs ++ initTAC progs 
   
+  generateTAC_int' :: Env -> Program -> Env
+  generateTAC_int' env prog@(PDefs decls) = do
+    let (final_env, rest) = foldl generateInstruction (env,[]) decls
+    let final_env_with_main@(p,t,v,l,s) = (ifmain final_env)
+    (rest++p,t,v,l,s)
+    
   generateTAC_int :: Env -> Program -> Env
-  generateTAC_int env prog@(PDefs decls) = foldl generateInstruction env decls
-  
+  generateTAC_int env prog@(PDefs decls) = do 
+    let ((p,t,v,l,s), rest) = foldl generateInstruction (env,[]) decls
+    (rest++p,t,v,l,s)
 
-
-  -- potrei avere delle istruzioni non tipate per errore, le gestico mettendole a void
-  generateInstruction :: Env -> Decl -> Env
+  -- potrei avere delle istruzioni non tipate, le gestico mettendole a void
+  generateInstruction :: (Env,[TAC]) -> Decl -> (Env,[TAC])
   generateInstruction env decl = generateDecl env Nothing decl
   
 
 
-  generateDecl :: Env -> Maybe Type -> Decl -> Env 
-  generateDecl env maybe_type decl =
+  generateDecl :: (Env,[TAC]) -> Maybe Type -> Decl -> (Env,[TAC]) 
+  generateDecl (env@(p,t,v,l,s),rest) maybe_type decl =
     case decl of
-      TypedDecl (ADecl type_ decl1) -> generateDecl     env (Just type_) decl1
-      DeclFun   id args type_ stmts -> generateDeclFunc env id args type_ stmts
-      DeclStmt (stmt)               -> generateStmt     env new_type stmt
+      TypedDecl (ADecl type_ decl1) -> (generateDecl    (env,rest) (Just type_) decl1)
+      DeclFun   id args type_ stmts -> do
+        let env_temp@(p',t',v',l',s') = (generateDeclFunc ([],t,v,l,s) id args type_ stmts)
+        ((p,t',v',l',s'),p'++rest)
+      DeclStmt (stmt)               -> (generateStmt     env new_type stmt,rest)
         where new_type = case maybe_type of 
                             Nothing      -> (TypeBasicType TypeVoid)
                             (Just type_) -> type_
@@ -48,7 +57,7 @@ module ThreeAddressCode where
   
   
   generateStmt :: Env  -> Type -> Stmt -> Env 
-  generateStmt env@(program, last_temp, variables,labels,scope) type_ stmt = 
+  generateStmt env@(program, last_temp, variables,labels,s@(scope,s_i)) type_ stmt = 
     case stmt of
       StmtExpr expr                                 -> generateExpr env type_ expr  -- expression statement
       
@@ -71,7 +80,7 @@ module ThreeAddressCode where
       StmtDefInit id guard expr                     -> generateStmt env type_ (StmtVarInit id guard expr) 
       
       -- return stmt
-      StmtReturn (PReturn (pos,name)) expr          -> (addTACList (generateExpr env type_ expr)  [Return undefined]) -- ritorno l'ultima variabile temporanea instanziata
+      StmtReturn (PReturn (pos,name)) expr          -> (addTACList (generateExpr env type_ expr)  [Return last_temp]) -- ritorno l'ultima variabile temporanea instanziata
       
       -- compound statement
       SComp (StmtBlock decls)                       -> generateTAC_int env (PDefs decls) 
@@ -84,23 +93,23 @@ module ThreeAddressCode where
       
       -- switch case del default prendo solo il primo
       StmtSwitchCase expr norm_cases ((CaseDefault dflt_stms):_) -> do
-        let (program4, last_temp4, variables4, labels4, scope4) = addTACList (addTACList (generateStmt (addTACList (generateCases ((addTACList env [Goto (Label ("case_conditions",labels) )])) type_ norm_cases (Label ("end_case",labels) )) [Lbl (Label ("match_dflt", labels) )]) type_ (SComp dflt_stms)) [Goto (Label ("end_case",scope) )]) [Lbl (Label ("case_conditions", labels) )]
-        addTACList (addTACList (generateCasesCond (program4, last_temp4, variables4, labels,scope) expr type_ norm_cases) [Goto (Label ("match_dflt",labels) )]) [Lbl (Label ("end_case", labels) )]
+        let (program4, last_temp4, variables4, labels4, scope4) = addTACList (addTACList (generateStmt (addTACList (generateCases ((addTACList env [Goto (Label ("case_conditions",labels) )])) type_ norm_cases (Label ("end_case",labels) )) [Lbl (Label ("match_dflt", labels) )]) type_ (SComp dflt_stms)) [Goto (Label ("end_case",labels) )]) [Lbl (Label ("case_conditions", labels) )]
+        addTACList (addTACList (generateCasesCond (program4, last_temp4, variables4, labels,scope4) expr type_ norm_cases) [Goto (Label ("match_dflt",labels) )]) [Lbl (Label ("end_case", labels) )]
       
       -- break stmt
-      StmtBreak break -> addTACList env [Goto (Label ("end_stmt",scope-1) )]
+      StmtBreak break -> addTACList env [Goto (Label ("end_stmt",scope+s_i-1))]
       
       -- continue stmt
-      StmtContinue continue -> addTACList env [Goto (Label ("guard",scope-1) )] 
+      StmtContinue continue -> addTACList env [Goto (Label ("guard",scope+s_i-1))] 
   
        -- while stmt    
-      StmtWhile bexpr (StmtBlock decls) -> (addTACList (generateExpr (addTACList (generateTAC_int ([Lbl (Label ("body",scope)),Goto (Label ("gaurd",scope))]++program, last_temp,variables,labels,scope+1) (PDefs decls)) [Lbl (Label ("guard",scope))]) (TypeBasicType TypeBool) bexpr) [If Empty (Label ("body",scope)),Lbl (Label ("end_stmt",scope))])
+      StmtWhile bexpr (StmtBlock decls) -> (addTACList (generateExpr (addTACList (generateTAC_int ([Lbl (Label ("body",scope+s_i+1)),Goto (Label ("guard",scope+s_i+1))]++program, last_temp,variables,labels,(scope+1,s_i+1)) (PDefs decls)) [Lbl (Label ("guard",scope+s_i+1))]) (TypeBasicType TypeBool) bexpr) [If Empty (Label ("body",scope+s_i+1)),Lbl (Label ("end_stmt",scope+s_i+1))])
       
       -- for stmt
       StmtFor id@(PIdent (pos,name)) (ExprRange start_for end_for) (StmtBlock decls) -> do
         let (env1, var) = findVar env (Var (name,pos,(TypeBasicType TypeInt)))
-        let (program1, last_temp1, variables1, labels1, scope1) = generateAssign env1 (TypeBasicType TypeInt) id OpAssign [(for_bound_identifier env start_for)] (Temp (-1,(TypeBasicType TypeInt)))
-        (addTACList (generateExpr (addTACList (generateExpr (generateTAC_int ([Lbl (Label ("body",scope)),Goto (Label ("gaurd",scope))]++program1, last_temp1,variables1,labels1,scope1+1) (PDefs decls)) (TypeBasicType TypeInt) (ExprAssign (LExprId id) OpAssign (ExprPlus (ExprLeft (LExprId id)) (ExprInt (PInteger ((0,0),"1")))))) [Lbl (Label ("guard",scope))]) (TypeBasicType TypeBool) (ExprLt (ExprLeft (LExprId id)) (for_bound_identifier env end_for))) [If Empty (Label ("body",scope)),Lbl (Label ("end_stmt",scope))])
+        let (program1, last_temp1, variables1, labels1, _) = generateAssign env1 (TypeBasicType TypeInt) id OpAssign [(for_bound_identifier env start_for)] (Temp (-1,(TypeBasicType TypeInt)))
+        (addTACList (generateExpr (addTACList (generateExpr (generateTAC_int ([Lbl (Label ("body",scope+s_i+1)),Goto (Label ("guard",scope+s_i+1))]++program1, last_temp1,variables1,labels1,(scope +1,s_i+1)) (PDefs decls)) (TypeBasicType TypeInt) (ExprAssign (LExprId id) OpAssign (ExprPlus (ExprLeft (LExprId id)) (ExprInt (PInteger ((0,0),"1")))))) [Lbl (Label ("guard",scope+s_i+1))]) (TypeBasicType TypeBool) (ExprLt (ExprLeft (LExprId id)) (for_bound_identifier env end_for))) [If Empty (Label ("body",scope+s_i+1)),Lbl (Label ("end_stmt",scope+s_i+1))])
   
 
   
@@ -111,13 +120,11 @@ module ThreeAddressCode where
   
   generateCasesCond :: Env -> Expr -> Type -> [NormCase] -> Env
   generateCasesCond env _ _ [] = env 
-  generateCasesCond env@(program, last_temp, variables, labels, scope) expr_v type_ ((CaseNormal expr _):rest) = do
+  generateCasesCond env@(p, last_temp, variables, labels, scope) expr_v type_ ((CaseNormal expr _):rest) = do
     let env1@(_,r1,_,_,_) = (generateExpr env type_ expr_v)
     let (program, last_temp, variables, labels, scope) = (booleanExpr (generateExpr env1 type_ expr) type_ BOpEq r1) 
     generateCasesCond ([If (head program) (Label ("match_", labels)) ]++(drop 1 program), last_temp, variables, labels+1, scope) expr_v type_ rest 
     
-  
-
   generateExpr :: Env -> Type -> Expr -> Env
   generateExpr env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ expr = do
     case expr of
@@ -139,16 +146,16 @@ module ThreeAddressCode where
         -- use of multiarray
         ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) a)) -> do
           let env2@(program1,temp1@(Temp (t_c1,t_t1)),variables1,labels1,scope1) = (getStep env1 a  (reverse (type2Dims type_v)))
-          let env3@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = ([BinOp   BOpMul (Temp (t_c1+2,t_t1)) (Temp (t_c1+1,(TypeBasicType TypeInt))) temp1, AssignIntTemp (Temp (t_c1+1,(TypeBasicType TypeInt))) (int2PInt (sizeOf type_v))] ++ program1, (Temp (t_c1+2,t_t1)), variables1,labels1,scope1)
+          let env3@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList (addTACList (env2) [AssignIntTemp (Temp (t_c1+1,(TypeBasicType TypeInt))) (int2PInt (sizeOf type_v))]) [BinOp   BOpMul (Temp (t_c1+2,t_t1)) (Temp (t_c1+1,(TypeBasicType TypeInt))) temp1])
           (addTACList env3 [AssignV2T (Temp (t_c2+1,t_t2)) var temp2]) 
             where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
             
-        ExprInt      val         -> ([AssignIntTemp   (Temp (t_c+1,(TypeBasicType TypeInt)   )) val] ++ program, (Temp (t_c+1,(TypeBasicType TypeInt)   )), variables, labels, scope)
-        ExprChar     val         -> ([AssignChrTemp   (Temp (t_c+1,(TypeBasicType TypeChar)  )) val] ++ program, (Temp (t_c+1,(TypeBasicType TypeChar)  )), variables, labels, scope)
-        ExprString   val         -> ([AssignStrTemp   (Temp (t_c+1,(TypeBasicType TypeString))) val] ++ program, (Temp (t_c+1,(TypeBasicType TypeString))), variables, labels, scope)
-        ExprFloat    val         -> ([AssignFloatTemp (Temp (t_c+1,(TypeBasicType TypeFloat) )) val] ++ program, (Temp (t_c+1,(TypeBasicType TypeFloat) )), variables, labels, scope)
-        ExprTrue     val         -> ([AssignTrueTemp  (Temp (t_c+1,(TypeBasicType TypeBool)  )) val] ++ program, (Temp (t_c+1,(TypeBasicType TypeBool)  )), variables, labels, scope)
-        ExprFalse    val         -> ([AssignFalseTemp (Temp (t_c+1,(TypeBasicType TypeBool)  )) val] ++ program, (Temp (t_c+1,(TypeBasicType TypeBool)  )), variables, labels, scope)
+        ExprInt      val         -> (addTACList env [AssignIntTemp   (Temp (t_c+1,(TypeBasicType TypeInt)   )) val])
+        ExprChar     val         -> (addTACList env [AssignChrTemp   (Temp (t_c+1,(TypeBasicType TypeChar)  )) val])
+        ExprString   val         -> (addTACList env [AssignStrTemp   (Temp (t_c+1,(TypeBasicType TypeString))) val])
+        ExprFloat    val         -> (addTACList env [AssignFloatTemp (Temp (t_c+1,(TypeBasicType TypeFloat) )) val])
+        ExprTrue     val         -> (addTACList env [AssignTrueTemp  (Temp (t_c+1,(TypeBasicType TypeBool)  )) val])
+        ExprFalse    val         -> (addTACList env [AssignFalseTemp (Temp (t_c+1,(TypeBasicType TypeBool)  )) val])
     
         ExprFunCall  fun params  -> (generateCallFunc env fun params type_) 
 
@@ -156,12 +163,12 @@ module ThreeAddressCode where
         ExprBoolNot   expr       -> notExpr (generateExpr env type_ expr)
 
         -- unary
-        ExprNegation  (ExprInt val) -> ([AssignIntTemp   (Temp (t_c+1,(TypeBasicType TypeInt)   )) (int2PInt (-(pInt2Int val)))] ++ program, (Temp (t_c+1,(TypeBasicType TypeInt)   )), variables, labels, scope)
+        ExprNegation  (ExprInt val) -> (addTACList env [AssignIntTemp   (Temp (t_c+1,(TypeBasicType TypeInt)   )) (int2PInt (-(pInt2Int val)))])
         ExprNegation  expr       -> unaryExpr (generateExpr env type_ expr) type_ UOpMinus
         ExprAddition  expr       -> unaryExpr (generateExpr env type_ expr) type_ UOpPlus
 
         -- deref
-        ExprReference (LExprId id@(PIdent (pos,name))) -> ([DerefOp UOpDeref (Temp (t_c+1,(getPointerFromType type_v)))  var ]++program, (Temp (t_c+1,(getPointerFromType type_v))), variables, labels, scope)
+        ExprReference (LExprId id@(PIdent (pos,name))) -> (addTACList env1 [DerefOp UOpDeref (Temp (t_c+1,(getPointerFromType type_v)))  var ])
           where (env1@(_, _, new_variables,_,_), var@(Var (_,_,type_v))) = findVar env (Var (name,pos,undefined))
         
         -- binary operations
@@ -211,7 +218,7 @@ module ThreeAddressCode where
         ExprNeq      expr1 expr2 -> do
           let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
           booleanExpr (generateExpr env1 type_ expr2) type_ BOpNeq       r1 
-
+{-
         ExprOr       expr1 expr2 -> do
           let (program1, last_temp1, variables1, labels1,_) = (generateExpr env type_ expr1)
           let (program2, last_temp2@(Temp (t_c,t_t)), variables2, labels2,_) = (generateExpr ([If (BoolOp  BOpEq last_temp1 (TempT (PTrue ((0,0),"true")))) (Label ("true_or", labels1) )]++program1,last_temp1, variables1, labels1+1,scope) type_ expr2)
@@ -220,28 +227,28 @@ module ThreeAddressCode where
           let (program1, last_temp1, variables1, labels1,_) = (generateExpr env type_ expr1)
           let (program2, last_temp2@(Temp (t_c,t_t)), variables2, labels2,_) = (generateExpr ([If (BoolOp BOpEq last_temp1 (TempF (PFalse ((0,0),"false")))) (Label ("false_and", labels1) )]++program1,last_temp1, variables1, labels1+1,scope) type_ expr2)
           ([Lbl (Label ("end_and",labels1)),AssignFalseTemp (Temp (t_c+1,(TypeBasicType TypeBool))) (PFalse ((0,0),"false")), Lbl (Label ("false_and",labels1) ),Goto (Label ("end_and",labels1) ), AssignTrueTemp  (Temp (t_c+1,(TypeBasicType TypeBool))) (PTrue ((0,0),"true")), If (BoolOp BOpEq last_temp2 (TempF (PFalse ((0,0),"false")))) (Label ("false_and", labels1) )]++program2,(Temp (t_c+1,(TypeBasicType TypeBool))), variables2, labels2+1,scope)
-          
+  -}        
 
   -- Build the binary operator using the last two temporaneus variable
   binaryExpr :: Env -> Type -> BinaryOperator -> Temp-> Env
-  binaryExpr env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ op t1 = ([BinOp   op (Temp (t_c+1,t_t)) t1 last_temp] ++ program, (Temp (t_c+1,t_t)), variables,labels,scope)
-  
+  binaryExpr env@(_, last_temp@(Temp (t_c,t_t)), _,_,_) type_ op t1 = (addTACList env [BinOp   op (Temp (t_c+1,t_t)) t1 last_temp])
+
   unaryExpr  :: Env -> Type -> UnaryOperator -> Env
-  unaryExpr  env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ op  = ([UnaryOp op (Temp (t_c+1,t_t)) last_temp]++program, (Temp (t_c+1,t_t)), variables, labels, scope)
+  unaryExpr  env@(program, last_temp@(Temp (t_c,t_t)),variables,labels,scope) type_ op  = ([UnaryOp op (Temp (t_c+1,t_t)) last_temp]++program, (Temp (t_c+1,t_t)), variables, labels, scope)
 
   booleanExpr :: Env -> Type -> BinaryOperator -> Temp -> Env
-  booleanExpr env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ op t1 = ([BoolOp  op t1 last_temp]++program, last_temp, variables, labels, scope)
+  booleanExpr env@(program, last_temp@(Temp (t_c,t_t)),variables,labels,scope) type_ op t1 = ([BoolOp  op t1 last_temp]++program, last_temp, variables, labels, scope)
 
   -- switch the last boolean Expr
   notExpr :: Env -> Env
-  notExpr env@(program, last_temp, variables,labels,scope) =
-    case (head program) of
-      BoolOp  BOpLt   t1 t2 -> ([BoolOp BOpGtEq t1 t2]++(drop 1 program), last_temp, variables, labels, scope) 
-      BoolOp  BOpGt   t1 t2 -> ([BoolOp BOpLtEq t1 t2]++(drop 1 program), last_temp, variables, labels, scope) 
-      BoolOp  BOpLtEq t1 t2 -> ([BoolOp BOpGt   t1 t2]++(drop 1 program), last_temp, variables, labels, scope) 
-      BoolOp  BOpGtEq t1 t2 -> ([BoolOp BOpLt   t1 t2]++(drop 1 program), last_temp, variables, labels, scope) 
-      BoolOp  BOpEq   t1 t2 -> ([BoolOp BOpNeq  t1 t2]++(drop 1 program), last_temp, variables, labels, scope) 
-      BoolOp  BOpNeq  t1 t2 -> ([BoolOp BOpEq   t1 t2]++(drop 1 program), last_temp, variables, labels, scope) 
+  notExpr env@(p, last_temp, variables,labels,scope) =
+    case (head p) of
+      BoolOp  BOpLt   t1 t2 -> (addTACList env [BoolOp BOpGtEq t1 t2]) 
+      BoolOp  BOpGt   t1 t2 -> (addTACList env [BoolOp BOpLtEq t1 t2])
+      BoolOp  BOpLtEq t1 t2 -> (addTACList env [BoolOp BOpGt   t1 t2])
+      BoolOp  BOpGtEq t1 t2 -> (addTACList env [BoolOp BOpLt   t1 t2])
+      BoolOp  BOpEq   t1 t2 -> (addTACList env [BoolOp BOpNeq  t1 t2])
+      BoolOp  BOpNeq  t1 t2 -> (addTACList env [BoolOp BOpEq   t1 t2])
       _                     -> (unaryExpr env (TypeBasicType TypeBool) UOpNegate)
 
   --StmtAssign LExpr AssignOperator Expr
@@ -254,7 +261,7 @@ module ThreeAddressCode where
       _           -> do
                     let env2@(_,r2@(Temp (t_c2,t_t2)),_,_,_) = (generateExpr env (type2BasicType type_) expr)
                     let env3@(p,r3@(Temp (t_c3,t_t3)),v,l,s) = addTACList env2 [AssignV2T (Temp (t_c2+1,(type2BasicType type_))) var (step)]
-                    generateAssign ([BinOp   op1 (Temp (t_c3+1,t_t3)) r3 r2] ++ p, (Temp (t_c3+1,t_t3)), v,l,s) type_ id OpAssign [] step
+                    generateAssign (addTACList env3 [BinOp   op1 (Temp (t_c3+1,t_t3)) r3 r2]) type_ id OpAssign [] step
                       where op1 = case op of 
                                     OpOr        -> BOpOr
                                     OpAnd       -> BOpAnd       
@@ -278,12 +285,12 @@ module ThreeAddressCode where
   -- DeclFun LExpr [Arg] Guard CompStmt
   generateDeclFunc :: Env -> LExpr -> [Arg] -> Guard -> CompStmt -> Env
   generateDeclFunc env@(program, last_temp, variables,labels,scope) lexpr@(LExprId (PIdent (pos, name))) args guard stmt@(StmtBlock decls) = do
-    let (env1, var) = findVar env (Var (name,pos,(getGuardType guard)))
-    addTACList (generateTAC_int (addTACList env1 [FuncDef var]) (PDefs decls)) [EndFunction]
+    let (env1@(p,t,v,l,(s_g,s_i)), var) = findVar env (Var (name,pos,(getGuardType guard)))
+    (generateTAC_int (addTACList (p,t,v,l,(s_g+1,s_i+1)) [FuncDef var]) (PDefs decls))
   
   -- use temp variables as parameters
   generateCallFunc :: Env -> PIdent -> [Expr] -> Type -> Env
-  generateCallFunc  env@(program, last_temp, variables,labels,scope) (PIdent (pos, name)) params type_ = do
+  generateCallFunc  env (PIdent (pos, name)) params type_ = do
     let (_, var)    = findVar env (Var (name,pos,type_)) -- prendo il tipo della funzione
     (addTACList (generateParams env params) [FuncCall var (Temp (0,type_))])
   
@@ -302,7 +309,7 @@ module ThreeAddressCode where
   addVar :: Env -> Var -> (Env,Var)
   addVar env@(program, last_temp, variables,labels,scope) var@(Var (name,pos,type_)) = ((program, last_temp, (Map.insert name var variables), labels,scope), var)
   findVar :: Env -> Var -> (Env,Var)
-  findVar env@(program, last_temp, variables,labels,scope) var@(Var (name,_,_)) = 
+  findVar env@(_, _, variables,_,_) var@(Var (name,_,_)) = 
     case Map.lookup name variables of
       -- the variable is new
       Nothing     -> (addVar env var)
@@ -311,25 +318,34 @@ module ThreeAddressCode where
 
   addTACList :: Env -> [TAC] -> Env
   addTACList env [] = env
-  addTACList env@(program, last_temp, variables,labels,scope) (tac:rest) = addTACList (addTAC env tac) rest
+  addTACList env (tac:rest) = addTACList (addTAC env tac) rest
   addTAC :: Env -> TAC -> Env
-  addTAC env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) tac =
+  addTAC env@(p, last_temp@(Temp (t_c,t_t)), variables,labels,scope@(s_g,s_i)) tac =
     case tac of
-      Return _                    -> ([Return last_temp                  ]++program         , last_temp       , variables, labels  ,scope  )
-      Lbl (Label ("end_stmt",_) ) -> ([Lbl (Label ("end_stmt",scope-1) ) ]++program         , last_temp       , variables, labels+1,scope-1)
-      Lbl lbl                     -> ([Lbl lbl                           ]++program         , last_temp       , variables, labels+1,scope  )
-      IfFalse _ lbl -> case (head program) of
-        (BoolOp _ _ _)  -> ([IfFalse (head program) lbl        ]++(drop 1 program), last_temp       , variables, labels  ,scope  )
-        _               -> ([IfFalse (BoolOp BOpEq last_temp (TempT (PTrue ((0,0),"true-")))) lbl ]++program, last_temp, variables, labels  ,scope  )
-      If      _ lbl -> case (head program) of
-        (BoolOp _ _ _)  -> ([If (head program) lbl             ]++(drop 1 program), last_temp       , variables, labels  ,scope  )
-        _               -> ([If      (BoolOp BOpEq last_temp (TempT (PTrue ((0,0),"true-")))) lbl ]++program, last_temp , variables, labels  ,scope  )
-      AssignV2T temp var step     -> ([AssignV2T temp   var      step    ]++program         , temp            , variables, labels  ,scope  )
-      AssignT2V var _ step        -> ([AssignT2V var  last_temp  step    ]++program         , last_temp       , variables, labels  ,scope  )
-      AssignT2P _                 -> ([AssignT2P last_temp               ]++program         , last_temp       , variables, labels  ,scope  )
-      FuncCall var (Temp (_,t))   -> ([FuncCall  var  (Temp (t_c+1,t))   ]++program         , (Temp (t_c+1,t)), variables, labels  ,scope  )
-      _                           -> ([tac                               ]++program         , last_temp       , variables, labels  ,scope  )
-      
+      Return _                    -> ([Return last_temp                  ]++p, last_temp       , variables, labels  ,(s_g,s_i)  )
+      Lbl (Label ("end_stmt",_) ) -> ([Lbl (Label ("end_stmt",s_g+s_i-1))]++p, last_temp       , variables, labels+1,(s_g-1,s_i))
+      Lbl lbl                     -> ([Lbl lbl                           ]++p, last_temp       , variables, labels+1,(s_g,s_i)  )
+      AssignV2T temp var step     -> ([AssignV2T temp   var      step    ]++p, temp            , variables, labels  ,(s_g,s_i)  )
+      AssignT2V var _ step        -> ([AssignT2V var  last_temp  step    ]++p, last_temp       , variables, labels  ,(s_g,s_i)  )
+      AssignT2P _                 -> ([AssignT2P last_temp               ]++p, last_temp       , variables, labels  ,(s_g,s_i)  )
+      AssignIntTemp    temp val   -> ([AssignIntTemp   temp val          ]++p, temp            , variables, labels  ,(s_g,s_i)  )
+      AssignChrTemp    temp val   -> ([AssignChrTemp   temp val          ]++p, temp            , variables, labels  ,(s_g,s_i)  )
+      AssignStrTemp    temp val   -> ([AssignStrTemp   temp val          ]++p, temp            , variables, labels  ,(s_g,s_i)  )
+      AssignFloatTemp  temp val   -> ([AssignFloatTemp temp val          ]++p, temp            , variables, labels  ,(s_g,s_i)  )
+      AssignTrueTemp   temp val   -> ([AssignTrueTemp  temp val          ]++p, temp            , variables, labels  ,(s_g,s_i)  )
+      AssignFalseTemp  temp val   -> ([AssignFalseTemp temp val          ]++p, temp            , variables, labels  ,(s_g,s_i)  )
+      FuncCall var (Temp (_,t))   -> ([FuncCall  var  (Temp (t_c+1,t))   ]++p, (Temp (t_c+1,t)), variables, labels  ,(s_g,s_i)  )
+      EndFunction                 -> ([EndFunction                       ]++p, last_temp       , variables, labels  ,(s_g-1,s_i))
+      BinOp   op tres  t1   t2    -> ([BinOp   op     tres    t1   t2    ]++p,tres             , variables, labels  ,(s_g,s_i)  )  
+      DerefOp op temp  var        -> ([DerefOp UOpDeref temp  var        ]++p, temp            , variables, labels  ,(s_g,s_i)  )  
+      IfFalse _ lbl -> case (head p) of
+        (BoolOp _ _ _)  -> ([IfFalse (head p) lbl                                                 ]++(drop 1 p), last_temp, variables, labels  ,(s_g,s_i)   )
+        _               -> ([IfFalse (BoolOp BOpEq last_temp (TempT (PTrue ((0,0),"true-")))) lbl ]++p         , last_temp, variables, labels  ,(s_g,s_i)   )
+      If      _ lbl -> case (head p) of
+        (BoolOp _ _ _)  -> ([If (head p) lbl                                                      ]++(drop 1 p), last_temp, variables, labels  ,(s_g,s_i)   )
+        _               -> ([If      (BoolOp BOpEq last_temp (TempT (PTrue ((0,0),"true-")))) lbl ]++p         , last_temp, variables, labels  ,(s_g,s_i)   )
+      _                           -> ([tac                               ]++p, last_temp       , variables, labels  ,(s_g,s_i)   )
+  
   getGuardType :: Guard -> Type
   getGuardType GuardVoid       = (TypeBasicType TypeVoid)
   getGuardType (GuardType  t_) = t_
@@ -375,13 +391,13 @@ module ThreeAddressCode where
     (ArrSing step)   -> (generateExpr env (TypeBasicType TypeInt) step)
     (ArrMul a1 step) -> do
     -- valuto l'espressione
-    let env1@(program1,temp1@(Temp (t_c1,t_t1)),variables1,labels1,scope1) = (generateExpr env (TypeBasicType TypeInt) step)
+    let env1@(_,temp1@(Temp (t_c1,t_t1)),_,_,_) = (generateExpr env (TypeBasicType TypeInt) step)
     -- carico la dimensione di una riga e la moltiplico per l'espressione calcolata
-    let env2@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = ([BinOp   BOpMul (Temp (t_c1+2,t_t1)) temp1 (Temp (t_c1+1,t_t1)), AssignIntTemp (Temp (t_c1+1,t_t1)) dim] ++ program1, (Temp (t_c1+2,t_t1)), variables1,labels1,scope1)
-    -- valuto il resto delle espressioni
-    let env3@(program3,temp3@(Temp (t_c3,t_t3)),variables3,labels3,scope3) = (getStep  env2 a1 rest)
+    let env2@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList env1 [BinOp   BOpMul (Temp (t_c1+2,t_t1)) temp1 (Temp (t_c1+1,t_t1)), AssignIntTemp (Temp (t_c1+1,t_t1)) dim])
+      -- valuto il resto delle espressioni
+    let env3@(_,temp3@(Temp (t_c3,t_t3)),_,_,_) = (getStep  env2 a1 rest)
     -- sommo 
-    ([BinOp   BOpPlus (Temp (t_c3+1,t_t3)) temp3 temp2] ++ program3, (Temp (t_c3+1,t_t3)), variables3,labels3,scope3)
+    (addTACList env3 [BinOp   BOpPlus (Temp (t_c3+1,t_t3)) temp3 temp2])
   
   for_bound_identifier :: Env -> ForId -> Expr
   for_bound_identifier env for_id =
@@ -389,4 +405,9 @@ module ThreeAddressCode where
       ForInteger val -> ExprInt val
       ForIdent   id  -> ExprLeft (LExprId id)
 
-      
+  -- add main call if function main exists
+  ifmain :: Env -> Env
+  ifmain env@(p, t, variables, l, _) = do
+    case Map.lookup "main" variables of
+      Nothing   -> env
+      Just main -> (addTACList (p, t, variables, l, (0,0)) [FuncCall main (Temp (0,(TypeBasicType TypeVoid)))])

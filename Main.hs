@@ -49,9 +49,9 @@ run v p s = let ts = myLLexer s in case p ts of
                                                   showTree v "\n[Annotated tree]\n\n" prog
                                                   putStrLn "[Three Address Code]"
                                                   case generateTAC prog of
-                                                      env@(tacprog,temp,_,_,_) -> do --show "\n[TAC]\n\n"
+                                                      env@(p,temp,_,_,s) -> do --show "\n[TAC]\n\n"
                                                                                        --show tacprog
-                                                                                       showProgram v "\n[TAC]\n\n" (reverse tacprog)
+                                                                                       showProgram v "\n[TAC]\n\n" (reverse p)
                                                                                        exitSuccess
  
 
