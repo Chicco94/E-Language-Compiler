@@ -47,7 +47,7 @@ module ThreeAddressCode where
     case decl of
       TypedDecl (ADecl type_ decl1) -> (generateDecl    (env,rest) (Just type_) decl1)
       DeclFun   id args type_ stmts -> do
-        let env_temp@(p',t',v',l',s') = (generateDeclFunc ([],t,v,l,s) id args type_ stmts)
+        let env_temp@(p',t',v',l',s') = addTACList (generateDeclFunc ([],t,v,l,s) id args type_ stmts) [EndFunction]
         ((p,t',v',l',s'),p'++rest)
       DeclStmt (stmt)               -> (generateStmt     env new_type stmt,rest)
         where new_type = case maybe_type of 
