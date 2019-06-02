@@ -218,16 +218,15 @@ module ThreeAddressCode where
         ExprNeq      expr1 expr2 -> do
           let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
           booleanExpr (generateExpr env1 type_ expr2) type_ BOpNeq       r1 
-{-
+
         ExprOr       expr1 expr2 -> do
-          let (program1, last_temp1, variables1, labels1,_) = (generateExpr env type_ expr1)
-          let (program2, last_temp2@(Temp (t_c,t_t)), variables2, labels2,_) = (generateExpr ([If (BoolOp  BOpEq last_temp1 (TempT (PTrue ((0,0),"true")))) (Label ("true_or", labels1) )]++program1,last_temp1, variables1, labels1+1,scope) type_ expr2)
+          let env1@(program1, last_temp1, variables1, labels1,_) = (generateExpr env type_ expr1)
+          let (program2, last_temp2@(Temp (t_c,t_t)), variables2, labels2,_) = (generateExpr (addTACList env1 [If Empty (Label ("true_or", labels1))]) type_ expr2)
           ([Lbl (Label ("end_or", labels1)),AssignTrueTemp  (Temp (t_c+1,(TypeBasicType TypeBool))) (PTrue ((0,0),"true")), Lbl (Label ("true_or", labels1)), Goto (Label ("end_or", labels1)), AssignFalseTemp (Temp (t_c+1,(TypeBasicType TypeBool))) (PFalse ((0,0),"false")), If (BoolOp BOpEq last_temp2 (TempT (PTrue ((0,0),"true")))) (Label ("true_or", labels1))]++program2, (Temp (t_c+1,(TypeBasicType TypeBool))), variables2, labels2+1,scope)
         ExprAnd      expr1 expr2 -> do 
-          let (program1, last_temp1, variables1, labels1,_) = (generateExpr env type_ expr1)
-          let (program2, last_temp2@(Temp (t_c,t_t)), variables2, labels2,_) = (generateExpr ([If (BoolOp BOpEq last_temp1 (TempF (PFalse ((0,0),"false")))) (Label ("false_and", labels1) )]++program1,last_temp1, variables1, labels1+1,scope) type_ expr2)
-          ([Lbl (Label ("end_and",labels1)),AssignFalseTemp (Temp (t_c+1,(TypeBasicType TypeBool))) (PFalse ((0,0),"false")), Lbl (Label ("false_and",labels1) ),Goto (Label ("end_and",labels1) ), AssignTrueTemp  (Temp (t_c+1,(TypeBasicType TypeBool))) (PTrue ((0,0),"true")), If (BoolOp BOpEq last_temp2 (TempF (PFalse ((0,0),"false")))) (Label ("false_and", labels1) )]++program2,(Temp (t_c+1,(TypeBasicType TypeBool))), variables2, labels2+1,scope)
-  -}        
+          let env1@(program1, last_temp1, variables1, labels1,_) = (generateExpr env type_ expr1)
+          let (program2, last_temp2@(Temp (t_c,t_t)), variables2, labels2,_) = (generateExpr (addTACList env1 [If Empty (Label ("false_and", labels1))]) type_ expr2)
+          ([Lbl (Label ("end_and",labels1)),AssignFalseTemp (Temp (t_c+1,(TypeBasicType TypeBool))) (PFalse ((0,0),"false")), Lbl (Label ("false_and",labels1) ),Goto (Label ("end_and",labels1) ), AssignTrueTemp  (Temp (t_c+1,(TypeBasicType TypeBool))) (PTrue ((0,0),"true")), If (BoolOp BOpEq last_temp2 (TempF (PFalse ((0,0),"false")))) (Label ("false_and", labels1) )]++program2,(Temp (t_c+1,(TypeBasicType TypeBool))), variables2, labels2+1,scope)       
 
   -- Build the binary operator using the last two temporaneus variable
   binaryExpr :: Env -> Type -> BinaryOperator -> Temp-> Env
