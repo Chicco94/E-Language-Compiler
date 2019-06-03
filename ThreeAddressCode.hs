@@ -18,9 +18,9 @@ module ThreeAddressCode where
   type Scope        = (Int,Int) -- scope globale, scope interno/ differenzio le istruzioni all'interno del mio stesso scope
   
   
-   -- Initialize the tacprogram with an empty list.
+   -- funzione che prende l'output del typechecker e ritorna il programma TAC
   generateTAC :: [Program] -> Env
-  generateTAC progs = (generateTAC_int' ([],(Temp (-1,(TypeBasicType TypeVoid))), Map.empty,0,(0,0)) (PDefs (initTAC progs)))
+  generateTAC progs = (generateTAC' ([],(Temp (-1,(TypeBasicType TypeVoid))), Map.empty,0,(0,0)) (PDefs (initTAC progs)))
   
   -- appiana il programma per poterlo leggerlo più facilmente
   initTAC :: [Program] -> [Decl]
@@ -28,20 +28,20 @@ module ThreeAddressCode where
   initTAC (prog@(PDefs defs):progs) = defs ++ initTAC progs 
   
   -- usata per generare tutto il programma istruzione per istruzione
-  generateTAC_int' :: Env -> Program -> Env
-  generateTAC_int' env prog@(PDefs decls) = do
+  generateTAC' :: Env -> Program -> Env
+  generateTAC' env prog@(PDefs decls) = do
     let (final_env, rest) = foldl generateInstruction (env,[]) decls
     let final_env_with_main@(p,t,v,l,s) = (ifmain final_env)
     (rest++p,t,v,l,s)
 
-  -- potrei avere delle istruzioni non tipate, le gestico mettendole a void
-  generateInstruction :: (Env,[TAC]) -> Decl -> (Env,[TAC])
+  -- le istruzioni non tipate gestico mettendole a void
+  generateInstruction :: (Env,TACProg) -> Decl -> (Env,TACProg)
   generateInstruction env decl = generateDecl env Nothing decl
   
 
   -- genera la dichiarazione corrispondente
   -- le funzioni le mette a parte per posizionarle in fondo al TAC
-  generateDecl :: (Env,[TAC]) -> Maybe Type -> Decl -> (Env,[TAC]) 
+  generateDecl :: (Env,TACProg) -> Maybe Type -> Decl -> (Env,TACProg) 
   generateDecl (env@(p,t,v,l,s),rest) maybe_type decl =
     case decl of
       TypedDecl (ADecl type_ decl1) -> (generateDecl    (env,rest) (Just type_) decl1)
