@@ -1,15 +1,10 @@
-
-def throw(var s:string) :void{
-    #print_string(s);
-}
-
 def factorial(n :int ) :int{
     if (n == 1) {
         return (1);
     } else { if (n > 0) {
             return (n * factorial(n-1));
         } else {
-            throw("invalid argument to factorial"); 
+            writeString("invalid argument to factorial"); 
             return (-1);      
         }
     }

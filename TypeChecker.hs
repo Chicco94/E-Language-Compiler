@@ -35,7 +35,7 @@ module TypeChecker where
   
   -- Check declaration. 
   checkDecl :: (Env, [Program]) -> Decl -> Err (Env,[Program])
-  checkDecl (env@(sig@(x:xs), (block:_)), prog) def = 
+  checkDecl (env, prog) def = 
     case def of
       DeclFun lexpr args guard compstmt -> checkFunDecl (env, prog) lexpr args guard compstmt
       DeclStmt stmt -> checkDeclStmt (env, prog) stmt
@@ -48,12 +48,13 @@ module TypeChecker where
       GuardType t ->
         case lookupFun sig fname of
           Ok t  -> fail $ show p ++ ": function " ++ printTree fname ++ " already declared"
-          _ -> do case checkArgDecl ((sig, (((FunBlock pident t), Map.empty):blocks)), prog) args of
-                -- call extendEnv putting an empty Signature and a FunBlock block
-                    Ok ((_, blocks2), _) -> do case extendEnv (((Map.empty:(addFun x fname args guard):xs), blocks2), prog) compstmt of
-                                                 Ok (e', p') -> Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))]) prog)
-                                                 Bad s -> Bad s
-                    Bad s -> Bad s
+          _     -> do case checkArgDecl (env, prog) args of
+                        Ok ((_, blocks'), _) -> do
+                          case extendEnv ((((addFun x fname args guard):xs), blocks'), prog) ((FunBlock pident t), Map.empty) compstmt of
+                            Ok (e', p') -> Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))]) prog)
+                            Bad s -> Bad s
+  
+                        Bad s                -> Bad s
       GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " must have a type to be well defined"
   
   -- Check argument(s) declaration.
@@ -106,7 +107,7 @@ module TypeChecker where
     tcase <- inferExpr env e
     if tcase `isCompatibleWith` texpr
       then do
-        (e', p') <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), prog) cstmt
+        (e', p') <- extendEnv (env, prog) (SelBlock, Map.empty) cstmt
         checkNormalCases (env, prog) expr ys (acc ++ [CaseNormal e (StmtBlock (getDecls p'))])
       else fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has " ++ printTree texpr ++ " type, but the matching expression " ++ printTree e ++ " " ++ show (getExprPosition e) ++ " has " ++ printTree tcase ++ " type"
   
@@ -115,7 +116,7 @@ module TypeChecker where
   checkDefaultCases (env, prog) _ [] acc = Ok acc
   checkDefaultCases (env@(sig@(x:xs), blocks), prog) expr (y@(CaseDefault cstmt):ys) acc = do
     texpr <- inferExpr env expr
-    (e', p') <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), prog) cstmt
+    (e', p') <- extendEnv (env, prog) (SelBlock, Map.empty) cstmt
     checkDefaultCases (env, prog) expr ys (acc ++ [CaseDefault (StmtBlock (getDecls p'))])
   
   -- Check if-then-else statement.
@@ -124,8 +125,8 @@ module TypeChecker where
     texpr <- inferExpr env expr
     if texpr == tBool 
       then do
-        (env1, p1) <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), prog) cstmt1
-        (env2, p2) <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), p1) cstmt2
+        (env1, p1) <- extendEnv (env, prog) (SelBlock, Map.empty) cstmt1
+        (env2, p2) <- extendEnv (env, p1) (SelBlock, Map.empty) cstmt2
         Ok (env, postAttach (PDefs [DeclStmt (StmtIfThenElse expr (StmtBlock (getDecls p1)) (StmtBlock (getDecls p2)))]) prog)
       else
         fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
@@ -136,7 +137,7 @@ module TypeChecker where
     texpr <- inferExpr env expr
     if texpr == tBool 
       then do
-        (env1, p1) <- extendEnv ((sig, ((SelBlock, Map.empty):blocks)), prog) cstmt
+        (env1, p1) <- extendEnv (env, prog) (SelBlock, Map.empty) cstmt
         Ok (env, postAttach (PDefs [DeclStmt (StmtIfThen expr (StmtBlock (getDecls p1)))]) prog)
       else
         fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
@@ -146,7 +147,7 @@ module TypeChecker where
   checkReturn (env@(sigs, blocks), prog) preturn@(PReturn (pr, _)) expr = do
     texpr <- inferExpr env expr
     case findFunBlockAndType blocks of
-      Ok(PIdent (pf, fname), tfun) -> 
+      Ok (PIdent (pf, fname), tfun) -> 
         if (texpr `isCompatibleWith` tfun) 
           -- If the type of the returned expression (texpr) is compatible with the type of the function (tfun), 
           -- then the returned type is tfun 
@@ -181,7 +182,7 @@ module TypeChecker where
   -- Check compound statement.
   checkSComp :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
   checkSComp (env@(sigs, blocks), prog) compstmt =
-    case extendEnv (((Map.empty:sigs), ((NormBlock, Map.empty):blocks)), prog) compstmt of
+    case extendEnv (env, prog) (NormBlock, Map.empty) compstmt of
       Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (SComp (StmtBlock (getDecls p')))]) prog)
       Bad s       -> Bad s
   
@@ -190,7 +191,7 @@ module TypeChecker where
   checkWhile (env@(xs, blocks@((blockType, context):ys)), prog) expr compstmt = do
     t <- inferExpr env expr
     if (t == tBool)
-      then case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
+      then case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
              Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtWhile expr (StmtBlock (getDecls p')))]) prog)
              Bad s       -> Bad s
       else fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
@@ -213,14 +214,14 @@ module TypeChecker where
                             case lookupVar blocks forId2 of
                               Ok (m2, t2) -> do
                                 if t2 == tInt -- t2 int
-                                  then case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
+                                  then case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
                                     Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))]) prog)
                                     Bad s       -> Bad s
                                   -- t2 != int
                                   else fail $ show p2 ++ ": the variable " ++ printTree forId2 ++ " does not have " ++ printTree tInt ++ " type (which is required in a range)"
                               _           -> fail $ show p2 ++ " the variable " ++ printTree forId2 ++ " is not declared"
                           _                              -> do
-                            case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
+                            case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
                               Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))]) prog)
                               Bad s       -> Bad s
                       -- t1 != int
@@ -233,14 +234,14 @@ module TypeChecker where
                     case lookupVar blocks forId2 of
                        Ok (m2, t2) -> do
                          if t2 == tInt -- t2 int
-                           then case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
+                           then case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
                              Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))]) prog)
                              Bad s       -> Bad s
                            -- t2 != int
                            else fail $ show p2 ++ ": the variable " ++ printTree forId2 ++ " does not have " ++ printTree tInt ++ " type (which is required in a range)"
                        _           -> fail $ show p2 ++ " the variable " ++ printTree forId2 ++ " is not declared"
                   _                              -> do
-                    case extendEnv (((Map.empty:xs), ((IterBlock, Map.empty):blocks)), prog) compstmt of
+                    case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
                       Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))]) prog)
                       Bad s       -> Bad s 
           else 
@@ -1005,8 +1006,9 @@ module TypeChecker where
              else False
   
   -- Extend environment.
-  extendEnv :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
-  extendEnv (env@(s, y), prog) (StmtBlock decls) = do 
-    (e@((sig:sigs), b@(block:blocks)), p) <- foldM checkDecl (env, prog) decls
-    Ok ((sigs,blocks), p List.\\ prog) -- pop & list difference (to remove the redundancy)  
+  extendEnv :: (Env, [Program]) -> (BlockType, Context) -> CompStmt -> Err (Env, [Program])
+  extendEnv (env@(sig, blocks), prog) blk (StmtBlock decls) = do 
+    let env' = ((Map.empty:sig), (blk:blocks))
+    (_, p) <- foldM checkDecl (env', prog) decls
+    Ok (env, p List.\\ prog) -- pop & list difference (to remove the redundancy) 
   

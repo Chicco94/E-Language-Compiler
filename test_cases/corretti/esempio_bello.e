@@ -1,8 +1,8 @@
 # meaningless example
-def f (var k :int):float {
-  k+=1;
-  k+=1;
-  return (k + 2);
+def f (var h :int):float {
+  h+=1;
+  h+=1;
+  return (h + 2);
 }
 
 def PP :int := 1;
