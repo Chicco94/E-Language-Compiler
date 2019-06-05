@@ -28,27 +28,31 @@ module ThreeAddressCode where
   initTAC [] = []
   initTAC (prog@(PDefs defs):progs) = defs ++ initTAC progs 
   
+  postAttach :: a -> [a] -> [a]
+  postAttach a [] = [a]
+  postAttach a (x:xs) = x : postAttach a xs
+
   -- usata per generare tutto il programma istruzione per istruzione
   generateTAC' :: Env -> Program -> Env
   generateTAC' env prog@(PDefs decls) = do
-    let (final_env, rest) = foldl generateInstruction (env,[]) decls
+    let (final_env, rest) = foldl generateInstruction (env,[[]]) decls
     let final_env_with_main@(p,t,v,l,s) = (ifmain final_env)
-    (rest++p,t,v,l,s)
+    ( (concat (postAttach p rest)) ,t,v,l,s)
 
   -- le istruzioni non tipate gestico mettendole a void
-  generateInstruction :: (Env,TACProg) -> Decl -> (Env,TACProg)
+  generateInstruction :: (Env,[TACProg]) -> Decl -> (Env,[TACProg])
   generateInstruction env decl = generateDecl env Nothing decl
   
 
   -- genera la dichiarazione corrispondente
   -- le funzioni le mette a parte per posizionarle in fondo al TAC
-  generateDecl :: (Env,TACProg) -> Maybe Type -> Decl -> (Env,TACProg) 
+  generateDecl :: (Env,[TACProg]) -> Maybe Type -> Decl -> (Env,[TACProg]) 
   generateDecl (env@(p,t,v,l,s),rest) maybe_type decl =
     case decl of
       TypedDecl (ADecl type_ decl1) -> (generateDecl    (env,rest) (Just type_) decl1)
       DeclFun   id args type_ stmts -> do
         let env_temp@(p',t',v',l',s') =  (generateDeclFunc ([],t,v,l,s) id args type_ stmts)
-        ((p,t',v',l',s'),p'++rest)
+        ((p,t',v',l',s'),(([EndFunction]++p'):rest))
       DeclStmt (stmt)               -> (generateStmt     env new_type stmt,rest)
         where new_type = case maybe_type of 
                             Nothing      -> (TypeBasicType TypeVoid)
@@ -374,7 +378,7 @@ module ThreeAddressCode where
   generateSubTAC :: Env -> Program -> Env
   generateSubTAC env prog@(PDefs decls) = do 
     let ((p,t,v,l,s), rest) = foldl generateInstruction (env,[]) decls
-    (rest++p,t,v,l,s)
+    ( (concat (p:rest)) ,t,v,l,s)
 
   -- restituisce il tipo di base data una guardia
   getGuardType :: Guard -> Type
