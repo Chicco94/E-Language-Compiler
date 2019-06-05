@@ -2,9 +2,10 @@ module ThreeAddressCode where
 
   -- per il resto del codice con "genera" si intende
   -- crea i costrutti per l'istruzione TAC associata
-  
+
   import AbsE
-  import PrintE
+  import AbsETAC
+  import PrintETAC
   
   import Prelude hiding (lookup)
   import qualified Data.Map as Map
