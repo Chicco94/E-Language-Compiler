@@ -51,7 +51,7 @@ module TypeChecker where
           _     -> do case checkArgDecl (env, prog) args of
                         Ok ((_, blocks'), _) -> do
                           case extendEnv ((((addFun x fname args guard):xs), blocks'), prog) ((FunBlock pident t), Map.empty) compstmt of
-                            Ok (e', p') -> Ok (e', postAttach (PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))]) prog)
+                            Ok (e', p') -> Ok (e', prog ++ [(PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))])])
                             Bad s -> Bad s
   
                         Bad s                -> Bad s
@@ -64,9 +64,9 @@ module TypeChecker where
     case guard of
       GuardVoid   -> fail $ show p ++ ": argument " ++ printTree ident ++ " must have a type"
       GuardType t -> 
-            case lookupVar blocks ident of
+            {- case lookupVar blocks ident of
               Ok _ -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
-              _    -> do
+              _    -> do -}
                 if mod == ModEmpty || mod == ModVar -- if no modality is provided, or if the modality is a variable, then add it as variable, else as constant
                   then checkArgDecl ((sig, ((blockType, addVar context (MutVar, ident) t):ys)), prog) args
                   else checkArgDecl ((sig, ((blockType, addVar context (MutConst, ident) t):ys)), prog) args
@@ -95,7 +95,7 @@ module TypeChecker where
     case checkNormalCases (env, prog) expr norm [] of
       Ok normacc        -> do
         case checkDefaultCases (env, prog) expr dflt [] of
-          Ok dfltacc -> Ok (env, postAttach (PDefs [DeclStmt (StmtSwitchCase expr normacc dfltacc)]) prog)
+          Ok dfltacc -> Ok (env, prog ++ [(PDefs [DeclStmt (StmtSwitchCase expr normacc dfltacc)])])
           Bad s      -> Bad s
       Bad s       -> Bad s
   
@@ -127,7 +127,7 @@ module TypeChecker where
       then do
         (env1, p1) <- extendEnv (env, prog) (SelBlock, Map.empty) cstmt1
         (env2, p2) <- extendEnv (env, p1) (SelBlock, Map.empty) cstmt2
-        Ok (env, postAttach (PDefs [DeclStmt (StmtIfThenElse expr (StmtBlock (getDecls p1)) (StmtBlock (getDecls p2)))]) prog)
+        Ok (env, prog ++ [(PDefs [DeclStmt (StmtIfThenElse expr (StmtBlock (getDecls p1)) (StmtBlock (getDecls p2)))])])
       else
         fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
   
@@ -138,7 +138,7 @@ module TypeChecker where
     if texpr == tBool 
       then do
         (env1, p1) <- extendEnv (env, prog) (SelBlock, Map.empty) cstmt
-        Ok (env, postAttach (PDefs [DeclStmt (StmtIfThen expr (StmtBlock (getDecls p1)))]) prog)
+        Ok (env, prog ++ [(PDefs [DeclStmt (StmtIfThen expr (StmtBlock (getDecls p1)))])])
       else
         fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
   
@@ -151,7 +151,7 @@ module TypeChecker where
         if (texpr `isCompatibleWith` tfun) 
           -- If the type of the returned expression (texpr) is compatible with the type of the function (tfun), 
           -- then the returned type is tfun 
-          then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtReturn preturn expr)))]) prog)
+          then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtReturn preturn expr)))])])
           else fail $ show pr ++ ": the returned type is " ++ printTree texpr ++ ", but function " ++ printTree fname ++ " (declared at " ++ show pf ++ ") has return type " ++ printTree tfun
       _                            -> fail $ show pr ++ ": the return statement must be inside a function block"
   
@@ -161,7 +161,7 @@ module TypeChecker where
     case findFunBlockAndType blocks of
       Ok (PIdent (pf, fname), tfun) ->
         if (tfun == tVoid)
-          then Ok (env, postAttach (PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtNoReturn preturn)))]) prog)
+          then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl tfun (DeclStmt (StmtNoReturn preturn)))])])
           else fail $ show pr ++ ": the returned type is " ++ printTree TypeVoid ++ ", but function " ++ printTree fname ++ " (declared at " ++ show pf ++ ") has return type " ++ printTree tfun
       _                            -> fail $ show pr ++ ": the return statement must be inside a function declaration"
   
@@ -169,21 +169,21 @@ module TypeChecker where
   checkBreak :: (Env, [Program]) -> PBreak -> Err (Env, [Program])
   checkBreak (env@(sigs, blocks), prog) pbreak@(PBreak (pb, _)) = do
     case findIterBlock blocks of
-      Ok _ -> Ok (env, postAttach (PDefs [DeclStmt (StmtBreak pbreak)]) prog)
+      Ok _ -> Ok (env, prog ++ [(PDefs [DeclStmt (StmtBreak pbreak)])])
       _    -> fail $ show pb ++ ": the break statement must be inside an iteration block"
   
   -- Check continue statement.
   checkContinue :: (Env, [Program]) -> PContinue -> Err (Env, [Program])
   checkContinue (env@(sigs, blocks), prog) pcontinue@(PContinue (pc, _)) = do
     case findIterBlock blocks of
-      Ok _ -> Ok (env, postAttach (PDefs [DeclStmt (StmtContinue pcontinue)]) prog)
+      Ok _ -> Ok (env, prog ++ [(PDefs [DeclStmt (StmtContinue pcontinue)])])
       _    -> fail $ show pc ++ ": the continue statement must be inside an iteration block"
   
   -- Check compound statement.
   checkSComp :: (Env, [Program]) -> CompStmt -> Err (Env, [Program])
   checkSComp (env@(sigs, blocks), prog) compstmt =
     case extendEnv (env, prog) (NormBlock, Map.empty) compstmt of
-      Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (SComp (StmtBlock (getDecls p')))]) prog)
+      Ok (e', p') -> Ok (e', prog ++ [(PDefs [DeclStmt (SComp (StmtBlock (getDecls p')))])])
       Bad s       -> Bad s
   
   -- Check while statement.
@@ -192,7 +192,7 @@ module TypeChecker where
     t <- inferExpr env expr
     if (t == tBool)
       then case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
-             Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtWhile expr (StmtBlock (getDecls p')))]) prog)
+             Ok (e', p') -> Ok (e', prog ++ [(PDefs [DeclStmt (StmtWhile expr (StmtBlock (getDecls p')))])])
              Bad s       -> Bad s
       else fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
   
@@ -215,14 +215,14 @@ module TypeChecker where
                               Ok (m2, t2) -> do
                                 if t2 == tInt -- t2 int
                                   then case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
-                                    Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))]) prog)
+                                    Ok (e', p') -> Ok (e', prog ++ [(PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))])])
                                     Bad s       -> Bad s
                                   -- t2 != int
                                   else fail $ show p2 ++ ": the variable " ++ printTree forId2 ++ " does not have " ++ printTree tInt ++ " type (which is required in a range)"
                               _           -> fail $ show p2 ++ " the variable " ++ printTree forId2 ++ " is not declared"
                           _                              -> do
                             case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
-                              Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))]) prog)
+                              Ok (e', p') -> Ok (e', prog ++ [(PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))])])
                               Bad s       -> Bad s
                       -- t1 != int
                       else fail $ show p1 ++ ": the variable " ++ printTree forId1 ++ " does not have " ++ printTree tInt ++ " type (which is required in a range)"
@@ -235,14 +235,14 @@ module TypeChecker where
                        Ok (m2, t2) -> do
                          if t2 == tInt -- t2 int
                            then case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
-                             Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))]) prog)
+                             Ok (e', p') -> Ok (e', prog ++ [(PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))])])
                              Bad s       -> Bad s
                            -- t2 != int
                            else fail $ show p2 ++ ": the variable " ++ printTree forId2 ++ " does not have " ++ printTree tInt ++ " type (which is required in a range)"
                        _           -> fail $ show p2 ++ " the variable " ++ printTree forId2 ++ " is not declared"
                   _                              -> do
                     case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
-                      Ok (e', p') -> Ok (e', postAttach (PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))]) prog)
+                      Ok (e', p') -> Ok (e', prog ++ [(PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))])])
                       Bad s       -> Bad s 
           else 
             if (t /= tInt)
@@ -259,12 +259,12 @@ module TypeChecker where
     GuardType tguard -> case tguard of
       TypeCompoundType (CompoundTypeArrayType (ArrDefBase pints basicType)) -> case checkArrayInitBounds (getBoundsFromPInts pints) cexpr of
         True  -> case inferArray env cexpr tguard of 
-          Ok tarr -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), postAttach (PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))]) prog)
+          Ok tarr -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), prog ++ [(PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))])])
           Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree (getInnerType tguard) ++ " but there is an expression with type " ++ s ++ " in its initialization"
         False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but its initialization does not match such bounds"
       TypeCompoundType (CompoundTypeArrayType (ArrDefPtr pints ptr)) -> case checkArrayInitBounds (getBoundsFromPInts pints) cexpr of
         True  -> case inferArray env cexpr tguard of 
-                                 Ok tarr -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), postAttach (PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))]) prog)
+                                 Ok tarr -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), prog ++ [(PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))])])
                                  Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree (getInnerType tguard) ++ " but there is an expression with type " ++ s ++ " in its initialization"
         False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but its initialization does not match such bounds"
       TypeCompoundType (CompoundTypePtr ptr) -> do
@@ -280,18 +280,10 @@ module TypeChecker where
                     case lookupVar blocks ident of
                       Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
                       _        -> do 
-                        Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), postAttach (PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))]) prog)
+                        Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), prog ++ [(PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))])])
                   else fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr) ++ " which is incompatible with variable " ++ show ident ++ " " ++ show p ++ " that has type " ++ printTree (getInnerType tguard)
               -- if not
-              else do
-                -- if expr level < guard level
-                if ((getInitLevel expr) + (getTypeLevel texpr)) < (getTypeLevel tguard)
-                  then fail $ show p ++ ": variable " ++ show ident ++ " has a pointer level " ++ show (getTypeLevel tguard) ++ " which is incompatible with expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
-                  else do
-                    -- if expr level > guard level
-                    if ((getInitLevel expr) + (getTypeLevel texpr)) > (getTypeLevel tguard)
-                      then fail $ show p ++ ": variable " ++ show ident ++ " has a pointer level " ++ show (getTypeLevel tguard) ++ " which is incompatible with expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
-                      else fail $ "checkStmtInit: fatal error"
+              else fail $ show p ++ ": variable " ++ show ident ++ " has a pointer level " ++ show (getTypeLevel tguard) ++ " which is incompatible with expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
       TypeBasicType basicType -> do
         if basicType == TypeVoid
           then fail $ show p ++ ": array " ++ printTree ident ++ " must have a type (" ++ printTree TypeVoid ++ " type is not allowed)"
@@ -306,18 +298,10 @@ module TypeChecker where
                     case lookupVar blocks ident of
                       Ok (m,t) -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
                       _        -> do 
-                        Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), postAttach (PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))]) prog)
+                        Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), prog ++ [(PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))])])
                   else fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr) ++ " which is incompatible with variable " ++ show ident ++ " " ++ show p ++ " that has type " ++ printTree (getInnerType tguard)
               -- if not
-              else do
-                -- if expr level < guard level
-                if ((getInitLevel expr) + (getTypeLevel texpr)) < (getTypeLevel tguard)
-                  then fail $ show p ++ ": variable " ++ show ident ++ " has a pointer level " ++ show (getTypeLevel tguard) ++ " which is incompatible with expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
-                  else do
-                    -- if expr level > guard level
-                    if ((getInitLevel expr) + (getTypeLevel texpr)) > (getTypeLevel tguard)
-                      then fail $ show p ++ ": variable " ++ show ident ++ " has a pointer level " ++ show (getTypeLevel tguard) ++ " which is incompatible with expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
-                      else fail $ "checkStmtInit: fatal error"
+              else fail $ show p ++ ": variable " ++ show ident ++ " has a pointer level " ++ show (getTypeLevel tguard) ++ " which is incompatible with expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
   
   -- Check (right) expression.
   checkExpr :: (Env, [Program]) -> Expr -> Err (Env, [Program])
@@ -334,66 +318,66 @@ module TypeChecker where
   
       -- Left expressions.
       ExprLeft lexpr           -> do t <- inferLExpr env lexpr
-                                     return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr (ExprLeft lexpr))))])prog)
+                                     return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr (ExprLeft lexpr))))])])
   
       -- Base expressions (i.e., integers, floats, chars, strings, booleans)
-      ExprInt int              -> return (env, postAttach (PDefs [TypedDecl (ADecl tInt (DeclStmt (StmtExpr (ExprInt int))))]) prog)
-      ExprFloat flt            -> return (env, postAttach (PDefs [TypedDecl (ADecl tFloat (DeclStmt (StmtExpr (ExprFloat flt))))]) prog)
-      ExprChar chr             -> return (env, postAttach (PDefs [TypedDecl (ADecl tChar (DeclStmt (StmtExpr (ExprChar chr))))]) prog)
-      ExprString str           -> return (env, postAttach (PDefs [TypedDecl (ADecl tString (DeclStmt (StmtExpr (ExprString str))))]) prog)
-      ExprTrue ptrue           -> return (env, postAttach (PDefs [TypedDecl (ADecl tBool (DeclStmt (StmtExpr (ExprTrue ptrue))))]) prog)
-      ExprFalse pfalse         -> return (env, postAttach (PDefs [TypedDecl (ADecl tBool (DeclStmt (StmtExpr (ExprFalse pfalse))))]) prog)
+      ExprInt int              -> return (env, prog ++ [(PDefs [TypedDecl (ADecl tInt (DeclStmt (StmtExpr (ExprInt int))))])])
+      ExprFloat flt            -> return (env, prog ++ [(PDefs [TypedDecl (ADecl tFloat (DeclStmt (StmtExpr (ExprFloat flt))))])])
+      ExprChar chr             -> return (env, prog ++ [(PDefs [TypedDecl (ADecl tChar (DeclStmt (StmtExpr (ExprChar chr))))])])
+      ExprString str           -> return (env, prog ++ [(PDefs [TypedDecl (ADecl tString (DeclStmt (StmtExpr (ExprString str))))])])
+      ExprTrue ptrue           -> return (env, prog ++ [(PDefs [TypedDecl (ADecl tBool (DeclStmt (StmtExpr (ExprTrue ptrue))))])])
+      ExprFalse pfalse         -> return (env, prog ++ [(PDefs [TypedDecl (ADecl tBool (DeclStmt (StmtExpr (ExprFalse pfalse))))])])
   
       -- Function call.
       ExprFunCall pident args  -> do checkFunCall (env, prog) expr
   
       -- Boolean not.
       ExprBoolNot e            -> do t <- inferBoolUnOp env expr e
-                                     return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                                     return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
   
       -- Arithmetic unary operators.
       ExprAddition e           -> do t <- inferArithUnOp env expr e
-                                     return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)  
+                                     return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])  
       ExprNegation e           -> do t <- inferArithUnOp env expr e
-                                     return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                                     return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
   
       -- Arithmetic binary operators.
       ExprPower e1 e2    -> do t <- inferArithBinOp env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprMul e1 e2      -> do t <- inferArithBinOp env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprFloatDiv e1 e2 -> do t <- inferArithBinOpDiv env expr e1 e2 tFloat 
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprIntDiv e1 e2   -> do t <- inferArithBinOpDiv env expr e1 e2 tInt 
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprReminder e1 e2 -> do t <- inferArithBinOpMod env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprModulo e1 e2   -> do t <- inferArithBinOpMod env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprPlus e1 e2     -> do t <- inferArithBinOp env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprMinus e1 e2    -> do t <- inferArithBinOp env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
   
       -- Relational binary operators.
       ExprLt e1 e2       -> do t <- inferRelBinOp env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprGt e1 e2       -> do t <- inferRelBinOp env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprLtEq e1 e2     -> do t <- inferRelBinOp env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprGtEq e1 e2     -> do t <- inferRelBinOp env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprEq e1 e2       -> do t <- inferRelBinOp env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprNeq e1 e2      -> do t <- inferRelBinOp env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
   
       -- Boolean binary operator.
       ExprAnd e1 e2      -> do t <- inferBoolBinOp env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
       ExprOr e1 e2       -> do t <- inferBoolBinOp env expr e1 e2
-                               return (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))]) prog)
+                               return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
   
   -- Check assignment.
   checkAssign :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
@@ -424,15 +408,9 @@ module TypeChecker where
     if ((getInitLevel expr) + (getTypeLevel texpr)) == ((getLeftLevel lexpr) + (getTypeLevel tlexpr))
       then do
         if (getInnerType texpr) `isCompatibleWith` (getInnerType tlexpr)
-          then Ok (env, postAttach (PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+          then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
           else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr) 
-      else do 
-        if ((getInitLevel expr) + (getTypeLevel texpr)) < ((getLeftLevel lexpr) + (getTypeLevel tlexpr))
-          then fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
-          else do
-            if ((getInitLevel expr) + (getTypeLevel texpr)) > ((getLeftLevel lexpr) + (getTypeLevel tlexpr))
-              then fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
-              else fail $ "checkAssignOp: fatal error"
+      else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr)) 
   
   -- Check assignment boolean operator.
   checkAssignBoolOp :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
@@ -444,15 +422,9 @@ module TypeChecker where
         if (getInnerType texpr) `isCompatibleWith` (getInnerType tlexpr) &&
            (getInnerType texpr) `isCompatibleWith` tBool &&
            (getInnerType tlexpr) `isCompatibleWith` tBool
-          then Ok (env, postAttach (PDefs [TypedDecl (ADecl tBool (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+          then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl tBool (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
           else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr) 
-      else do 
-        if ((getInitLevel expr) + (getTypeLevel texpr)) < ((getLeftLevel lexpr) + (getTypeLevel tlexpr))
-          then fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
-          else do
-            if ((getInitLevel expr) + (getTypeLevel texpr)) > ((getLeftLevel lexpr) + (getTypeLevel tlexpr))
-              then fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
-              else fail $ "checkAssignBoolOp: fatal error"
+      else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr)) 
   
   -- Check assignment division operator.
   checkAssignOpDiv :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Type -> Err (Env, [Program])
@@ -464,15 +436,9 @@ module TypeChecker where
         if (getInnerType texpr) `isCompatibleWith` (getInnerType tlexpr) &&
            (getInnerType t) `isCompatibleWith` (getInnerType tlexpr) &&
            (getInnerType texpr) `isCompatibleWith` (getInnerType t)
-          then Ok (env, postAttach (PDefs [TypedDecl (ADecl (getInnerType t) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+          then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType t) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
           else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ ", the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr) ++ ", and both types must be compatible with type " ++ printTree t ++ " of the operation " ++ printTree op
-      else do 
-        if ((getInitLevel expr) + (getTypeLevel texpr)) < ((getLeftLevel lexpr) + (getTypeLevel tlexpr))
-          then fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
-          else do
-            if ((getInitLevel expr) + (getTypeLevel texpr)) > ((getLeftLevel lexpr) + (getTypeLevel tlexpr))
-              then fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
-              else fail $ "checkAssignOpDiv: fatal error"
+      else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr)) 
   
   -- Check modulo and remainder operators.
   checkAssignOpMod :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
@@ -484,15 +450,9 @@ module TypeChecker where
         if (getInnerType texpr) `isCompatibleWith` (getInnerType tlexpr) &&
            (getInnerType tlexpr) == tInt &&
            (getInnerType texpr) == tInt 
-          then Ok (env, postAttach (PDefs [TypedDecl (ADecl tInt (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))]) prog)
+          then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl tInt (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
           else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ ", the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr) ++ ", and both types must be compatible with type " ++ printTree tInt ++ " of the operation " ++ printTree op
-      else do 
-        if ((getInitLevel expr) + (getTypeLevel texpr)) < ((getLeftLevel lexpr) + (getTypeLevel tlexpr))
-          then fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
-          else do
-            if ((getInitLevel expr) + (getTypeLevel texpr)) > ((getLeftLevel lexpr) + (getTypeLevel tlexpr))
-              then fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
-              else fail $ "checkAssignOpMod: fatal error"
+      else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr)) 
   
   -- Check function call.
   checkFunCall :: (Env, [Program]) -> Expr -> Err (Env, [Program])
@@ -502,7 +462,7 @@ module TypeChecker where
         if length args == length mods --
           then do
             case checkFunCallArgs env pident mods args of
-              Ok _  -> Ok (env, postAttach (PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr (ExprFunCall pident args))))]) prog)
+              Ok _  -> Ok (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr (ExprFunCall pident args))))])])
               Bad s -> fail s
           else fail $ show p ++ ": function " ++ printTree ident ++ " doesn't match the numerosity of its parameters"
       _                  -> fail $ show p ++ ": function " ++ printTree ident ++ " is not defined" 
@@ -526,13 +486,7 @@ module TypeChecker where
                  _    -> fail $ show p ++ ": variable " ++ show ident ++ " is not declared"
              _ -> do checkFunCallArgs env pident xs exprs
        else fail $ show (getExprPosition expr) ++ ": expression argument " ++ printTree expr ++ " has type " ++ printTree targ ++ " but the declaration of the function requires to have type " ++ printTree tdecl
-     else do
-       if ((getInitLevel expr) + (getTypeLevel targ)) < (getTypeLevel tdecl)
-         then fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl)
-         else do
-           if ((getInitLevel expr) + (getTypeLevel targ)) > (getTypeLevel tdecl)
-             then fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl) 
-             else fail $ "checkFunCallArgs: fatal error"
+     else fail $ show (getExprPosition expr) ++ ": expression " ++ printTree expr ++ " has a pointer level " ++ show ((getInitLevel expr) + (getTypeLevel targ)) ++ " but the function requires pointer level " ++ show (getTypeLevel tdecl)
   
   -- #######################################
   -- 					Inference functions:
@@ -722,11 +676,6 @@ module TypeChecker where
   -- Initialize the environment with the default primitives.
   initEnv :: Env
   initEnv = ([defaultPrimitives], [(NormBlock, Map.empty)])
-  
-  -- Given an element 'a' and a list, add this element at the end of the list.
-  postAttach :: a -> [a] -> [a]
-  postAttach a [] = [a]
-  postAttach a (x:xs) = x : postAttach a xs
   
   -- Look for function in signature.
   lookupFun :: [Sig] -> String -> Err ([(Modality, Type)], Type)
