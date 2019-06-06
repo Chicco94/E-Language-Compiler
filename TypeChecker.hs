@@ -18,7 +18,7 @@ data Mutability = MutConst | MutVar
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 -- Block types.
-data BlockType = NormBlock | FunBlock PIdent Type | IterBlock | SelBlock
+data BlockType = NormBlock | FunBlock PIdent Type | IterBlock | SelBlock | TryBlock | CatchBlock
   deriving(Eq, Ord, Show, Read)
 
 -- #######################################
@@ -43,33 +43,28 @@ checkDecl (env, prog) def =
 
 -- Check function declaration.
 checkFunDecl :: (Env, [Program]) -> LExpr -> [Arg] -> Guard -> CompStmt -> Err (Env, [Program])
-checkFunDecl (env@(sig@(x:xs), blocks@(block:_)), prog) lexpr@(LExprId pident@(PIdent (p, fname))) args guard compstmt = do
+checkFunDecl (env@(sig@(x:xs), blocks), prog) lexpr@(LExprId pident@(PIdent (p, fname))) args guard compstmt = do
   case guard of
     GuardType t ->
       case lookupFun sig fname of
         Ok t  -> fail $ show p ++ ": function " ++ printTree fname ++ " already declared"
-        _     -> do case checkArgDecl (env, prog) args of
-                      Ok ((_, blocks'), _) -> do
-                        case extendEnv ((((addFun x fname args guard):xs), blocks'), prog) ((FunBlock pident t), Map.empty) compstmt of
+        _     -> do case checkArgDecl Map.empty args of
+                      Ok ctxt -> do
+                        case extendEnv ((((addFun x fname args guard):xs), blocks), prog) ((FunBlock pident t), ctxt) compstmt of
                           Ok (e', p') -> Ok (e', prog ++ [(PDefs [TypedDecl (ADecl t (DeclFun lexpr args guard (StmtBlock (getDecls p'))))])])
                           Bad s -> Bad s
-
-                      Bad s                -> Bad s
+                      Bad s   -> Bad s
     GuardVoid -> fail $ show p ++ ": the function " ++ printTree fname ++ " must have a type to be well defined"
 
--- Check argument(s) declaration.
-checkArgDecl :: (Env, [Program]) -> [Arg] -> Err (Env, [Program])  
-checkArgDecl (env, prog) [] = Ok (env, prog) 
-checkArgDecl (env@(sig@(x:xs), blocks@((blockType, context):ys)), prog) (arg@(ArgDecl mod (PIdent pident@(p,ident)) guard):args) = do
+-- Check arguments declaration.
+checkArgDecl :: Context -> [Arg] -> Err Context  
+checkArgDecl context [] = Ok context
+checkArgDecl context (arg@(ArgDecl mod (PIdent pident@(p,ident)) guard):args) = do
   case guard of
     GuardVoid   -> fail $ show p ++ ": argument " ++ printTree ident ++ " must have a type"
-    GuardType t -> 
-          {- case lookupVar blocks ident of
-            Ok _ -> fail $ show p ++ ": variable " ++ printTree ident ++ " already declared"
-            _    -> do -}
-              if mod == ModEmpty || mod == ModVar -- if no modality is provided, or if the modality is a variable, then add it as variable, else as constant
-                then checkArgDecl ((sig, ((blockType, addVar context (MutVar, ident) t):ys)), prog) args
-                else checkArgDecl ((sig, ((blockType, addVar context (MutConst, ident) t):ys)), prog) args
+    GuardType t -> if mod == ModEmpty || mod == ModVar -- if no modality is provided, or if the modality is a variable, then add it as variable, else as constant
+                     then checkArgDecl (addVar context (MutVar, ident) t) args
+                     else checkArgDecl (addVar context (MutConst, ident) t) args
 
 -- Check statement declaration.
 checkDeclStmt :: (Env, [Program]) -> Stmt -> Err (Env, [Program])
@@ -85,9 +80,11 @@ checkDeclStmt (env, prog) stmt =
     SComp compstmt                    -> checkSComp (env, prog) compstmt
     StmtIfThenElse expr cstmt1 cstmt2 -> checkIfThenElse (env, prog) expr cstmt1 cstmt2
     StmtIfThen expr cstmt             -> checkIfThen (env, prog) expr cstmt
-    StmtWhile expr cstmt              -> checkWhile (env, prog) expr cstmt
-    StmtFor pident range cstmt        -> checkFor (env, prog) pident range cstmt
+    StmtTryCatch cstmt1 cstmt2        -> checkTryCatch (env, prog) cstmt1 cstmt2
     StmtSwitchCase expr norm dflt     -> checkStmtSwitchCase (env, prog) expr norm dflt
+    StmtWhile expr cstmt              -> checkWhile (env, prog) expr cstmt
+    StmtLoopUntil cstmt expr          -> checkLoopUntil (env, prog) cstmt expr
+    StmtFor pident range cstmt        -> checkFor (env, prog) pident range cstmt
 
 -- Check switch case statement.
 checkStmtSwitchCase :: (Env, [Program]) -> Expr -> [NormCase] -> [DfltCase] -> Err (Env, [Program])
@@ -141,6 +138,12 @@ checkIfThen (env@(sig@(x:xs), blocks), prog) expr cstmt = do
       Ok (env, prog ++ [(PDefs [DeclStmt (StmtIfThen expr (StmtBlock (getDecls p1)))])])
     else
       fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
+
+checkTryCatch :: (Env, [Program]) -> CompStmt -> CompStmt -> Err (Env, [Program]) 
+checkTryCatch (env@(sig@(x:xs), blocks), prog) cstmt1 cstmt2 = do
+  (env1, p1) <- extendEnv (env, prog) (TryBlock, Map.empty) cstmt1
+  (env2, p2) <- extendEnv (env, p1) (CatchBlock, Map.empty) cstmt2
+  Ok (env, prog ++ [(PDefs [DeclStmt (StmtTryCatch (StmtBlock (getDecls p1)) (StmtBlock (getDecls p2)))])])
 
 -- Check return with expression statement.
 checkReturn :: (Env, [Program]) -> PReturn -> Expr -> Err (Env, [Program])
@@ -196,54 +199,30 @@ checkWhile (env@(xs, blocks@((blockType, context):ys)), prog) expr compstmt = do
            Bad s       -> Bad s
     else fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
 
+-- Check loop-until statement.
+checkLoopUntil :: (Env, [Program]) -> CompStmt -> Expr -> Err (Env, [Program])
+checkLoopUntil (env@(xs, blocks@((blockType, context):ys)), prog) compstmt expr = do
+  t <- inferExpr env expr
+  if (t == tBool)
+    then case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
+           Ok (e', p') -> Ok (e', prog ++ [(PDefs [DeclStmt (StmtLoopUntil (StmtBlock (getDecls p')) expr)])])
+           Bad s       -> Bad s
+    else fail $ show (getExprPosition expr) ++ ": the expression " ++ printTree expr ++ " must be boolean"
+
 -- Check for statement.
 checkFor :: (Env, [Program]) -> PIdent -> Range -> CompStmt -> Err (Env, [Program])
-checkFor (env@(xs, blocks@((blockType, context):ys)), prog) pident@(PIdent (p,ident)) range@(ExprRange id1 id2) compstmt = do
+checkFor (env@(xs, blocks@((blockType, context):ys)), prog) pident@(PIdent (p,ident)) range@(ExprRange e1 e2) compstmt = do
   case lookupVar blocks ident of
-    Ok (m,t) -> do
+    Ok (m,t) -> do 
       if (t == tInt) && (m == MutVar)
-        then
-          case id1 of
-            ForIdent (PIdent (p1, forId1)) -> do
-              case lookupVar blocks forId1 of
-                Ok (m1, t1) -> do 
-                  if t1 == tInt -- t1 int
-                    then
-                      case id2 of
-                        ForIdent (PIdent (p2, forId2)) -> do
-                          case lookupVar blocks forId2 of
-                            Ok (m2, t2) -> do
-                              if t2 == tInt -- t2 int
-                                then case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
+        then do 
+          t1 <- inferExpr env e1
+          t2 <- inferExpr env e2
+          if t1 == tInt && t2 == tInt
+            then case extendEnv (env, prog) (IterBlock, Map.insert ident (MutConst, t) $ Map.empty) compstmt of
                                   Ok (e', p') -> Ok (e', prog ++ [(PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))])])
                                   Bad s       -> Bad s
-                                -- t2 != int
-                                else fail $ show p2 ++ ": the variable " ++ printTree forId2 ++ " does not have " ++ printTree tInt ++ " type (which is required in a range)"
-                            _           -> fail $ show p2 ++ " the variable " ++ printTree forId2 ++ " is not declared"
-                        _                              -> do
-                          case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
-                            Ok (e', p') -> Ok (e', prog ++ [(PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))])])
-                            Bad s       -> Bad s
-                    -- t1 != int
-                    else fail $ show p1 ++ ": the variable " ++ printTree forId1 ++ " does not have " ++ printTree tInt ++ " type (which is required in a range)"
-                _          -> fail $ show p1 ++ ": the variable " ++ printTree forId1 ++ " is not declared"
-            -- id1 is integer
-            _                              -> do
-              case id2 of
-                ForIdent (PIdent (p2, forId2)) -> do
-                  case lookupVar blocks forId2 of
-                     Ok (m2, t2) -> do
-                       if t2 == tInt -- t2 int
-                         then case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
-                           Ok (e', p') -> Ok (e', prog ++ [(PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))])])
-                           Bad s       -> Bad s
-                         -- t2 != int
-                         else fail $ show p2 ++ ": the variable " ++ printTree forId2 ++ " does not have " ++ printTree tInt ++ " type (which is required in a range)"
-                     _           -> fail $ show p2 ++ " the variable " ++ printTree forId2 ++ " is not declared"
-                _                              -> do
-                  case extendEnv (env, prog) (IterBlock, Map.empty) compstmt of
-                    Ok (e', p') -> Ok (e', prog ++ [(PDefs [DeclStmt (StmtFor pident range (StmtBlock (getDecls p')))])])
-                    Bad s       -> Bad s 
+            else fail $ show p ++ ": variable " ++ printTree ident ++ " in the for loop must iterate over a range where both types must be int; at the moment there is a " ++ printTree t1 ++ " type and a " ++ printTree t2 ++ " type"  
         else 
           if (t /= tInt)
             then fail $ show p ++ ": the variable " ++ printTree ident ++ " must have " ++ printTree tInt ++ " type in a range expression"
@@ -267,6 +246,17 @@ checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) pident@(PIdent
                                Ok tarr -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), prog ++ [(PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))])])
                                Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree (getInnerType tguard) ++ " but there is an expression with type " ++ s ++ " in its initialization"
       False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but its initialization does not match such bounds"
+    TypeCompoundType (CompoundTypeArrayType (ArrDefBaseC pints basicType)) -> case checkArrayInitBounds (getBoundsFromPInts pints) cexpr of
+      True  -> case inferArray env cexpr tguard of 
+        Ok tarr -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), prog ++ [(PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))])])
+        Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree (getInnerType tguard) ++ " but there is an expression with type " ++ s ++ " in its initialization"
+      False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but its initialization does not match such bounds"
+    TypeCompoundType (CompoundTypeArrayType (ArrDefPtrC pints ptr)) -> case checkArrayInitBounds (getBoundsFromPInts pints) cexpr of
+      True  -> case inferArray env cexpr tguard of 
+                               Ok tarr -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), prog ++ [(PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))])])
+                               Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree (getInnerType tguard) ++ " but there is an expression with type " ++ s ++ " in its initialization"
+      False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but its initialization does not match such bounds"
+
     TypeCompoundType (CompoundTypePtr ptr) -> do
       expr <- getExprFromComplexExpr cexpr
       texpr <- inferExpr env expr
@@ -315,6 +305,18 @@ checkExpr (env@(sigs,blocks), prog) expr = do
             then checkAssign (env, prog) lexpr op expr
             else fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree (findLExprName lexpr) ++ " is defined as constant, you cannot assign a value to a constant"
         _        -> fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree (findLExprName lexpr) ++ " is not defined"
+
+    -- Ternary expression (i.e. (expr) ? expr : expr).
+    ExprTernaryIf e1 e2 e3 -> do -- ASSUMPTION: t2 and t3 must have the same type
+      t1 <- inferExpr env e1
+      t2 <- inferExpr env e2
+      t3 <- inferExpr env e3
+      if t1 == tBool
+        then do
+          if t2 == t3
+            then return (env, prog ++ [(PDefs [TypedDecl (ADecl t2 (DeclStmt (StmtExpr expr)))])])
+            else fail $ show (getExprPosition e2) ++ ": expression " ++ printTree e2 ++ " must have the same type of the expression " ++ printTree e3 ++ " " ++ show (getExprPosition e2) ++ "; at the moment there is a " ++ printTree t2 ++ " type and a " ++ printTree t3 ++ " type"
+        else fail $ show (getExprPosition e1) ++ ": expression " ++ printTree e1 ++ " must have " ++ printTree tBool ++ " type"
 
     -- Left expressions.
     ExprLeft lexpr           -> do t <- inferLExpr env lexpr
@@ -841,6 +843,8 @@ decomposeArr :: ArrayType -> BasicType
 decomposeArr arr = case arr of
   ArrDefBase pints basicType -> basicType
   ArrDefPtr pints p          -> decomposePtr p
+  ArrDefBaseC pints basicType -> basicType
+  ArrDefPtrC pints p          -> decomposePtr p
 
 -- Get expression from complex expression.
 getExprFromComplexExpr :: ComplexExpr -> Err Expr
