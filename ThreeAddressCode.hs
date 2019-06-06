@@ -11,7 +11,7 @@ module ThreeAddressCode where
   import qualified Data.Map as Map
   
   -- envirornment che viene aggiornato ad ogni istruzione 
-  type Env          = ( TACProg, LastTemp, VariablesMap, LabelsCount, Scope)
+  type Env          = (TACProg, LastTemp, VariablesMap, LabelsCount, Scope)
   type TACProg      = [TAC]
   type LastTemp     = Temp                       -- ultimo temporaneo calcolato
   type VariablesMap = Map.Map String Var         -- Variables context: String -> Var
@@ -90,26 +90,60 @@ module ThreeAddressCode where
       SComp (StmtBlock decls)                       -> generateSubTAC env (PDefs decls) 
   
       -- if then else
+      --     ifFales boolExpr goto lbl
+      --     stmtsTrue
+      --     goto end
+      -- lbl stmtsFalse
+      --     goto end
+      -- end
       StmtIfThenElse bexpr stmtsT stmtsF            -> addTACList (generateStmt (addTACList (generateStmt (addTACList (generateExpr env (TypeBasicType TypeBool) bexpr) [IfFalse Empty (Label ("if_false",labels) )]) type_ (SComp stmtsT)) [Goto (Label ("end_if",labels) ),Lbl (Label ("if_false",labels) )]) type_ (SComp stmtsF)) [Lbl (Label ("end_if",labels) )]
       
       -- if then
+      --     if boolExpr goto end
+      --     stmtsTrue
+      -- end 
       StmtIfThen bexpr stmts -> addTACList (generateStmt (addTACList (generateExpr env (TypeBasicType TypeBool) bexpr) [IfFalse Empty (Label ("end_if", labels))]) type_ (SComp stmts) ) [Lbl (Label ("end_if", labels) )]
       
       -- switch case del default prendo solo il primo
+      --      goto grd
+      -- lbl1 stmtsCase1
+      --      goto end
+      -- ...
+      -- lbln stmtsCasen
+      --      goto end
+      -- lbld stmtsDefault
+      --      goto end
+      -- grd if boolExpr1 goto lbl1
+      -- ...
+      --     if boolExprn goto lbln
+      --     goto lbld
+      -- end
       StmtSwitchCase expr norm_cases ((CaseDefault dflt_stms):_) -> do
         let (program4, last_temp4, variables4, labels4, scope4) = addTACList (addTACList (generateStmt (addTACList (generateCases ((addTACList env [Goto (Label ("case_conditions",labels) )])) type_ norm_cases (Label ("end_case",labels) )) [Lbl (Label ("match_dflt", labels) )]) type_ (SComp dflt_stms)) [Goto (Label ("end_case",labels) )]) [Lbl (Label ("case_conditions", labels) )]
         addTACList (addTACList (generateCasesCond (program4, last_temp4, variables4, labels,scope4) expr type_ norm_cases) [Goto (Label ("match_dflt",labels) )]) [Lbl (Label ("end_case", labels) )]
       
       -- break stmt
+      -- goto end(-1)
       StmtBreak break -> addTACList env [Goto (Label ("end_stmt",scope+s_i-1))]
       
       -- continue stmt
+      -- goto guard(-1)
       StmtContinue continue -> addTACList env [Goto (Label ("guard",scope+s_i-1))] 
   
-       -- while stmt    
+      -- while stmt
+      --     goto grd
+      -- lbl stmts
+      -- grd if boolexpr goto lbl
+      -- end
       StmtWhile bexpr (StmtBlock decls) -> (addTACList (generateExpr (addTACList (generateSubTAC ([Lbl (Label ("body",scope+s_i+1)),Goto (Label ("guard",scope+s_i+1))]++program, last_temp,variables,labels,(scope+1,s_i+1)) (PDefs decls)) [Lbl (Label ("guard",scope+s_i+1))]) (TypeBasicType TypeBool) bexpr) [If Empty (Label ("body",scope+s_i+1)),Lbl (Label ("end_stmt",scope+s_i+1))])
       
       -- for stmt
+      --     i=start
+      --     goto grd
+      -- lbl stmts
+      --     i+1
+      -- grd if boolexpr goto lbl
+      -- end
       StmtFor id@(PIdent (pos,name)) (ExprRange start_for end_for) (StmtBlock decls) -> do
         let (env1, var) = findVar env (Var (name,pos,(TypeBasicType TypeInt)))
         let (program1, last_temp1, variables1, labels1, _) = generateAssign env1 (TypeBasicType TypeInt) id OpAssign [(for_bound_identifier env start_for)] (Temp (-1,(TypeBasicType TypeInt)))
