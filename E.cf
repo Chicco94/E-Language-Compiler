@@ -65,6 +65,7 @@ SComp.          Stmt ::= CompStmt ;
 
 StmtIfThenElse. Stmt     ::= "if" "(" Expr ")" CompStmt "else" CompStmt ;
 StmtIfThen.     Stmt     ::= "if" "(" Expr ")" CompStmt ;
+StmtTryCatch.   Stmt     ::= "try" CompStmt "catch" CompStmt ;
 StmtSwitchCase.    Stmt     ::= "switch" "(" Expr ")" "{" [NormCase] [DfltCase] "}" ;
 CaseNormal.     NormCase ::= "match" Expr CompStmt ;
 CaseDefault.    DfltCase ::= "match _" CompStmt ;
@@ -74,10 +75,10 @@ StmtBreak.      Stmt     ::= PBreak ";" ;
 StmtContinue.   Stmt     ::= PContinue ";" ;
 
 StmtWhile.      Stmt     ::= "while" "(" Expr ")" CompStmt ;
+StmtLoopUntil.  Stmt     ::= "loop" CompStmt "until" "(" Expr ")";
 StmtFor.        Stmt     ::= "for" PIdent "in" Range CompStmt ;
-ExprRange.      Range    ::= ForId ".." ForId ;
-ForIdent.       ForId    ::= PIdent ;
-ForInteger.     ForId    ::= PInteger ;          
+ExprRange.      Range    ::= Expr ".." Expr ;
+
 
 ExprAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
 
@@ -106,6 +107,7 @@ ExprTrue.     Expr16 ::= PTrue ;
 ExprFalse.    Expr16 ::= PFalse ;
 
 ExprFunCall.  Expr15 ::= PIdent "(" [Expr] ")" ;
+ExprTernaryIf.  Expr15 ::= Expr15 "?" Expr15 ":" Expr15 ;
 
 ExprBoolNot.  Expr14  ::= "!" Expr15 ;
 
@@ -168,12 +170,17 @@ TypeString. BasicType ::= "string" ;
 
 rules CompoundType ::= ArrayType | Ptr ;
 
+
+--; [] usual array
+--; <> checked array
 ArrDefBase.  ArrayType ::= "[" [PInteger] "]" BasicType ;
+ArrDefBaseC. ArrayType ::= "<" [PInteger] ">" BasicType ;
 ArrDefPtr.   ArrayType ::= "[" [PInteger] "]" Ptr ;
+ArrDefPtrC.  ArrayType ::= "<" [PInteger] ">" Ptr ;
 
 Pointer.         Ptr       ::= BasicType "*" ;
 Pointer2Pointer. Ptr       ::= Ptr "*" ;
 
 
--- The entry point is the program.
+--; The entry point is the program.
 entrypoints Program ;

@@ -72,10 +72,12 @@ transStmt x = case x of
   SComp compstmt -> failure x
   StmtIfThenElse expr compstmt1 compstmt2 -> failure x
   StmtIfThen expr compstmt -> failure x
+  StmtTryCatch compstmt1 compstmt2 -> failure x
   StmtSwitchCase expr normcases dfltcases -> failure x
   StmtBreak pbreak -> failure x
   StmtContinue pcontinue -> failure x
   StmtWhile expr compstmt -> failure x
+  StmtLoopUntil compstmt expr -> failure x
   StmtFor pident range compstmt -> failure x
 transComplexExpr :: ComplexExpr -> Result
 transComplexExpr x = case x of
@@ -92,11 +94,7 @@ transDfltCase x = case x of
   CaseDefault compstmt -> failure x
 transRange :: Range -> Result
 transRange x = case x of
-  ExprRange forid1 forid2 -> failure x
-transForId :: ForId -> Result
-transForId x = case x of
-  ForIdent pident -> failure x
-  ForInteger pinteger -> failure x
+  ExprRange expr1 expr2 -> failure x
 transExpr :: Expr -> Result
 transExpr x = case x of
   ExprAssign lexpr assignoperator expr -> failure x
@@ -108,6 +106,7 @@ transExpr x = case x of
   ExprTrue ptrue -> failure x
   ExprFalse pfalse -> failure x
   ExprFunCall pident exprs -> failure x
+  ExprTernaryIf expr1 expr2 expr3 -> failure x
   ExprBoolNot expr -> failure x
   ExprNegation expr -> failure x
   ExprAddition expr -> failure x
@@ -175,7 +174,9 @@ transCompoundType x = case x of
 transArrayType :: ArrayType -> Result
 transArrayType x = case x of
   ArrDefBase pintegers basictype -> failure x
+  ArrDefBaseC pintegers basictype -> failure x
   ArrDefPtr pintegers ptr -> failure x
+  ArrDefPtrC pintegers ptr -> failure x
 transPtr :: Ptr -> Result
 transPtr x = case x of
   Pointer basictype -> failure x

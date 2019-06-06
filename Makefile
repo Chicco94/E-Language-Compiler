@@ -1,14 +1,12 @@
 all:
 	happy -gca ParE.y
 	alex -g LexE.x
-	ghc --make Main.hs -o Main
+	ghc --make TestE.hs -o TestE
 
 clean:
 	-rm -f *.log *.aux *.hi *.o *.dvi
 
 distclean: clean
-	-rm -f DocE.* LexE.* ParE.* LayoutE.* SkelE.* PrintE.* Main.* AbsE.* Main ErrM.* SharedString.* ComposOp.* E.dtd XMLE.* Makefile*
+	-rm -f DocE.* LexE.* ParE.* LayoutE.* SkelE.* PrintE.* TestE.* AbsE.* TestE ErrM.* SharedString.* ComposOp.* E.dtd XMLE.* Makefile*
 	
 
-demo: all
-	./demo.sh

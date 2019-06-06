@@ -164,10 +164,12 @@ instance Print Stmt where
     SComp compstmt -> prPrec i 0 (concatD [prt 0 compstmt])
     StmtIfThenElse expr compstmt1 compstmt2 -> prPrec i 0 (concatD [doc (showString "if"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 compstmt1, doc (showString "else"), prt 0 compstmt2])
     StmtIfThen expr compstmt -> prPrec i 0 (concatD [doc (showString "if"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 compstmt])
+    StmtTryCatch compstmt1 compstmt2 -> prPrec i 0 (concatD [doc (showString "try"), prt 0 compstmt1, doc (showString "catch"), prt 0 compstmt2])
     StmtSwitchCase expr normcases dfltcases -> prPrec i 0 (concatD [doc (showString "switch"), doc (showString "("), prt 0 expr, doc (showString ")"), doc (showString "{"), prt 0 normcases, prt 0 dfltcases, doc (showString "}")])
     StmtBreak pbreak -> prPrec i 0 (concatD [prt 0 pbreak, doc (showString ";")])
     StmtContinue pcontinue -> prPrec i 0 (concatD [prt 0 pcontinue, doc (showString ";")])
     StmtWhile expr compstmt -> prPrec i 0 (concatD [doc (showString "while"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 compstmt])
+    StmtLoopUntil compstmt expr -> prPrec i 0 (concatD [doc (showString "loop"), prt 0 compstmt, doc (showString "until"), doc (showString "("), prt 0 expr, doc (showString ")")])
     StmtFor pident range compstmt -> prPrec i 0 (concatD [doc (showString "for"), prt 0 pident, doc (showString "in"), prt 0 range, prt 0 compstmt])
 
 instance Print ComplexExpr where
@@ -192,12 +194,7 @@ instance Print DfltCase where
   prtList _ (x:xs) = (concatD [prt 0 x, prt 0 xs])
 instance Print Range where
   prt i e = case e of
-    ExprRange forid1 forid2 -> prPrec i 0 (concatD [prt 0 forid1, doc (showString ".."), prt 0 forid2])
-
-instance Print ForId where
-  prt i e = case e of
-    ForIdent pident -> prPrec i 0 (concatD [prt 0 pident])
-    ForInteger pinteger -> prPrec i 0 (concatD [prt 0 pinteger])
+    ExprRange expr1 expr2 -> prPrec i 0 (concatD [prt 0 expr1, doc (showString ".."), prt 0 expr2])
 
 instance Print Expr where
   prt i e = case e of
@@ -210,6 +207,7 @@ instance Print Expr where
     ExprTrue ptrue -> prPrec i 16 (concatD [prt 0 ptrue])
     ExprFalse pfalse -> prPrec i 16 (concatD [prt 0 pfalse])
     ExprFunCall pident exprs -> prPrec i 15 (concatD [prt 0 pident, doc (showString "("), prt 0 exprs, doc (showString ")")])
+    ExprTernaryIf expr1 expr2 expr3 -> prPrec i 15 (concatD [prt 15 expr1, doc (showString "?"), prt 15 expr2, doc (showString ":"), prt 15 expr3])
     ExprBoolNot expr -> prPrec i 14 (concatD [doc (showString "!"), prt 15 expr])
     ExprNegation expr -> prPrec i 14 (concatD [doc (showString "-"), prt 15 expr])
     ExprAddition expr -> prPrec i 14 (concatD [doc (showString "+"), prt 15 expr])
@@ -288,7 +286,9 @@ instance Print CompoundType where
 instance Print ArrayType where
   prt i e = case e of
     ArrDefBase pintegers basictype -> prPrec i 0 (concatD [doc (showString "["), prt 0 pintegers, doc (showString "]"), prt 0 basictype])
+    ArrDefBaseC pintegers basictype -> prPrec i 0 (concatD [doc (showString "<"), prt 0 pintegers, doc (showString ">"), prt 0 basictype])
     ArrDefPtr pintegers ptr -> prPrec i 0 (concatD [doc (showString "["), prt 0 pintegers, doc (showString "]"), prt 0 ptr])
+    ArrDefPtrC pintegers ptr -> prPrec i 0 (concatD [doc (showString "<"), prt 0 pintegers, doc (showString ">"), prt 0 ptr])
 
 instance Print Ptr where
   prt i e = case e of

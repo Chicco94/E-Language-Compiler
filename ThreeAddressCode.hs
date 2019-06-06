@@ -137,18 +137,26 @@ module ThreeAddressCode where
       -- end
       StmtWhile bexpr (StmtBlock decls) -> (addTACList (generateExpr (addTACList (generateSubTAC ([Lbl (Label ("body",scope+s_i+1)),Goto (Label ("guard",scope+s_i+1))]++program, last_temp,variables,labels,(scope+1,s_i+1)) (PDefs decls)) [Lbl (Label ("guard",scope+s_i+1))]) (TypeBasicType TypeBool) bexpr) [If Empty (Label ("body",scope+s_i+1)),Lbl (Label ("end_stmt",scope+s_i+1))])
       
-      -- for stmt
-      --     i=start
-      --     goto grd
+      -- da togliere il grd se non vogliamo il continue all'interno del ciclo
+      -- until stmt
       -- lbl stmts
-      --     i+1
       -- grd if boolexpr goto lbl
       -- end
+      StmtLoopUntil (StmtBlock decls) bexpr -> (addTACList (generateExpr (addTACList (generateSubTAC ([Lbl (Label ("body",scope+s_i+1))]++program, last_temp,variables,labels,(scope+1,s_i+1)) (PDefs decls)) [Lbl (Label ("guard",scope+s_i+1))]) (TypeBasicType TypeBool) bexpr) [If Empty (Label ("body",scope+s_i+1)),Lbl (Label ("end_stmt",scope+s_i+1))])
+      
+      -- for stmt
       StmtFor id@(PIdent (pos,name)) (ExprRange start_for end_for) (StmtBlock decls) -> do
         let (env1, var) = findVar env (Var (name,pos,(TypeBasicType TypeInt)))
-        let (program1, last_temp1, variables1, labels1, _) = generateAssign env1 (TypeBasicType TypeInt) id OpAssign [(for_bound_identifier env start_for)] (Temp (-1,(TypeBasicType TypeInt)))
-        (addTACList (generateExpr (addTACList (generateExpr (generateSubTAC ([Lbl (Label ("body",scope+s_i+1)),Goto (Label ("guard",scope+s_i+1))]++program1, last_temp1,variables1,labels1,(scope +1,s_i+1)) (PDefs decls)) (TypeBasicType TypeInt) (ExprAssign (LExprId id) OpAssign (ExprPlus (ExprLeft (LExprId id)) (ExprInt (PInteger ((0,0),"1")))))) [Lbl (Label ("guard",scope+s_i+1))]) (TypeBasicType TypeBool) (ExprLt (ExprLeft (LExprId id)) (for_bound_identifier env end_for))) [If Empty (Label ("body",scope+s_i+1)),Lbl (Label ("end_stmt",scope+s_i+1))])
-  
+        --     i=start
+        --     t=end
+        let (program1, t_end, variables1, labels1, _) = generateExpr (generateAssign env1 (TypeBasicType TypeInt) id OpAssign [(for_bound_identifier env start_for)] (Temp (-1,(TypeBasicType TypeInt)))) (TypeBasicType TypeInt) (for_bound_identifier env end_for)
+        --     goto grd
+        -- lbl stmts
+        --     i+1
+        let env2@(_, curr_i, _, _, _) = (generateExpr (generateSubTAC ([Lbl (Label ("body",scope+s_i+1)),Goto (Label ("guard",scope+s_i+1))]++program1, t_end,variables1,labels1,(scope +1,s_i+1)) (PDefs decls)) (TypeBasicType TypeInt) (ExprAssign (LExprId id) OpAssign (ExprPlus (ExprLeft (LExprId id)) (ExprInt (PInteger ((0,0),"1"))))))
+        -- grd if i<t goto lbl
+        -- end
+        (addTACList env2 [Lbl (Label ("guard",scope+s_i+1)), (BoolOp BOpLt curr_i t_end),If Empty (Label ("body",scope+s_i+1)),Lbl (Label ("end_stmt",scope+s_i+1))])
 
   -- genera le itruzioni di ogni caso dello switch
   generateCases :: Env -> Type -> [NormCase] -> Label -> Env
@@ -491,6 +499,7 @@ module ThreeAddressCode where
     case for_id of
       ForInteger val -> ExprInt val
       ForIdent   id  -> ExprLeft (LExprId id)
+      _ -> for_id
 
   -- aggiunge la chiamata al main al programma se è presente nel codice la funzione
   ifmain :: Env -> Env
