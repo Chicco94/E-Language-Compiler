@@ -161,3 +161,43 @@ data ArrayType
 data Ptr = Pointer BasicType | Pointer2Pointer Ptr
   deriving (Eq, Ord, Show, Read)
 
+
+instance Show PTrue     where show (PTrue     (_, val)) = filter (/='\"') (show val)
+instance Show PFalse    where show (PFalse    (_, val)) = filter (/='\"') (show val)
+instance Show PReturn   where show (PReturn   (_, val)) = filter (/='\"') (show val)
+instance Show PContinue where show (PContinue (_, val)) = filter (/='\"') (show val)
+instance Show PBreak    where show (PBreak    (_, val)) = filter (/='\"') (show val)
+instance Show PIdent    where show (PIdent    (_, val)) = filter (/='\"') (show val)
+instance Show PInteger  where show (PInteger  (_, val)) = filter (/='\"') (show val)
+instance Show PFloat    where show (PFloat    (_, val)) = filter (/='\"') (show val)
+instance Show PChar     where show (PChar     (_, val)) = filter (/='\"') (show val)
+instance Show PString   where show (PString   (_, val)) = "\"" ++ filter (/='\\') (filter (/='\"') (show val) ) ++ "\"" 
+
+instance Show Type where 
+  show e = case e of 
+    TypeBasicType    t -> show t
+    TypeCompoundType c -> show c
+
+instance Show BasicType where 
+  show t = case t of 
+    TypeBool   -> "bool"
+    TypeFloat  -> "float"
+    TypeInt    -> "int"
+    TypeVoid   -> "void"
+    TypeChar   -> "char"
+    TypeString -> "string"
+
+instance Show CompoundType where 
+  show t = case t of 
+    CompoundTypeArrayType a -> show a
+    CompoundTypePtr       p -> show p
+
+instance Show ArrayType where
+  show t = case t of
+    ArrDefBase dim bt -> "[]" ++ show bt
+    ArrDefPtr  dim p  -> "[]" ++ show p
+
+instance Show Ptr where
+  show t = case t of
+    Pointer         bt -> show bt ++ "*"
+    Pointer2Pointer p  -> show p  ++ "*"

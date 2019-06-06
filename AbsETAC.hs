@@ -9,7 +9,14 @@ data Label = Label (String,Int)
   deriving (Eq, Ord, Read)
 
 -- temporal variables: 't'id_numeber
-data Temp = Temp (Int,Type) | TempT PTrue | TempF PFalse
+data Temp 
+  = Temp (Int,Type) 
+  | TempI PInteger
+  | TempC PChar
+  | TempS PString
+  | TempT PTrue
+  | TempF PFalse
+  | TempR PFloat
   deriving (Eq, Ord, Read)
 -- user variables: var_name@line_number
 data Var  = Var  (String,(Int,Int),Type)
@@ -54,8 +61,9 @@ data TAC
   | Goto Label
   | Lbl Label
 
--- try_catch
+-- exceptions
   | OnException Label
+  | OutOfBoundExp
 
 -- condizioni
   | If TAC Label

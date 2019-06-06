@@ -188,6 +188,25 @@ module ThreeAddressCode where
     generateCasesCond ([If (head program) (Label ("match_", labels)) ]++(drop 1 program), last_temp, variables, labels+1, scope) expr_v type_ rest 
     
 
+  -- calcola lo step di spostamento dall'indirizzo base dell'array
+  getStep :: Env -> AExpr -> ([PInteger],Bool) -> Env
+  getStep env@(program, last_temp, variables, labels, scope) a ((dim:rest),2Bchkd) = case a of
+    (ArrSing step)   -> (generateExpr env (TypeBasicType TypeInt) step)
+    (ArrMul a1 step) -> do
+      -- valuto l'espressione
+      let env1@(_,index@(Temp (t_c1,t_t1)),_,_,_) = (generateExpr env (TypeBasicType TypeInt) step)
+      -- se necessario controllo i bound
+      if 2Bchkd then
+        let envC = addTACList (addTACList env1 [If (BoolOp BOpLt index (TempI (PInteger ((0,0),"0")))) (Label ("out_of_bnd", labels1))]) [If (BoolOp BOpGtEq index (TempI (dim)) (Label ("out_of_bnd", labels1)), Goto (Label ("end_check", labels1)),Lbl (Label ("out_of_bnd", labels1)), OutOfBoundExp, Lbl (Label ("end_check", labels1))]
+      else
+        envC = env1
+      -- carico la dimensione di una riga e la moltiplico per l'espressione calcolata
+      let env4@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList envC [BinOp   BOpMul (Temp (t_c1+2,t_t1)) index (Temp (t_c1+1,t_t1)), AssignIntTemp (Temp (t_c1+1,t_t1)) dim])
+        -- valuto il resto delle espressioni
+      let env5@(_,temp3@(Temp (t_c3,t_t3)),_,_,_) = (getStep  env4 a1 rest)
+      -- sommo 
+      (addTACList env5 [BinOp   BOpPlus (Temp (t_c3+1,t_t3)) temp3 temp2])
+
   -- genera l'espressione corrispondente
   generateExpr :: Env -> Type -> Expr -> Env
   generateExpr env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ expr = do
@@ -195,13 +214,14 @@ module ThreeAddressCode where
         -- assign val to variable
         ExprAssign   (LExprId id) op re -> generateAssign env type_ id op [re] (Temp (-1,(TypeBasicType TypeInt)))
         -- assign val to array
+        {- LO PRENDO CON IL CASO PIÙ GENERICO
         ExprAssign   (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing expr_step ))) op re    -> do
           let env2@(_,temp1,_,_,_) = generateExpr env1 (TypeBasicType TypeInt) (ExprMul expr_step (ExprInt (int2PInt (sizeOf type_v)))) -- (step)*(sizeOf type_v)
           generateAssign env2 type_ id op [re] temp1 
-            where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
+            where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))-}
         -- assign val to multiarray
         ExprAssign   (LExprArr (LArrExpr id@(PIdent (pos,name)) a)) op re    -> do
-          let env2@(_,temp1@(Temp (t_c1,t_t1)),_,_,_) = (getStep env1 a  (reverse (type2Dims type_v)))
+          let env2@(_,temp1@(Temp (t_c1,t_t1)),_,_,_) = (getStep env1 a (type2Dims type_v)) -- calcolo e controllo gli indici
           let env3@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList (env2) [BinOp   BOpMul (Temp (t_c1+2,t_t1)) (Temp (t_c1+1,(TypeBasicType TypeInt))) temp1, AssignIntTemp (Temp (t_c1+1,(TypeBasicType TypeInt))) (int2PInt (sizeOf type_v))]) -- (step)*(sizeOf type_v)
           generateAssign env3 type_ id op [re] temp2 
             where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
@@ -216,7 +236,7 @@ module ThreeAddressCode where
             where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
         -- use of multiarray
         ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) a)) -> do
-          let env2@(_,temp1@(Temp (t_c1,t_t1)),_,_,_) = (getStep env1 a  (reverse (type2Dims type_v)))
+          let env2@(_,temp1@(Temp (t_c1,t_t1)),_,_,_) = (getStep env1 a  (fst (type2Dims type_v)))
           let env3@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList (addTACList (env2) [AssignIntTemp (Temp (t_c1+1,(TypeBasicType TypeInt))) (int2PInt (sizeOf type_v))]) [BinOp   BOpMul (Temp (t_c1+2,t_t1)) (Temp (t_c1+1,(TypeBasicType TypeInt))) temp1])
           (addTACList env3 [AssignV2T (Temp (t_c2+1,t_t2)) var temp2]) 
             where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
@@ -453,10 +473,13 @@ module ThreeAddressCode where
   getGuardType (GuardType  t_) = t_
 
   -- restituisce le dimensioni di un vettore/matrice
-  type2Dims :: Type -> [PInteger]
-  type2Dims (TypeBasicType _) = []
-  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefBase dims _))) = dims
-  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefPtr  dims _))) = dims
+  type2Dims :: Type -> ([PInteger],Bool)
+  type2Dims (TypeBasicType _) = ([],False)
+  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefBase  dims _))) = ((reverse dims),False)
+  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefPtr   dims _))) = ((reverse dims),False)
+  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefBaseC dims _))) = ((reverse dims),True)
+  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefPtrC  dims _))) = ((reverse dims),True)
+
 
   -- ritorna il tipo di base di un vettore/matrice/puntatore
   type2BasicType :: Type -> Type
@@ -498,20 +521,6 @@ module ThreeAddressCode where
   pFloat2Float (PFloat (pos,value)) = read value :: Float
   float2PFloat :: Float -> PFloat
   float2PFloat value = (PFloat ((0,0),show value))
-
-  -- calcola lo step di spostamento dall'indirizzo base dell'array
-  getStep :: Env -> AExpr -> [PInteger] -> Env
-  getStep env@(program, last_temp, variables, labels, scope) a (dim:rest) = case a of
-    (ArrSing step)   -> (generateExpr env (TypeBasicType TypeInt) step)
-    (ArrMul a1 step) -> do
-      -- valuto l'espressione
-      let env1@(_,temp1@(Temp (t_c1,t_t1)),_,_,_) = (generateExpr env (TypeBasicType TypeInt) step)
-      -- carico la dimensione di una riga e la moltiplico per l'espressione calcolata
-      let env2@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList env1 [BinOp   BOpMul (Temp (t_c1+2,t_t1)) temp1 (Temp (t_c1+1,t_t1)), AssignIntTemp (Temp (t_c1+1,t_t1)) dim])
-        -- valuto il resto delle espressioni
-      let env3@(_,temp3@(Temp (t_c3,t_t3)),_,_,_) = (getStep  env2 a1 rest)
-      -- sommo 
-      (addTACList env3 [BinOp   BOpPlus (Temp (t_c3+1,t_t3)) temp3 temp2])
   
   -- rende maneggevoli per il calcolo i bound del for
   for_bound_identifier :: Env -> ForId -> Expr
