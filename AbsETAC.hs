@@ -54,6 +54,9 @@ data TAC
   | Goto Label
   | Lbl Label
 
+-- try_catch
+  | OnException Label
+
 -- condizioni
   | If TAC Label
   | IfFalse TAC Label

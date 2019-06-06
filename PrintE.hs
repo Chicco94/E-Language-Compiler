@@ -207,7 +207,7 @@ instance Print Expr where
     ExprTrue ptrue -> prPrec i 16 (concatD [prt 0 ptrue])
     ExprFalse pfalse -> prPrec i 16 (concatD [prt 0 pfalse])
     ExprFunCall pident exprs -> prPrec i 15 (concatD [prt 0 pident, doc (showString "("), prt 0 exprs, doc (showString ")")])
-    ExprTernaryIf expr1 expr2 expr3 -> prPrec i 15 (concatD [prt 15 expr1, doc (showString "?"), prt 15 expr2, doc (showString ":"), prt 15 expr3])
+    ExprTernaryIf expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "("), prt 0 expr1, doc (showString ")"), doc (showString "?"), prt 0 expr2, doc (showString ":"), prt 0 expr3])
     ExprBoolNot expr -> prPrec i 14 (concatD [doc (showString "!"), prt 15 expr])
     ExprNegation expr -> prPrec i 14 (concatD [doc (showString "-"), prt 15 expr])
     ExprAddition expr -> prPrec i 14 (concatD [doc (showString "+"), prt 15 expr])

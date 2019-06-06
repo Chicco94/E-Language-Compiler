@@ -19,9 +19,10 @@ module ThreeAddressCode where
   type Scope        = (Int,Int) -- scope globale, scope interno/ differenzio le istruzioni all'interno del mio stesso scope
   
   
-   -- funzione che prende l'output del typechecker e ritorna il programma TAC
+  -- funzione che prende l'output del typechecker e ritorna il programma TAC
+  -- in caso di eccezione non gestita all'interno di un blocco try esco dal programma
   generateTAC :: [Program] -> Env
-  generateTAC progs = (generateTAC' ([],(Temp (-1,(TypeBasicType TypeVoid))), Map.empty,0,(0,0)) (PDefs (initTAC progs)))
+  generateTAC progs = (generateTAC' ([OnException (Label ("catch",0))],(Temp (-1,(TypeBasicType TypeVoid))), Map.empty,0,(0,0)) (PDefs (initTAC progs)))
   
   -- appiana il programma per poterlo leggerlo più facilmente
   initTAC :: [Program] -> [Decl]
@@ -37,7 +38,8 @@ module ThreeAddressCode where
   generateTAC' env prog@(PDefs decls) = do
     let (final_env, rest) = foldl generateInstruction (env,[[]]) decls
     let final_env_with_main@(p,t,v,l,s) = (ifmain final_env)
-    ( (concat (postAttach p rest)) ,t,v,l,s)
+    -- mettere la lbl in fondo mi serve per uscire dal programma
+    ( [Lbl (Label ("catch",0))]++(concat (postAttach p rest)),t,v,l,s)
 
   -- le istruzioni non tipate gestico mettendole a void
   generateInstruction :: (Env,[TACProg]) -> Decl -> (Env,[TACProg])
@@ -104,6 +106,19 @@ module ThreeAddressCode where
       -- end 
       StmtIfThen bexpr stmts -> addTACList (generateStmt (addTACList (generateExpr env (TypeBasicType TypeBool) bexpr) [IfFalse Empty (Label ("end_if", labels))]) type_ (SComp stmts) ) [Lbl (Label ("end_if", labels) )]
       
+      -- try catch
+      --      on exception goto lbl -> catch_scope
+      --      try_stmts
+      --      on exception goto -> catch_scope-1
+      --  lbl catch_stmts
+      --      on exception goto runtimeerror
+      StmtTryCatch stmts_try stmts_catch -> do
+        let env1 = addTACList env [OnException (Label ("catch",scope+s_i+1))]
+        let env2 = generateStmt env1 type_ (SComp stmts_try) -- da aggiornare scope
+        let env3 = addTACList env2 [Goto Lbl (Label ("end_try",scope+s_i+1)),Lbl (Label ("catch",scope+s_i+1))]
+        let env4 = generateStmt env3 type_ (SComp stmts_catch) -- da aggiornare scope
+        let env3 = addTACList env2 [OnException (Label ("catch",0))]
+
       -- switch case del default prendo solo il primo
       --      goto grd
       -- lbl1 stmtsCase1
@@ -178,7 +193,7 @@ module ThreeAddressCode where
   generateExpr env@(program, last_temp@(Temp (t_c,t_t)), variables,labels,scope) type_ expr = do
     case expr of
         -- assign val to variable
-        ExprAssign   (LExprId id) op re                                -> generateAssign env type_ id op [re] (Temp (-1,(TypeBasicType TypeInt)))
+        ExprAssign   (LExprId id) op re -> generateAssign env type_ id op [re] (Temp (-1,(TypeBasicType TypeInt)))
         -- assign val to array
         ExprAssign   (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing expr_step ))) op re    -> do
           let env2@(_,temp1,_,_,_) = generateExpr env1 (TypeBasicType TypeInt) (ExprMul expr_step (ExprInt (int2PInt (sizeOf type_v)))) -- (step)*(sizeOf type_v)
@@ -187,9 +202,10 @@ module ThreeAddressCode where
         -- assign val to multiarray
         ExprAssign   (LExprArr (LArrExpr id@(PIdent (pos,name)) a)) op re    -> do
           let env2@(_,temp1@(Temp (t_c1,t_t1)),_,_,_) = (getStep env1 a  (reverse (type2Dims type_v)))
-          let env3@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList (addTACList (env2) [AssignIntTemp (Temp (t_c1+1,(TypeBasicType TypeInt))) (int2PInt (sizeOf type_v))]) [BinOp   BOpMul (Temp (t_c1+2,t_t1)) (Temp (t_c1+1,(TypeBasicType TypeInt))) temp1]) -- (step)*(sizeOf type_v)
+          let env3@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList (env2) [BinOp   BOpMul (Temp (t_c1+2,t_t1)) (Temp (t_c1+1,(TypeBasicType TypeInt))) temp1, AssignIntTemp (Temp (t_c1+1,(TypeBasicType TypeInt))) (int2PInt (sizeOf type_v))]) -- (step)*(sizeOf type_v)
           generateAssign env3 type_ id op [re] temp2 
             where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
+        
         -- use of variable
         ExprLeft     (LExprId id@(PIdent (pos,name)))                   -> (addTACList env1 [AssignV2T   (Temp (t_c+1,type_v)) var (Temp (-1,(TypeBasicType TypeInt)))])
           where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
@@ -215,6 +231,10 @@ module ThreeAddressCode where
     
         -- chiamata di funzione
         ExprFunCall  fun params  -> (generateCallFunc env fun params type_) 
+
+        -- operatore ternario 
+        -- da fare assegnamento? in teoria no, valuto l'operatore ternario e poi lo metto in una variabile temporanea
+        ExprTernaryIf  bexpr et ef -> generateStmt env (TypeBasicType TypeBool) (StmtIfThenElse bexpr et ef)
 
         -- not
         ExprBoolNot   expr       -> notExpr (generateExpr env type_ expr)
