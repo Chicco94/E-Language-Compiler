@@ -5,7 +5,6 @@ module AbsETAC where
   
 import AbsE
 
-
 data Label = Label (String,Int)
   deriving (Eq, Ord, Read)
 
@@ -41,7 +40,7 @@ data TAC
   | AssignT2P Temp
 
 -- operazioni varie
-  | BinOp  BinaryOperator  Temp Temp Temp
+  | BinOp  BinaryOperator Temp Temp Temp
   | UnaryOp UnaryOperator Temp Temp
   | DerefOp UnaryOperator Temp Var
   | BoolOp BinaryOperator Temp Temp

@@ -4,12 +4,6 @@ module PrintETAC where
 import AbsETAC
 import AbsE
 
-{-
-instance Show Program where
-  show p = case p of
-    TACProgram []   -> ""
-    TACProgram tacs -> (show tacs)
--}
 
 instance Show TAC where
   show t = case t of
@@ -70,14 +64,14 @@ instance Show TAC where
     IfFalse bexpr label                  ->"\tifFalse " ++ show bexpr ++ " goto "++show label++"\n"
     _ -> "comando non trovato\n"
 
-instance Show Var where --Var = (String,(Int,Int),Type)
+instance Show Var where --Var = (String,(Int,Int),TACType)
   show (Var (name,pos@(row,col),type_)) = show type_ ++ "  "++   filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col
 
-instance Show Temp where --Temp = Temp (Int,BasicType) | TempT PTrue | TempF PFalse
+instance Show Temp where --Temp = Temp (Int,TACType) | TempT PTrue | TempF PFalse
   show temp  = case temp of
     (Temp (num,type_)) -> show type_ ++ " t" ++ show num
     (TempT _) -> show TypeBool ++ "  true"
     (TempF _) -> show TypeBool ++ "  false"
   
-instance Show Label where --Label = (Int,Type)
+instance Show Label where --Label = (Int,TACType)
   show (Label (name,id)) = filter (/='\"') (show name) ++ "@" ++ show id
