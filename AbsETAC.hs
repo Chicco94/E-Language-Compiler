@@ -73,6 +73,7 @@ data TAC
 
 -- placeholder
   | Empty
+  | Exit
   deriving (Eq, Ord, Read)
 
 -- operatori binari

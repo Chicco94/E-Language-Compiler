@@ -8,25 +8,25 @@ module AbsE where
 
 
 newtype PTrue = PTrue ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 newtype PFalse = PFalse ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 newtype PReturn = PReturn ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 newtype PContinue = PContinue ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 newtype PBreak = PBreak ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 newtype PIdent = PIdent ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 newtype PInteger = PInteger ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 newtype PFloat = PFloat ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 newtype PChar = PChar ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 newtype PString = PString ((Int,Int),String)
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 data Program = PDefs [Decl]
   deriving (Eq, Ord, Show, Read)
 
@@ -42,7 +42,7 @@ data AnnotatedDecl = ADecl Type Decl
 data Arg = ArgDecl Modality PIdent Guard
   deriving (Eq, Ord, Show, Read)
 
-data Modality = ModEmpty | ModVar | ModDef
+data Modality = ModEmpty | ModVar | ModDef | ModRef
   deriving (Eq, Ord, Show, Read)
 
 data Guard = GuardVoid | GuardType Type
@@ -83,6 +83,7 @@ data Range = ExprRange Expr Expr
 
 data Expr
     = ExprAssign LExpr AssignOperator Expr
+    | ExprTernaryIf Expr Expr Expr
     | ExprLeft LExpr
     | ExprInt PInteger
     | ExprFloat PFloat
@@ -91,7 +92,6 @@ data Expr
     | ExprTrue PTrue
     | ExprFalse PFalse
     | ExprFunCall PIdent [Expr]
-    | ExprTernaryIf Expr Expr Expr
     | ExprBoolNot Expr
     | ExprNegation Expr
     | ExprAddition Expr
@@ -141,25 +141,25 @@ data AssignOperator
   deriving (Eq, Ord, Show, Read)
 
 data Type = TypeBasicType BasicType | TypeCompoundType CompoundType
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 data BasicType
     = TypeBool | TypeFloat | TypeInt | TypeVoid | TypeChar | TypeString
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 data CompoundType
     = CompoundTypeArrayType ArrayType | CompoundTypePtr Ptr
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 data ArrayType
     = ArrDefBase [PInteger] BasicType
     | ArrDefBaseC [PInteger] BasicType
     | ArrDefPtr [PInteger] Ptr
     | ArrDefPtrC [PInteger] Ptr
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 data Ptr = Pointer BasicType | Pointer2Pointer Ptr
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 
 instance Show PTrue     where show (PTrue     (_, val)) = filter (/='\"') (show val)

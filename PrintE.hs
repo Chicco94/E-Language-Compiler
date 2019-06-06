@@ -148,6 +148,7 @@ instance Print Modality where
     ModEmpty -> prPrec i 0 (concatD [])
     ModVar -> prPrec i 0 (concatD [doc (showString "var")])
     ModDef -> prPrec i 0 (concatD [doc (showString "def")])
+    ModRef -> prPrec i 0 (concatD [doc (showString "ref")])
 
 instance Print Guard where
   prt i e = case e of
@@ -199,6 +200,7 @@ instance Print Range where
 instance Print Expr where
   prt i e = case e of
     ExprAssign lexpr assignoperator expr -> prPrec i 0 (concatD [prt 0 lexpr, prt 0 assignoperator, prt 1 expr])
+    ExprTernaryIf expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "("), prt 0 expr1, doc (showString ")"), doc (showString "?"), prt 0 expr2, doc (showString ":"), prt 0 expr3])
     ExprLeft lexpr -> prPrec i 17 (concatD [prt 0 lexpr])
     ExprInt pinteger -> prPrec i 16 (concatD [prt 0 pinteger])
     ExprFloat pfloat -> prPrec i 16 (concatD [prt 0 pfloat])
@@ -207,7 +209,6 @@ instance Print Expr where
     ExprTrue ptrue -> prPrec i 16 (concatD [prt 0 ptrue])
     ExprFalse pfalse -> prPrec i 16 (concatD [prt 0 pfalse])
     ExprFunCall pident exprs -> prPrec i 15 (concatD [prt 0 pident, doc (showString "("), prt 0 exprs, doc (showString ")")])
-    ExprTernaryIf expr1 expr2 expr3 -> prPrec i 0 (concatD [doc (showString "("), prt 0 expr1, doc (showString ")"), doc (showString "?"), prt 0 expr2, doc (showString ":"), prt 0 expr3])
     ExprBoolNot expr -> prPrec i 14 (concatD [doc (showString "!"), prt 15 expr])
     ExprNegation expr -> prPrec i 14 (concatD [doc (showString "-"), prt 15 expr])
     ExprAddition expr -> prPrec i 14 (concatD [doc (showString "+"), prt 15 expr])

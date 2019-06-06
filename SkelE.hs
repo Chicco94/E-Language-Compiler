@@ -58,6 +58,7 @@ transModality x = case x of
   ModEmpty -> failure x
   ModVar -> failure x
   ModDef -> failure x
+  ModRef -> failure x
 transGuard :: Guard -> Result
 transGuard x = case x of
   GuardVoid -> failure x
@@ -98,6 +99,7 @@ transRange x = case x of
 transExpr :: Expr -> Result
 transExpr x = case x of
   ExprAssign lexpr assignoperator expr -> failure x
+  ExprTernaryIf expr1 expr2 expr3 -> failure x
   ExprLeft lexpr -> failure x
   ExprInt pinteger -> failure x
   ExprFloat pfloat -> failure x
@@ -106,7 +108,6 @@ transExpr x = case x of
   ExprTrue ptrue -> failure x
   ExprFalse pfalse -> failure x
   ExprFunCall pident exprs -> failure x
-  ExprTernaryIf expr1 expr2 expr3 -> failure x
   ExprBoolNot expr -> failure x
   ExprNegation expr -> failure x
   ExprAddition expr -> failure x

@@ -22,7 +22,7 @@ module ThreeAddressCode where
   -- funzione che prende l'output del typechecker e ritorna il programma TAC
   -- in caso di eccezione non gestita all'interno di un blocco try esco dal programma
   generateTAC :: [Program] -> Env
-  generateTAC progs = (generateTAC' ([OnException (Label ("catch",0))],(Temp (-1,(TypeBasicType TypeVoid))), Map.empty,0,(0,0)) (PDefs (initTAC progs)))
+  generateTAC progs = (generateTAC' ([OnException (Label ("catch",1))],(Temp (-1,(TypeBasicType TypeVoid))), Map.empty,0,(0,0)) (PDefs (initTAC progs)))
   
   -- appiana il programma per poterlo leggerlo più facilmente
   initTAC :: [Program] -> [Decl]
@@ -39,7 +39,7 @@ module ThreeAddressCode where
     let (final_env, rest) = foldl generateInstruction (env,[[]]) decls
     let final_env_with_main@(p,t,v,l,s) = (ifmain final_env)
     -- mettere la lbl in fondo mi serve per uscire dal programma
-    ( [Lbl (Label ("catch",0))]++(concat (postAttach p rest)),t,v,l,s)
+    ( [Exit,Lbl (Label ("catch",1))]++(concat (postAttach p rest)),t,v,l,s)
 
   -- le istruzioni non tipate gestico mettendole a void
   generateInstruction :: (Env,[TACProg]) -> Decl -> (Env,[TACProg])
@@ -111,13 +111,13 @@ module ThreeAddressCode where
       --      try_stmts
       --      on exception goto -> catch_scope-1
       --  lbl catch_stmts
-      --      on exception goto runtimeerror
+      --  end on exception goto runtimeerror
       StmtTryCatch stmts_try stmts_catch -> do
-        let env1 = addTACList env [OnException (Label ("catch",scope+s_i+1))]
-        let env2 = generateStmt env1 type_ (SComp stmts_try) -- da aggiornare scope
-        let env3 = addTACList env2 [Goto Lbl (Label ("end_try",scope+s_i+1)),Lbl (Label ("catch",scope+s_i+1))]
-        let env4 = generateStmt env3 type_ (SComp stmts_catch) -- da aggiornare scope
-        let env3 = addTACList env2 [OnException (Label ("catch",0))]
+        let env1@(p, t, v, l, s@(s_g,s_i)) = addTACList env [OnException (Label ("catch",scope+1))]
+        let env2 = generateStmt (p, t, v, l, (s_g+1,s_i)) type_ (SComp stmts_try) -- da aggiornare scope
+        let env3@(p', t', v', l', s') = addTACList env2 [Goto (Label ("end_try",scope+1)),Lbl (Label ("catch",scope+1))]
+        let env4 = generateStmt (p', t', v', l', (s_g+1,s_i)) type_ (SComp stmts_catch) -- da aggiornare scope
+        addTACList env4 [Lbl (Label ("end_try",scope+1)), OnException (Label ("catch",scope))]
 
       -- switch case del default prendo solo il primo
       --      goto grd
@@ -190,20 +190,19 @@ module ThreeAddressCode where
 
   -- calcola lo step di spostamento dall'indirizzo base dell'array
   getStep :: Env -> AExpr -> ([PInteger],Bool) -> Env
-  getStep env@(program, last_temp, variables, labels, scope) a ((dim:rest),2Bchkd) = case a of
+  getStep env@(program, last_temp, variables, labels, scope) a ((dim:rest),toBchkd) = case a of
     (ArrSing step)   -> (generateExpr env (TypeBasicType TypeInt) step)
     (ArrMul a1 step) -> do
       -- valuto l'espressione
       let env1@(_,index@(Temp (t_c1,t_t1)),_,_,_) = (generateExpr env (TypeBasicType TypeInt) step)
       -- se necessario controllo i bound
-      if 2Bchkd then
-        let envC = addTACList (addTACList env1 [If (BoolOp BOpLt index (TempI (PInteger ((0,0),"0")))) (Label ("out_of_bnd", labels1))]) [If (BoolOp BOpGtEq index (TempI (dim)) (Label ("out_of_bnd", labels1)), Goto (Label ("end_check", labels1)),Lbl (Label ("out_of_bnd", labels1)), OutOfBoundExp, Lbl (Label ("end_check", labels1))]
-      else
-        envC = env1
+      let envC = if toBchkd 
+                  then (addTACList env1 [If (BoolOp BOpLt index (TempI (PInteger ((0,0),"0")))) (Label ("out_of_bnd", labels)),If (BoolOp BOpGtEq index (TempI (dim))) (Label ("out_of_bnd", labels)), Goto (Label ("end_check", labels)),Lbl (Label ("out_of_bnd", labels)), OutOfBoundExp, Lbl (Label ("end_check", labels))])
+                  else env1
       -- carico la dimensione di una riga e la moltiplico per l'espressione calcolata
       let env4@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList envC [BinOp   BOpMul (Temp (t_c1+2,t_t1)) index (Temp (t_c1+1,t_t1)), AssignIntTemp (Temp (t_c1+1,t_t1)) dim])
         -- valuto il resto delle espressioni
-      let env5@(_,temp3@(Temp (t_c3,t_t3)),_,_,_) = (getStep  env4 a1 rest)
+      let env5@(_,temp3@(Temp (t_c3,t_t3)),_,_,_) = (getStep  env4 a1 (rest,toBchkd))
       -- sommo 
       (addTACList env5 [BinOp   BOpPlus (Temp (t_c3+1,t_t3)) temp3 temp2])
 
@@ -236,7 +235,7 @@ module ThreeAddressCode where
             where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
         -- use of multiarray
         ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) a)) -> do
-          let env2@(_,temp1@(Temp (t_c1,t_t1)),_,_,_) = (getStep env1 a  (fst (type2Dims type_v)))
+          let env2@(_,temp1@(Temp (t_c1,t_t1)),_,_,_) = (getStep env1 a  (type2Dims type_v))
           let env3@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList (addTACList (env2) [AssignIntTemp (Temp (t_c1+1,(TypeBasicType TypeInt))) (int2PInt (sizeOf type_v))]) [BinOp   BOpMul (Temp (t_c1+2,t_t1)) (Temp (t_c1+1,(TypeBasicType TypeInt))) temp1])
           (addTACList env3 [AssignV2T (Temp (t_c2+1,t_t2)) var temp2]) 
             where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
@@ -254,7 +253,8 @@ module ThreeAddressCode where
 
         -- operatore ternario 
         -- da fare assegnamento? in teoria no, valuto l'operatore ternario e poi lo metto in una variabile temporanea
-        ExprTernaryIf  bexpr et ef -> generateStmt env (TypeBasicType TypeBool) (StmtIfThenElse bexpr et ef)
+        -- addTACList (generateStmt (addTACList (generateStmt (addTACList (generateExpr env (TypeBasicType TypeBool) bexpr) [IfFalse Empty (Label ("if_false",labels) )]) type_ (SComp stmtsT)) [Goto (Label ("end_if",labels) ),Lbl (Label ("if_false",labe
+        -- ExprTernaryIf  bexpr et ef -> generateStmt env (TypeBasicType TypeBool) (StmtIfThenElse bexpr et ef)
 
         -- not
         ExprBoolNot   expr       -> notExpr (generateExpr env type_ expr)
@@ -523,12 +523,8 @@ module ThreeAddressCode where
   float2PFloat value = (PFloat ((0,0),show value))
   
   -- rende maneggevoli per il calcolo i bound del for
-  for_bound_identifier :: Env -> ForId -> Expr
-  for_bound_identifier env for_id =
-    case for_id of
-      ForInteger val -> ExprInt val
-      ForIdent   id  -> ExprLeft (LExprId id)
-      _ -> for_id
+  for_bound_identifier :: Env -> Expr -> Expr
+  for_bound_identifier env for_id = for_id
 
   -- aggiunge la chiamata al main al programma se è presente nel codice la funzione
   ifmain :: Env -> Env

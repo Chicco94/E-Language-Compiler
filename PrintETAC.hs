@@ -11,7 +11,7 @@ instance Show TAC where
     FuncDef (Var (name,pos@(row,col),type_))         -> "\n\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\tFunction:\n\tType: " ++ show type_ ++ "\n\tStatements:\n"
     Return  temp                                     -> "\treturn_" ++ show temp ++"\n"
     EndFunction                                      -> "\tEnd Function\n\n"
-    FuncCall (Var ("main",pos@(row,col),type_)) temp -> "\tcall main@"++ show row ++ "-"++show col++"\n\texit\n"
+    FuncCall (Var ("main",pos@(row,col),type_)) temp -> "\tcall main@"++ show row ++ "-"++show col++"\n"
     FuncCall (Var (name,pos@(row,col),type_))   temp -> "\t" ++ show temp ++ " = " ++ show type_  ++ " call " ++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col++"\n"
 
 
@@ -59,7 +59,10 @@ instance Show TAC where
     BoolOp BOpNeq            temp1 temp2 -> show temp1 ++ " not_equal "           ++ show temp2
 
     Goto label                           -> "\tgoto " ++ show label  ++ "\n"
-    Lbl  label                           -> show label
+    Lbl  label                           -> show label++":"
+    OnException label                    -> "\ton_exception_goto " ++ show label  ++ "\n"
+    OutOfBoundExp                        -> "\tout_of_bound_exception\n"
+    Exit                                 -> "\texit\n"
     If      bexpr label                  ->"\tif "      ++ show bexpr ++ " goto "++show label++"\n"
     IfFalse bexpr label                  ->"\tifFalse " ++ show bexpr ++ " goto "++show label++"\n"
     _ -> "comando non trovato\n"
@@ -74,7 +77,7 @@ instance Show Temp where --Temp = Temp (Int,TACType) | TempT PTrue | TempF PFals
     (TempF _) -> show TypeBool ++ "  false"
   
 instance Show Label where --Label = (Int,TACType)
-  show (Label (name,id)) = filter (/='\"') (show name) ++ "@" ++ show id
+  show (Label (name,id)) = filter (/='\"') (show name) ++ "@" ++ show id 
 
 -- DA IMPORTARE IN ABSE.HS DOPO CDM -> BNFC E.CF
 {-
