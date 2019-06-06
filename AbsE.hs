@@ -155,6 +155,10 @@ data ArrayType
 data Ptr = Pointer BasicType | Pointer2Pointer Ptr
   deriving (Eq, Ord, Read)
 
+
+
+
+-- DA IMPORTARE DOPO CDM -> BNFC E.CF
 instance Show PTrue     where show (PTrue     (_, val)) = filter (/='\"') (show val)
 instance Show PFalse    where show (PFalse    (_, val)) = filter (/='\"') (show val)
 instance Show PReturn   where show (PReturn   (_, val)) = filter (/='\"') (show val)
