@@ -343,9 +343,14 @@ module ThreeAddressCode where
   -- genera la dichiarazione di una funzione
   generateDeclFunc :: Env -> LExpr -> [Arg] -> Guard -> CompStmt -> Env
   generateDeclFunc env@(program, last_temp, variables,labels,scope) lexpr@(LExprId (PIdent (pos, name))) args guard stmt@(StmtBlock decls) = do
-    let (env1@(p,t,v,l,(s_g,s_i)), var) = findVar env (Var (name,pos,(getGuardType guard)))
+    let (env1@(p,t,v,l,(s_g,s_i)), var) = findVar (addArgs env args) (Var (name,pos,(getGuardType guard)))
     (generateSubTAC (addTACList (p,t,v,l,(s_g+1,s_i+1)) [FuncDef var]) (PDefs decls))
-  
+
+  addArgs :: Env -> [Arg] -> Env
+  addArgs env [] = env
+  addArgs env@(_, _,vars,_,_) (arg@(ArgDecl _ (PIdent id@(pos,name)) guard):args)= (addArgs (fst (addVar env (Var (name,pos,getGuardType guard)))) args)
+
+
   -- chiamata di funzione, inserisce i valori negli slot param
   generateCallFunc :: Env -> PIdent -> [Expr] -> Type -> Env
   generateCallFunc  env (PIdent (pos, name)) params type_ = do
