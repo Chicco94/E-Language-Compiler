@@ -107,7 +107,7 @@ ExprTrue.     Expr16 ::= PTrue ;
 ExprFalse.    Expr16 ::= PFalse ;
 
 ExprFunCall.  Expr15 ::= PIdent "(" [Expr] ")" ;
-ExprTernaryIf.  Expr15 ::= Expr15 "?" Expr15 ":" Expr15 ;
+ExprTernaryIf.  Expr ::= Expr "?" Expr ":" Expr ;
 
 ExprBoolNot.  Expr14  ::= "!" Expr15 ;
 
