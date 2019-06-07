@@ -115,7 +115,7 @@ ExprBoolNot.  Expr14  ::= "!" Expr15 ;
 ExprNegation. Expr14  ::= "-" Expr15 ;
 ExprAddition. Expr14  ::= "+" Expr15 ;
 
-ExprPower.    Expr13 ::= Expr14 "**"  Expr13 ;
+ExprPower.    Expr13 ::= Expr14 "^"  Expr13 ;
 
 ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
 ExprDiv.      Expr12 ::= Expr12 "/"  Expr13 ;
@@ -157,7 +157,7 @@ OpDiv.        AssignOperator ::= "/=" ;
 --OpFloatDiv.   AssignOperator ::= "/=" ;
 OpRemainder.  AssignOperator ::= "%=" ;
 OpModulo.     AssignOperator ::= "%%=" ;
-OpPower.      AssignOperator ::= "**=" ;
+OpPower.      AssignOperator ::= "^=" ;
 
 
 rules Type ::= BasicType | CompoundType ;

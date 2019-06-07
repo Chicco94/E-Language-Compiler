@@ -14,7 +14,7 @@ type Sig       = Map.Map String ([(Modality, Type)], Type) -- Functions signatur
 type Context   = Map.Map String (Mutability, Type)         -- Variables context: String -> (Mutability, Type)
 
 -- Mutability of the variables (i.e., constants or variables).
-data Mutability = MutConst | MutVar
+data Mutability = MutConst | MutVar | MutRef
   deriving (Eq, Ord, Show, Read, Enum, Bounded)
 
 -- Block types.
@@ -64,7 +64,11 @@ checkArgDecl context (arg@(ArgDecl mod (PIdent pident@(p,ident)) guard):args) = 
     GuardVoid   -> fail $ show p ++ ": argument " ++ printTree ident ++ " must have a type"
     GuardType t -> if mod == ModEmpty || mod == ModVar -- if no modality is provided, or if the modality is a variable, then add it as variable, else as constant
                      then checkArgDecl (addVar context (MutVar, ident) t) args
-                     else checkArgDecl (addVar context (MutConst, ident) t) args
+                     else 
+                       if mod == ModDef 
+                         then checkArgDecl (addVar context (MutConst, ident) t) args
+                         -- if it is a reference, then set the type of the argument to a pointer lifted one level up
+                         else checkArgDecl (addVar context (MutRef, ident) (TypeCompoundType (CompoundTypePtr (liftTypeToPointer (getBasicType (getInnerType t)) ((getTypeLevel t)+1))))) args
 
 -- Check statement declaration.
 checkDeclStmt :: (Env, [Program]) -> Stmt -> Err (Env, [Program])
@@ -301,7 +305,7 @@ checkExpr (env@(sigs,blocks), prog) expr = do
     ExprAssign lexpr op expr -> do
       case lookupVar blocks (findLExprName lexpr) of
         Ok (m,t) -> do
-          if m == MutVar
+          if m == MutVar || m == MutRef
             then checkAssign (env, prog) lexpr op expr
             else fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree (findLExprName lexpr) ++ " is defined as constant, you cannot assign a value to a constant"
         _        -> fail $ show (getLExprPosition lexpr) ++ ": variable " ++ printTree (findLExprName lexpr) ++ " is not defined"
@@ -899,6 +903,14 @@ findIterBlock (block@(blockType, context):blocks) =
   case blockType of
     IterBlock -> Ok ()
     _         -> findIterBlock blocks
+
+-- Get basic type auxiliary function, needed for lifting one level up the type of an argument (when declaring a function).
+getBasicType :: Type -> BasicType
+getBasicType (TypeBasicType t) = t
+
+--liftTypeToPointer :: BasicType -> Int -> Type
+liftTypeToPointer t 1 = (Pointer t)
+liftTypeToPointer t n = Pointer2Pointer (liftTypeToPointer t (n-1))
 
 -- Get type level.
 getTypeLevel :: Type -> Int
