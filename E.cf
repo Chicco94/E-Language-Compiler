@@ -118,8 +118,9 @@ ExprAddition. Expr14  ::= "+" Expr15 ;
 ExprPower.    Expr13 ::= Expr14 "**"  Expr13 ;
 
 ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
-ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
-ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
+ExprDiv.      Expr12 ::= Expr12 "/"  Expr13 ;
+--ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
+--ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
 ExprReminder. Expr12 ::= Expr12 "%"  Expr13 ;
 ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
 
@@ -151,8 +152,9 @@ OpAnd.        AssignOperator ::= "&=" ;
 OpPlus.       AssignOperator ::= "+=" ;
 OpMinus.      AssignOperator ::= "-=" ;
 OpMul.        AssignOperator ::= "*=" ;
-OpIntDiv.     AssignOperator ::= "//=" ;
-OpFloatDiv.   AssignOperator ::= "/=" ;
+OpDiv.        AssignOperator ::= "/=" ;
+--OpIntDiv.     AssignOperator ::= "//=" ;
+--OpFloatDiv.   AssignOperator ::= "/=" ;
 OpRemainder.  AssignOperator ::= "%=" ;
 OpModulo.     AssignOperator ::= "%%=" ;
 OpPower.      AssignOperator ::= "**=" ;

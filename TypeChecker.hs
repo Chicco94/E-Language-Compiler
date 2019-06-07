@@ -315,7 +315,7 @@ checkExpr (env@(sigs,blocks), prog) expr = do
         then do
           if t2 == t3
             then return (env, prog ++ [(PDefs [TypedDecl (ADecl t2 (DeclStmt (StmtExpr expr)))])])
-            else fail $ show (getExprPosition e2) ++ ": expression " ++ printTree e2 ++ " must have the same type of the expression " ++ printTree e3 ++ " " ++ show (getExprPosition e2) ++ "; at the moment there is a " ++ printTree t2 ++ " type and a " ++ printTree t3 ++ " type"
+            else fail $ show (getExprPosition e2) ++ ": expression " ++ printTree e2 ++ " must have the same type of the expression " ++ printTree e3 ++ "; at the moment there is a " ++ printTree t2 ++ " type and a " ++ printTree t3 ++ " type"
         else fail $ show (getExprPosition e1) ++ ": expression " ++ printTree e1 ++ " must have " ++ printTree tBool ++ " type"
 
     -- Left expressions.
@@ -348,10 +348,12 @@ checkExpr (env@(sigs,blocks), prog) expr = do
                              return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
     ExprMul e1 e2      -> do t <- inferArithBinOp env expr e1 e2
                              return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
-    ExprFloatDiv e1 e2 -> do t <- inferArithBinOpDiv env expr e1 e2 tFloat 
+    ExprDiv e1 e2      -> do t <- inferArithBinOp env expr e1 e2
+                             return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
+    {- ExprFloatDiv e1 e2 -> do t <- inferArithBinOpDiv env expr e1 e2 tFloat 
                              return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
     ExprIntDiv e1 e2   -> do t <- inferArithBinOpDiv env expr e1 e2 tInt 
-                             return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
+                             return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])]) -}
     ExprReminder e1 e2 -> do t <- inferArithBinOpMod env expr e1 e2
                              return (env, prog ++ [(PDefs [TypedDecl (ADecl t (DeclStmt (StmtExpr expr)))])])
     ExprModulo e1 e2   -> do t <- inferArithBinOpMod env expr e1 e2
@@ -396,23 +398,54 @@ checkAssign (env, prog) lexpr op expr = do
     OpPlus        -> do checkAssignOp (env, prog) lexpr op expr
     OpMinus       -> do checkAssignOp (env, prog) lexpr op expr
     OpMul         -> do checkAssignOp (env, prog) lexpr op expr
-    OpIntDiv      -> do checkAssignOpDiv (env, prog) lexpr op expr tInt 
-    OpFloatDiv    -> do checkAssignOpDiv (env, prog) lexpr op expr tFloat
+    OpDiv         -> do checkAssignOp (env, prog) lexpr op expr
+    --OpIntDiv      -> do checkAssignOpDiv (env, prog) lexpr op expr tInt 
+    --OpFloatDiv    -> do checkAssignOpDiv (env, prog) lexpr op expr tFloat
     OpRemainder   -> do checkAssignOpMod (env, prog) lexpr op expr
     OpModulo      -> do checkAssignOpMod (env, prog) lexpr op expr
     OpPower       -> do checkAssignOp (env, prog) lexpr op expr  
+
+isCompoundType :: Type -> Bool
+isCompoundType t = case t of TypeCompoundType _ -> True
+                             otherwise          -> False
+
+checkTypes :: Type -> Type -> Bool
+checkTypes t1 t2 = 
+  if (isCompoundType t1) || (isCompoundType t2)
+    then ((getInnerType t1) == (getInnerType t1)) && ((getBoundsFromType t1) == (getBoundsFromType t2))
+    else (getInnerType t1) `isCompatibleWith` (getInnerType t1)
 
 -- Check assignment operator.
 checkAssignOp :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
 checkAssignOp (env, prog) lexpr op expr = do
   tlexpr <- inferLExpr env lexpr
-  texpr <- inferExpr env expr 
+  texpr <- inferExpr env expr
   if ((getInitLevel expr) + (getTypeLevel texpr)) == ((getLeftLevel lexpr) + (getTypeLevel tlexpr))
     then do
-      if (getInnerType texpr) `isCompatibleWith` (getInnerType tlexpr)
-        then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr) 
-    else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr)) 
+      case lexpr of
+        -- if array access
+        LExprArr _ -> do
+          case expr of
+            ExprLeft (LExprArr _) -> do
+              if checkTypes (getInnerType tlexpr) (getInnerType texpr)
+                then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
+                else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr)
+            _          -> do 
+              if checkTypes (getInnerType tlexpr) texpr
+                then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
+                else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree texpr
+        -- else
+        _            -> do 
+          case expr of
+            ExprLeft (LExprArr _) -> do
+              if checkTypes tlexpr (getInnerType texpr)
+                then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
+                else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree tlexpr ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr)
+            _          -> do 
+              if checkTypes tlexpr texpr
+                then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
+                else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree tlexpr ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree texpr
+    else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr))
 
 -- Check assignment boolean operator.
 checkAssignBoolOp :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
@@ -421,15 +454,33 @@ checkAssignBoolOp (env, prog) lexpr op expr = do
   texpr <- inferExpr env expr 
   if ((getInitLevel expr) + (getTypeLevel texpr)) == ((getLeftLevel lexpr) + (getTypeLevel tlexpr))
     then do
-      if (getInnerType texpr) `isCompatibleWith` (getInnerType tlexpr) &&
-         (getInnerType texpr) `isCompatibleWith` tBool &&
-         (getInnerType tlexpr) `isCompatibleWith` tBool
-        then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl tBool (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr) 
+      case lexpr of
+        -- if array access
+        LExprArr _ -> do
+          case expr of
+            ExprLeft (LExprArr _) -> do
+              if checkTypes (getInnerType tlexpr) (getInnerType texpr) && (getInnerType tlexpr == tBool) && (getInnerType texpr == tBool)
+                then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
+                else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr)
+            _          -> do 
+              if checkTypes (getInnerType tlexpr) texpr && (getInnerType tlexpr == tBool) && (getInnerType texpr == tBool)
+                then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
+                else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree texpr
+        -- else
+        _            -> do 
+          case expr of
+            ExprLeft (LExprArr _) -> do
+              if checkTypes tlexpr (getInnerType texpr) && (getInnerType tlexpr == tBool) && (getInnerType texpr == tBool)
+                then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
+                else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree tlexpr ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr)
+            _          -> do 
+              if checkTypes tlexpr texpr && (getInnerType tlexpr == tBool) && (getInnerType texpr == tBool)
+                then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
+                else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree tlexpr ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree texpr
     else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr)) 
 
 -- Check assignment division operator.
-checkAssignOpDiv :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Type -> Err (Env, [Program])
+{- checkAssignOpDiv :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Type -> Err (Env, [Program])
 checkAssignOpDiv (env, prog) lexpr op expr t = do
   tlexpr <- inferLExpr env lexpr
   texpr <- inferExpr env expr 
@@ -440,7 +491,7 @@ checkAssignOpDiv (env, prog) lexpr op expr t = do
          (getInnerType texpr) `isCompatibleWith` (getInnerType t)
         then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType t) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
         else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ ", the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr) ++ ", and both types must be compatible with type " ++ printTree t ++ " of the operation " ++ printTree op
-    else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr)) 
+    else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr)) -}
 
 -- Check modulo and remainder operators.
 checkAssignOpMod :: (Env, [Program]) -> LExpr -> AssignOperator -> Expr -> Err (Env, [Program])
@@ -449,11 +500,29 @@ checkAssignOpMod (env, prog) lexpr op expr = do
   texpr <- inferExpr env expr 
   if ((getInitLevel expr) + (getTypeLevel texpr)) == ((getLeftLevel lexpr) + (getTypeLevel tlexpr))
     then do
-      if (getInnerType texpr) `isCompatibleWith` (getInnerType tlexpr) &&
-         (getInnerType tlexpr) == tInt &&
-         (getInnerType texpr) == tInt 
-        then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl tInt (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
-        else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ ", the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr) ++ ", and both types must be compatible with type " ++ printTree tInt ++ " of the operation " ++ printTree op
+      case lexpr of
+        -- if array access
+        LExprArr _ -> do
+          case expr of
+            ExprLeft (LExprArr _) -> do
+              if checkTypes (getInnerType tlexpr) (getInnerType texpr) && (getInnerType tlexpr == tInt) && (getInnerType texpr == tInt)
+                then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
+                else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr)
+            _          -> do 
+              if checkTypes (getInnerType tlexpr) texpr && (getInnerType tlexpr == tInt) && (getInnerType texpr == tInt)
+                then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
+                else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree (getInnerType tlexpr) ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree texpr
+        -- else
+        _            -> do 
+          case expr of
+            ExprLeft (LExprArr _) -> do
+              if checkTypes tlexpr (getInnerType texpr) && (getInnerType tlexpr == tInt) && (getInnerType texpr == tInt)
+                then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
+                else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree tlexpr ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr)
+            _          -> do 
+              if checkTypes tlexpr texpr && (getInnerType tlexpr == tBool) && (getInnerType texpr == tBool)
+                then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
+                else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree tlexpr ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree texpr
     else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr)) 
 
 -- Check function call.
@@ -501,6 +570,9 @@ inferExpr env expr =
     -- Left expressions. 
     ExprLeft lexpr -> inferLExpr env lexpr 
 
+    -- Ternary if.
+    ExprTernaryIf e1 e2 e3 -> inferTernaryIf env e1 e2 e3
+
     -- Base expressions (i.e., integers, floats, chars, strings, booleans) 
     ExprTrue _    -> Ok tBool
     ExprFalse _   -> Ok tBool
@@ -525,8 +597,9 @@ inferExpr env expr =
     -- Arithmetic binary operators.
     ExprPower e1 e2    -> inferArithBinOp env expr e1 e2
     ExprMul e1 e2      -> inferArithBinOp env expr e1 e2
-    ExprFloatDiv e1 e2 -> inferArithBinOpDiv env expr e1 e2 tFloat
-    ExprIntDiv e1 e2   -> inferArithBinOpDiv env expr e1 e2 tInt
+    ExprDiv e1 e2      -> inferArithBinOp env expr e1 e2
+    --ExprFloatDiv e1 e2 -> inferArithBinOpDiv env expr e1 e2 tFloat
+    --ExprIntDiv e1 e2   -> inferArithBinOpDiv env expr e1 e2 tInt
     ExprReminder e1 e2 -> inferArithBinOpMod env expr e1 e2
     ExprModulo e1 e2   -> inferArithBinOpMod env expr e1 e2
     ExprPlus e1 e2     -> inferArithBinOp env expr e1 e2
@@ -576,18 +649,39 @@ inferLExpr env@(sig, blocks) lexpr = do
                   if (getNumberOfArgsFromArrayAccess aexpr) == (length (getBoundsFromPInts pints))
                     then Ok tid
                     else fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " (i.e., " ++ show (length (getBoundsFromPInts pints)) ++ " indices), but you are trying to access an element of such array through " ++ show (getNumberOfArgsFromArrayAccess aexpr) ++ " indices" 
+                ArrDefBaseC pints _ -> do
+                  if (getNumberOfArgsFromArrayAccess aexpr) == (length (getBoundsFromPInts pints))
+                    then Ok tid
+                    else fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " (i.e., " ++ show (length (getBoundsFromPInts pints)) ++ " indices), but you are trying to access an element of such array through " ++ show (getNumberOfArgsFromArrayAccess aexpr) ++ " indices" 
                 ArrDefPtr pints _ -> do
+                  if (getNumberOfArgsFromArrayAccess aexpr) == (length (getBoundsFromPInts pints))
+                    then Ok tid
+                    else fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " (i.e., " ++ show (length (getBoundsFromPInts pints)) ++ " indices), but you are trying to access an element of such array through " ++ show (getNumberOfArgsFromArrayAccess aexpr) ++ " indices" 
+                ArrDefPtrC pints _ -> do
                   if (getNumberOfArgsFromArrayAccess aexpr) == (length (getBoundsFromPInts pints))
                     then Ok tid
                     else fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " (i.e., " ++ show (length (getBoundsFromPInts pints)) ++ " indices), but you are trying to access an element of such array through " ++ show (getNumberOfArgsFromArrayAccess aexpr) ++ " indices" 
             _                                -> fail $ "inferLExpr: tid not typecompound"
         _ -> fail $ show p ++ ": variable " ++ printTree ident ++ " not defined"
 
+-- Infer ternary if.
+inferTernaryIf :: Env -> Expr -> Expr -> Expr -> Err Type
+inferTernaryIf env e1 e2 e3 = do
+  t1 <- inferExpr env e1
+  t2 <- inferExpr env e2
+  t3 <- inferExpr env e3
+  if t1 == tBool
+    then do
+      if t2 == t3
+        then Ok t2
+        else fail $ show (getExprPosition e2) ++ ": expression " ++ printTree e2 ++ " must have the same type of the expression " ++ printTree e3 ++ "; at the moment there is a " ++ printTree t2 ++ " type and a " ++ printTree t3 ++ " type"
+    else fail $ show (getExprPosition e1) ++ ": expression " ++ printTree e1 ++ " must have " ++ printTree tBool ++ " type"
+
 -- Infer arithmetic unary operator.
 inferArithUnOp :: Env -> Expr -> Expr -> Err Type
 inferArithUnOp env expr e = do
   t <- inferExpr env e
-  if ((getInnerType t) == tInt) || ((getInnerType t) == tFloat) -- only ints and floats are allowed
+  if ((getInnerType t) `isCompatibleWithAny` [tBool,tChar,tInt, tFloat]) -- ASSUMPTION: void and string are not allowed
     then Ok t
     else fail $ show (getExprPosition e) ++ ": " ++ printTree e ++ " has type " ++ printTree t ++ " which must be " ++ printTree [tInt, tFloat]
 
@@ -596,11 +690,11 @@ inferArithBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
 inferArithBinOp env expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
-  if ((getInnerType t1) `isCompatibleWithAny` [tInt, tFloat]) && -- only ints and floats are allowed
-     ((getInnerType t2) `isCompatibleWithAny` [tInt, tFloat]) &&
+  if ((getInnerType t1) `isCompatibleWithAny` [tBool,tChar,tInt, tFloat]) && -- ASSUMPTION: void and string are not allowed
+     ((getInnerType t2) `isCompatibleWithAny` [tBool,tChar,tInt, tFloat]) &&
      areCompatible (getInnerType t1) (getInnerType t2)
      then getMostGeneric t1 t2
-     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ printTree t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ printTree t2 ++ " (only int and float allowed)"
+     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ printTree t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ printTree t2 ++ " (void and string are not allowd)"
 
 -- Infer arithmetic integer division or float division operator.
 inferArithBinOpDiv :: Env -> Expr -> Expr -> Expr -> Type -> Err Type
@@ -617,7 +711,7 @@ inferArithBinOpMod :: Env -> Expr -> Expr -> Expr -> Err Type
 inferArithBinOpMod env expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
-  if ((getInnerType t1) == tInt) && -- only ints are allowed
+  if ((getInnerType t1) == tInt) && -- ASSUMPTION: only ints are allowed
      ((getInnerType t2) == tInt) &&
      areCompatible (getInnerType t1) (getInnerType t2)
      then getMostGeneric t1 t2
@@ -628,7 +722,7 @@ inferRelBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
 inferRelBinOp env expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
-  if ((getInnerType t1) `isCompatibleWithAny` [tBool, tInt, tFloat, tChar, tString]) &&  -- only ints, floats, chars and strings are allowed
+  if ((getInnerType t1) `isCompatibleWithAny` [tBool, tInt, tFloat, tChar, tString]) &&  -- ASSUMPTION: only ints, floats, chars and strings are allowed
      ((getInnerType t2) `isCompatibleWithAny` [tBool, tInt, tFloat, tChar, tString]) &&  -- the same as above
      areCompatible (getInnerType t1) (getInnerType t2)
      then Ok tBool
@@ -647,7 +741,7 @@ inferBoolBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
 inferBoolBinOp env expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
-  if ((getInnerType t1) == tBool) && ((getInnerType t2) == tBool) -- only booleans are allowed
+  if ((getInnerType t1) == tBool) && ((getInnerType t2) == tBool) -- ASSUMPTION: only booleans are allowed
     then Ok tBool  
     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ printTree t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ printTree t2 ++ " (only bool allowed)"
 
@@ -709,9 +803,10 @@ addVar context (m,ident) t = Map.insert ident (m,t) context
 -- T1 is compatible with T2?
 isCompatibleWith :: Type -> Type -> Bool
 t1 `isCompatibleWith` t2
-  | t1 == t2 = True
-  | t1 == tInt    = t2 == tFloat
-  | t1 == tChar = t2 `elem` [tInt,tFloat,tString]
+  | t1 == t2          = True
+  | t1 == tBool       = t2 `elem` [tChar,tInt,tFloat,tString]
+  | t1 == tInt        = t2 == tFloat
+  | t1 == tChar       = t2 `elem` [tInt,tFloat,tString]
   | otherwise         = False
 
 -- T is compatible with any of [T1,..Tn]?
@@ -752,6 +847,7 @@ getExprPosition e =
 
     ExprAssign lexpr op rexpr -> getLExprPosition lexpr
     ExprLeft lexpr            -> getLExprPosition lexpr
+    ExprTernaryIf e1 e2 e3    -> getExprPosition e1
 
     ExprBoolNot rexpr         -> getExprPosition rexpr
     ExprNegation rexpr        -> getExprPosition rexpr
@@ -760,8 +856,9 @@ getExprPosition e =
     
     ExprPower e1 e2           -> getExprPosition e1
     ExprMul e1 e2             -> getExprPosition e1
-    ExprFloatDiv e1 e2        -> getExprPosition e1
-    ExprIntDiv e1 e2          -> getExprPosition e1
+    ExprDiv e1 e2             -> getExprPosition e1
+    --ExprFloatDiv e1 e2        -> getExprPosition e1
+    --ExprIntDiv e1 e2          -> getExprPosition e1
     ExprReminder e1 e2        -> getExprPosition e1
     ExprModulo e1 e2          -> getExprPosition e1
 
@@ -902,7 +999,7 @@ checkArrayInitBounds (int:ints) arr =
     ExprArray multiArr@(x:xs) -> (checkLengthArray int multiArr) && 
                                  (checkArrayInitBounds ints x) && 
                                  (checkNestedArrayBounds ((int-1):ints) xs)
-    ExprSimple expr -> True
+    ExprSimple expr -> False
 
 -- Check nested array bounds.
 checkNestedArrayBounds :: [Int] -> [ComplexExpr] -> Bool
@@ -938,9 +1035,11 @@ findLExprName lexpr =
 getBoundsFromType :: Type -> [Int]
 getBoundsFromType t =
   case t of
-    TypeCompoundType (CompoundTypeArrayType (ArrDefBase pints _)) -> getBoundsFromPInts pints
-    TypeCompoundType (CompoundTypeArrayType (ArrDefPtr pints _))  -> getBoundsFromPInts pints
-    _                                                             -> []
+    TypeCompoundType (CompoundTypeArrayType (ArrDefBase pints _))  -> getBoundsFromPInts pints
+    TypeCompoundType (CompoundTypeArrayType (ArrDefBaseC pints _)) -> getBoundsFromPInts pints
+    TypeCompoundType (CompoundTypeArrayType (ArrDefPtr pints _))   -> getBoundsFromPInts pints
+    TypeCompoundType (CompoundTypeArrayType (ArrDefPtrC pints _))  -> getBoundsFromPInts pints
+    _                                                              -> []
 
 -- Get number of arguments from array access.
 getNumberOfArgsFromArrayAccess :: AExpr -> Int
