@@ -188,29 +188,6 @@ module ThreeAddressCode where
     generateCasesCond ([If (head program) (Label ("match_", labels)) ]++(drop 1 program), last_temp, variables, labels+1, scope) expr_v type_ rest 
     
 
-  -- calcola lo step di spostamento dall'indirizzo base dell'array
-  getStep :: Env -> AExpr -> ([PInteger],Bool) -> Env
-  getStep env@(program, last_temp, variables, labels, scope) a ((dim:rest),toBchkd) = case a of
-    (ArrSing step)   -> do
-      -- valuto l'espressione
-      let env1@(_,index@(Temp (t_c1,t_t1)),_,_,_) = (generateExpr env (TypeBasicType TypeInt) step)
-      -- se necessario controllo i bound
-      if toBchkd 
-        then (addTACList env1 [(BoolOp BOpLt index (TempI (PInteger ((0,0),"0")))), If Empty (Label ("out_of_bnd", labels)),(BoolOp BOpGtEq index (TempI (dim))),If Empty (Label ("out_of_bnd", labels)), Goto (Label ("end_check", labels)),Lbl (Label ("out_of_bnd", labels)), OutOfBoundExp, Lbl (Label ("end_check", labels))])
-        else env1
-    (ArrMul a1 step) -> do
-      -- valuto l'espressione
-      let env1@(_,index@(Temp (t_c1,t_t1)),_,_,_) = (generateExpr env (TypeBasicType TypeInt) step)
-      -- se necessario controllo i bound
-      let envC =  if toBchkd 
-                    then (addTACList env1 [(BoolOp BOpLt index (TempI (PInteger ((0,0),"0")))), If Empty (Label ("out_of_bnd", labels)),(BoolOp BOpGtEq index (TempI (dim))), If Empty (Label ("out_of_bnd", labels)), Goto (Label ("end_check", labels)),Lbl (Label ("out_of_bnd", labels)), OutOfBoundExp, Lbl (Label ("end_check", labels))])
-                    else env1
-      -- carico la dimensione di una riga e la moltiplico per l'espressione calcolata
-      let env4@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList envC [AssignIntTemp (Temp (t_c1+1,t_t1)) dim, BinOp BOpMul (Temp (t_c1+2,t_t1)) index (Temp (t_c1+1,t_t1))])
-        -- valuto il resto delle espressioni
-      let env5@(_,temp3@(Temp (t_c3,t_t3)),_,_,_) = (getStep  env4 a1 (rest,toBchkd))
-      -- sommo 
-      (addTACList env5 [BinOp   BOpPlus (Temp (t_c3+1,t_t3)) temp3 temp2])
 
   -- genera l'espressione corrispondente
   generateExpr :: Env -> Type -> Expr -> Env
@@ -258,9 +235,11 @@ module ThreeAddressCode where
         ExprFunCall  fun params  -> (generateCallFunc env fun params type_) 
 
         -- operatore ternario 
-        -- da fare assegnamento? in teoria no, valuto l'operatore ternario e poi lo metto in una variabile temporanea
-        -- addTACList (generateStmt (addTACList (generateStmt (addTACList (generateExpr env (TypeBasicType TypeBool) bexpr) [IfFalse Empty (Label ("if_false",labels) )]) type_ (SComp stmtsT)) [Goto (Label ("end_if",labels) ),Lbl (Label ("if_false",labe
-        -- ExprTernaryIf  bexpr et ef -> generateStmt env (TypeBasicType TypeBool) (StmtIfThenElse bexpr et ef)
+        ExprTernaryIf  bexpr et ef -> do
+          let env1 = addTACList (generateExpr env (TypeBasicType TypeBool) bexpr) [IfFalse Empty (Label ("if_false",labels) )]
+          let env2 = addTACList (generateExpr env1 type_ et) [Goto (Label ("end_if",labels) ),Lbl (Label ("if_false",labels))]
+          let env3 = addTACList (generateExpr env2 type_ ef) [Lbl (Label ("end_if",labels) )] 
+          env3
 
         -- not
         ExprBoolNot   expr       -> notExpr (generateExpr env type_ expr)
@@ -497,6 +476,29 @@ module ThreeAddressCode where
   type2BasicType (TypeCompoundType (CompoundTypePtr       (Pointer  t)))      = (TypeBasicType t)
   --type2BasicType (TypeCompoundType (CompoundTypePtr       (Pointer2Pointer  p)))      = (type2BasicType p)
   
+  -- calcola lo step di spostamento dall'indirizzo base dell'array
+  getStep :: Env -> AExpr -> ([PInteger],Bool) -> Env
+  getStep env@(program, last_temp, variables, labels, scope) a ((dim:rest),toBchkd) = case a of
+    (ArrSing step)   -> do
+      -- valuto l'espressione
+      let env1@(_,index@(Temp (t_c1,t_t1)),_,_,_) = (generateExpr env (TypeBasicType TypeInt) step)
+      -- se necessario controllo i bound
+      if toBchkd 
+        then (addTACList env1 [(BoolOp BOpLt index (TempI (PInteger ((0,0),"0")))), If Empty (Label ("out_of_bnd", labels)),(BoolOp BOpGtEq index (TempI (dim))),If Empty (Label ("out_of_bnd", labels)), Goto (Label ("end_check", labels)),Lbl (Label ("out_of_bnd", labels)), OutOfBoundExp, Lbl (Label ("end_check", labels))])
+        else env1
+    (ArrMul a1 step) -> do
+      -- valuto l'espressione
+      let env1@(_,index@(Temp (t_c1,t_t1)),_,_,_) = (generateExpr env (TypeBasicType TypeInt) step)
+      -- se necessario controllo i bound
+      let envC =  if toBchkd 
+                    then (addTACList env1 [(BoolOp BOpLt index (TempI (PInteger ((0,0),"0")))), If Empty (Label ("out_of_bnd", labels)),(BoolOp BOpGtEq index (TempI (dim))), If Empty (Label ("out_of_bnd", labels)), Goto (Label ("end_check", labels)),Lbl (Label ("out_of_bnd", labels)), OutOfBoundExp, Lbl (Label ("end_check", labels))])
+                    else env1
+      -- carico la dimensione di una riga e la moltiplico per l'espressione calcolata
+      let env4@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList envC [AssignIntTemp (Temp (t_c1+1,t_t1)) dim, BinOp BOpMul (Temp (t_c1+2,t_t1)) index (Temp (t_c1+1,t_t1))])
+        -- valuto il resto delle espressioni
+      let env5@(_,temp3@(Temp (t_c3,t_t3)),_,_,_) = (getStep  env4 a1 (rest,toBchkd))
+      -- sommo 
+      (addTACList env5 [BinOp   BOpPlus (Temp (t_c3+1,t_t3)) temp3 temp2])
 
   -- trasforma una lista di espressioni complesse (es: espressioni usate per la posizione all'interno di un array)
   -- e restituisce una lista più facile da maneggiare di sole espressioni

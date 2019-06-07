@@ -99,7 +99,6 @@ transRange x = case x of
 transExpr :: Expr -> Result
 transExpr x = case x of
   ExprAssign lexpr assignoperator expr -> failure x
-  ExprTernaryIf expr1 expr2 expr3 -> failure x
   ExprLeft lexpr -> failure x
   ExprInt pinteger -> failure x
   ExprFloat pfloat -> failure x
@@ -128,6 +127,7 @@ transExpr x = case x of
   ExprNeq expr1 expr2 -> failure x
   ExprAnd expr1 expr2 -> failure x
   ExprOr expr1 expr2 -> failure x
+  ExprTernaryIf expr1 expr2 expr3 -> failure x
 transLExpr :: LExpr -> Result
 transLExpr x = case x of
   LExprId pident -> failure x

@@ -83,7 +83,6 @@ data Range = ExprRange Expr Expr
 
 data Expr
     = ExprAssign LExpr AssignOperator Expr
-    | ExprTernaryIf Expr Expr Expr
     | ExprLeft LExpr
     | ExprInt PInteger
     | ExprFloat PFloat
@@ -112,6 +111,7 @@ data Expr
     | ExprNeq Expr Expr
     | ExprAnd Expr Expr
     | ExprOr Expr Expr
+    | ExprTernaryIf Expr Expr Expr
   deriving (Eq, Ord, Show, Read)
 
 data LExpr = LExprId PIdent | LExprRef Ref | LExprArr Arr

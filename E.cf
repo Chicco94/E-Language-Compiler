@@ -82,7 +82,7 @@ ExprRange.      Range    ::= Expr ".." Expr ;
 
 
 ExprAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
-ExprTernaryIf.  Expr ::= "(" Expr ")" "?" Expr ":" Expr ;
+--ExprTernaryIf.  Expr ::= "(" Expr ")" "?" Expr ":" Expr ;
 
 
 -- A statement is a declaration.
@@ -100,45 +100,48 @@ ArrSing. AExpr ::= Expr ;
 ArrMul.  AExpr ::= AExpr "," Expr ;
 
 -- (Right) Expressions
-ExprLeft.     Expr17 ::= LExpr ;
-ExprInt.      Expr16 ::= PInteger ;
-ExprFloat.    Expr16 ::= PFloat ;
-ExprChar.     Expr16 ::= PChar ;
-ExprString.   Expr16 ::= PString ;
-ExprTrue.     Expr16 ::= PTrue ;
-ExprFalse.    Expr16 ::= PFalse ;
+ExprLeft.       Expr17 ::= LExpr ;
+ExprInt.        Expr16 ::= PInteger ;
+ExprFloat.      Expr16 ::= PFloat ;
+ExprChar.       Expr16 ::= PChar ;
+ExprString.     Expr16 ::= PString ;
+ExprTrue.       Expr16 ::= PTrue ;
+ExprFalse.      Expr16 ::= PFalse ;
 
-ExprFunCall.  Expr15 ::= PIdent "(" [Expr] ")" ;
+ExprFunCall.    Expr15 ::= PIdent "(" [Expr] ")" ;
 
-ExprBoolNot.  Expr14  ::= "!" Expr15 ;
+ExprBoolNot.    Expr14  ::= "!" Expr15 ;
 
-ExprNegation. Expr14  ::= "-" Expr15 ;
-ExprAddition. Expr14  ::= "+" Expr15 ;
+ExprNegation.   Expr14  ::= "-" Expr15 ;
+ExprAddition.   Expr14  ::= "+" Expr15 ;
 
-ExprPower.    Expr13 ::= Expr14 "**"  Expr13 ;
+ExprPower.      Expr13 ::= Expr14 "**"  Expr13 ;
 
-ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
-ExprFloatDiv. Expr12 ::= Expr12 "/"  Expr13 ;
-ExprIntDiv.   Expr12 ::= Expr12 "//" Expr13 ;
-ExprReminder. Expr12 ::= Expr12 "%"  Expr13 ;
-ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
+ExprMul.        Expr12 ::= Expr12 "*"  Expr13 ;
+ExprFloatDiv.   Expr12 ::= Expr12 "/"  Expr13 ;
+ExprIntDiv.     Expr12 ::= Expr12 "//" Expr13 ;
+ExprReminder.   Expr12 ::= Expr12 "%"  Expr13 ;
+ExprModulo.     Expr12 ::= Expr12 "%%" Expr13 ;
 
-ExprReference. Expr11 ::= "&" LExpr ;
-ExprPlus.      Expr11 ::= Expr11 "+"  Expr12 ;
-ExprMinus.     Expr11 ::= Expr11 "-"  Expr12 ;
+ExprReference.  Expr11 ::= "&" LExpr ;
+ExprPlus.       Expr11 ::= Expr11 "+"  Expr12 ;
+ExprMinus.      Expr11 ::= Expr11 "-"  Expr12 ;
 
-ExprLt.       Expr9  ::= Expr9  "<"   Expr10 ;
-ExprGt.       Expr9  ::= Expr9  ">"   Expr10 ;
-ExprLtEq.     Expr9  ::= Expr9  "<="  Expr10 ;
-ExprGtEq.     Expr9  ::= Expr9  ">="  Expr10 ;
+ExprLt.         Expr9  ::= Expr9  "<"   Expr10 ;
+ExprGt.         Expr9  ::= Expr9  ">"   Expr10 ;
+ExprLtEq.       Expr9  ::= Expr9  "<="  Expr10 ;
+ExprGtEq.       Expr9  ::= Expr9  ">="  Expr10 ;
+  
+ExprEq.         Expr8  ::= Expr8  "=="  Expr9 ;
+ExprNeq.        Expr8  ::= Expr8  "!="  Expr9 ;
 
-ExprEq.       Expr8  ::= Expr8  "=="  Expr9 ;
-ExprNeq.      Expr8  ::= Expr8  "!="  Expr9 ;
+ExprAnd.        Expr4  ::= Expr4  "&&"  Expr5 ;
 
-ExprAnd.      Expr4  ::= Expr4  "&&"  Expr5 ;
-
-ExprOr.       Expr3  ::= Expr3  "||"  Expr4 ;
-
+ExprOr.         Expr3  ::= Expr3  "||"  Expr4 ;
+ExprTernaryIf.  Expr2  ::= "if" Expr3 "then" Expr "else" Expr2;
+-- https://github.com/BNFC/bnfc/blob/master/examples/C/C.cf riga 244
+-- mi dava problemi con assegnamento, errore di parsing
+-- con queste precedenze NON abbiamo bisogno delle parentesi in teoria
 
 coercions Expr 17 ;
 separator Expr "," ;
