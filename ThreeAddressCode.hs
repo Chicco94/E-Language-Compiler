@@ -236,10 +236,13 @@ module ThreeAddressCode where
 
         -- operatore ternario 
         ExprTernaryIf  bexpr et ef -> do
-          let env1 = addTACList (generateExpr env (TypeBasicType TypeBool) bexpr) [IfFalse Empty (Label ("if_false",labels) )]
-          let env2 = addTACList (generateExpr env1 type_ et) [Goto (Label ("end_if",labels) ),Lbl (Label ("if_false",labels))]
-          let env3 = addTACList (generateExpr env2 type_ ef) [Lbl (Label ("end_if",labels) )] 
-          env3
+          let env1@(p1,t1,v1,l1,s1) = addTACList (generateExpr env (TypeBasicType TypeBool) bexpr) [IfFalse Empty (Label ("if_false",labels) )]
+          let env2@(p2,t2@(Temp (id2,t)),v2,l2,s2) = (generateExpr ([],t1,v1,l1,s1) type_ et)
+          let env3@(p3,t3@(Temp (id3,t)),v3,l3,s3) = (generateExpr ([],t2,v2,l2,s2) type_ ef)
+          case id2 - id3 of
+            x | x > 0 -> ([Lbl (Label ("end_if",labels) ),AssignT2T (Temp ((id2),t)) t3]++p3                                                                                                 ++p2++p1,(Temp ((id2),t)),v3,l3,s3)
+            x | x < 0 -> ([Lbl (Label ("end_if",labels) )]                              ++p3++[Lbl (Label ("if_false",labels)),Goto (Label ("end_if",labels) ),AssignT2T (Temp ((id3),t)) t2]++p2++p1,(Temp ((id3),t)),v3,l3,s3)
+            _         -> ([Lbl (Label ("end_if",labels) )]                              ++p3++[Lbl (Label ("if_false",labels)),Goto (Label ("end_if",labels) )]                              ++p2++p1,t3              ,v3,l3,s3)
 
         -- not
         ExprBoolNot   expr       -> notExpr (generateExpr env type_ expr)
@@ -427,6 +430,7 @@ module ThreeAddressCode where
       AssignV2T temp var step     -> ([AssignV2T temp   var      step    ]++p, temp            , variables, labels  ,(s_g  ,s_i, s_t))
       AssignT2V var _ step        -> ([AssignT2V var  last_temp  step    ]++p, last_temp       , variables, labels  ,(s_g  ,s_i, s_t))
       AssignT2P _                 -> ([AssignT2P last_temp               ]++p, last_temp       , variables, labels  ,(s_g  ,s_i, s_t))
+      AssignT2T tr ts             -> ([AssignT2T tr ts                   ]++p, tr              , variables, labels  ,(s_g  ,s_i, s_t))
       AssignIntTemp    temp val   -> ([AssignIntTemp   temp val          ]++p, temp            , variables, labels  ,(s_g  ,s_i, s_t))
       AssignChrTemp    temp val   -> ([AssignChrTemp   temp val          ]++p, temp            , variables, labels  ,(s_g  ,s_i, s_t))
       AssignStrTemp    temp val   -> ([AssignStrTemp   temp val          ]++p, temp            , variables, labels  ,(s_g  ,s_i, s_t))

@@ -228,7 +228,7 @@ instance Print Expr where
     ExprNeq expr1 expr2 -> prPrec i 8 (concatD [prt 8 expr1, doc (showString "!="), prt 9 expr2])
     ExprAnd expr1 expr2 -> prPrec i 4 (concatD [prt 4 expr1, doc (showString "&&"), prt 5 expr2])
     ExprOr expr1 expr2 -> prPrec i 3 (concatD [prt 3 expr1, doc (showString "||"), prt 4 expr2])
-    ExprTernaryIf expr1 expr2 expr3 -> prPrec i 2 (concatD [doc (showString "if"), prt 3 expr1, doc (showString "then"), prt 0 expr2, doc (showString "else"), prt 2 expr3])
+    ExprTernaryIf expr1 expr2 expr3 -> prPrec i 2 (concatD [prt 3 expr1, doc (showString "?"), prt 0 expr2, doc (showString ":"), prt 2 expr3])
   prtList _ [] = (concatD [])
   prtList _ [x] = (concatD [prt 0 x])
   prtList _ (x:xs) = (concatD [prt 0 x, doc (showString ","), prt 0 xs])

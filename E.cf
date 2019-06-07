@@ -138,7 +138,7 @@ ExprNeq.        Expr8  ::= Expr8  "!="  Expr9 ;
 ExprAnd.        Expr4  ::= Expr4  "&&"  Expr5 ;
 
 ExprOr.         Expr3  ::= Expr3  "||"  Expr4 ;
-ExprTernaryIf.  Expr2  ::= "if" Expr3 "then" Expr "else" Expr2;
+ExprTernaryIf.  Expr2  ::= Expr3 "?" Expr ":" Expr2;
 -- https://github.com/BNFC/bnfc/blob/master/examples/C/C.cf riga 244
 -- mi dava problemi con assegnamento, errore di parsing
 -- con queste precedenze NON abbiamo bisogno delle parentesi in teoria

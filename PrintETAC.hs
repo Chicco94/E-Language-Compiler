@@ -8,9 +8,9 @@ import AbsE
 instance Show TAC where
   show t = case t of
     {-mettere \n dopo return-}
-    FuncDef (Var (name,pos@(row,col),type_))         -> "\n\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\tFunction:\n\tType: " ++ show type_ ++ "\n\tStatements:\n"
+    FuncDef (Var (name,pos@(row,col),type_))         -> "\n\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\t#Function:\n\tType: " ++ show type_ ++ "\n\tStatements:\n"
     Return  temp                                     -> "\treturn_" ++ show temp ++"\n"
-    EndFunction                                      -> "\tEnd Function\n\n"
+    EndFunction                                      -> "\t#End Function\n\n"
     FuncCall (Var ("main",pos@(row,col),type_)) temp -> "\tcall main@"++ show row ++ "-"++show col++"\n"
     FuncCall (Var (name,pos@(row,col),type_))   temp -> "\t" ++ show temp ++ " = " ++ show type_  ++ " call " ++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col++"\n"
 
@@ -76,9 +76,10 @@ instance Show Temp where --Temp = Temp (Int,TACType) | TempT PTrue | TempF PFals
     (TempI v) -> show v
     (TempC v) -> show v
     (TempS v) -> show v
+    (TempR v) -> show v
     (TempT _) -> "true"
     (TempF _) -> "false"
-    (TempR v) -> show v
+    
     
   
 instance Show Label where --Label = (Int,TACType)
