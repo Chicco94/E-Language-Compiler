@@ -364,7 +364,7 @@ module ThreeAddressCode where
                                     OpPower     -> BOpPower     
  
   -- usata solo all'assegnamento dell'array
-  generateAssign env type_ id op list@(expr:rest:rests) _ = env --generateArray env type_ id op list 0
+  generateAssign env type_ id op list@(expr:rest:rests) _ = generateArray env type_ id op list 0
 
   -- genera l'inizializzazione di un array
   generateArray :: Env -> Type -> PIdent -> AssignOperator -> [Expr] -> Int -> Env
