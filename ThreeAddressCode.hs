@@ -191,16 +191,22 @@ module ThreeAddressCode where
   -- calcola lo step di spostamento dall'indirizzo base dell'array
   getStep :: Env -> AExpr -> ([PInteger],Bool) -> Env
   getStep env@(program, last_temp, variables, labels, scope) a ((dim:rest),toBchkd) = case a of
-    (ArrSing step)   -> (generateExpr env (TypeBasicType TypeInt) step)
+    (ArrSing step)   -> do
+      -- valuto l'espressione
+      let env1@(_,index@(Temp (t_c1,t_t1)),_,_,_) = (generateExpr env (TypeBasicType TypeInt) step)
+      -- se necessario controllo i bound
+      if toBchkd 
+        then (addTACList env1 [(BoolOp BOpLt index (TempI (PInteger ((0,0),"0")))), If Empty (Label ("out_of_bnd", labels)),(BoolOp BOpGtEq index (TempI (dim))),If Empty (Label ("out_of_bnd", labels)), Goto (Label ("end_check", labels)),Lbl (Label ("out_of_bnd", labels)), OutOfBoundExp, Lbl (Label ("end_check", labels))])
+        else env1
     (ArrMul a1 step) -> do
       -- valuto l'espressione
       let env1@(_,index@(Temp (t_c1,t_t1)),_,_,_) = (generateExpr env (TypeBasicType TypeInt) step)
       -- se necessario controllo i bound
-      let envC = if toBchkd 
-                  then (addTACList env1 [If (BoolOp BOpLt index (TempI (PInteger ((0,0),"0")))) (Label ("out_of_bnd", labels)),If (BoolOp BOpGtEq index (TempI (dim))) (Label ("out_of_bnd", labels)), Goto (Label ("end_check", labels)),Lbl (Label ("out_of_bnd", labels)), OutOfBoundExp, Lbl (Label ("end_check", labels))])
-                  else env1
+      let envC =  if toBchkd 
+                    then (addTACList env1 [(BoolOp BOpLt index (TempI (PInteger ((0,0),"0")))), If Empty (Label ("out_of_bnd", labels)),(BoolOp BOpGtEq index (TempI (dim))), If Empty (Label ("out_of_bnd", labels)), Goto (Label ("end_check", labels)),Lbl (Label ("out_of_bnd", labels)), OutOfBoundExp, Lbl (Label ("end_check", labels))])
+                    else env1
       -- carico la dimensione di una riga e la moltiplico per l'espressione calcolata
-      let env4@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList envC [BinOp   BOpMul (Temp (t_c1+2,t_t1)) index (Temp (t_c1+1,t_t1)), AssignIntTemp (Temp (t_c1+1,t_t1)) dim])
+      let env4@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList envC [AssignIntTemp (Temp (t_c1+1,t_t1)) dim, BinOp BOpMul (Temp (t_c1+2,t_t1)) index (Temp (t_c1+1,t_t1))])
         -- valuto il resto delle espressioni
       let env5@(_,temp3@(Temp (t_c3,t_t3)),_,_,_) = (getStep  env4 a1 (rest,toBchkd))
       -- sommo 
@@ -221,7 +227,7 @@ module ThreeAddressCode where
         -- assign val to multiarray
         ExprAssign   (LExprArr (LArrExpr id@(PIdent (pos,name)) a)) op re    -> do
           let env2@(_,temp1@(Temp (t_c1,t_t1)),_,_,_) = (getStep env1 a (type2Dims type_v)) -- calcolo e controllo gli indici
-          let env3@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList (env2) [BinOp   BOpMul (Temp (t_c1+2,t_t1)) (Temp (t_c1+1,(TypeBasicType TypeInt))) temp1, AssignIntTemp (Temp (t_c1+1,(TypeBasicType TypeInt))) (int2PInt (sizeOf type_v))]) -- (step)*(sizeOf type_v)
+          let env3@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList (env2) [AssignIntTemp (Temp (t_c1+1,(TypeBasicType TypeInt))) (int2PInt (sizeOf type_v)), BinOp   BOpMul (Temp (t_c1+2,t_t1)) (Temp (t_c1+1,(TypeBasicType TypeInt))) temp1]) -- (step)*(sizeOf type_v)
           generateAssign env3 type_ id op [re] temp2 
             where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
         
@@ -475,8 +481,8 @@ module ThreeAddressCode where
   -- restituisce le dimensioni di un vettore/matrice
   type2Dims :: Type -> ([PInteger],Bool)
   type2Dims (TypeBasicType _) = ([],False)
-  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefBase  dims _))) = ((reverse dims),False)
-  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefPtr   dims _))) = ((reverse dims),False)
+  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefBase  dims _))) = ((reverse dims),True)
+  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefPtr   dims _))) = ((reverse dims),True)
   type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefBaseC dims _))) = ((reverse dims),True)
   type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefPtrC  dims _))) = ((reverse dims),True)
 
@@ -484,8 +490,13 @@ module ThreeAddressCode where
   -- ritorna il tipo di base di un vettore/matrice/puntatore
   type2BasicType :: Type -> Type
   type2BasicType (TypeBasicType t) = (TypeBasicType t)
-  type2BasicType (TypeCompoundType (CompoundTypeArrayType (ArrDefBase _ t))) = (TypeBasicType t)
-  type2BasicType (TypeCompoundType (CompoundTypePtr       (Pointer  t)))     = (TypeBasicType t)
+  type2BasicType (TypeCompoundType (CompoundTypeArrayType (ArrDefBase _ t)))  = (TypeBasicType t)
+  type2BasicType (TypeCompoundType (CompoundTypeArrayType (ArrDefPtr  _ (Pointer t))))  = (TypeBasicType t)
+  type2BasicType (TypeCompoundType (CompoundTypeArrayType (ArrDefBaseC _ t))) = (TypeBasicType t)
+  type2BasicType (TypeCompoundType (CompoundTypeArrayType (ArrDefPtrC _ (Pointer t))))  = (TypeBasicType t)
+  type2BasicType (TypeCompoundType (CompoundTypePtr       (Pointer  t)))      = (TypeBasicType t)
+  --type2BasicType (TypeCompoundType (CompoundTypePtr       (Pointer2Pointer  p)))      = (type2BasicType p)
+  
 
   -- trasforma una lista di espressioni complesse (es: espressioni usate per la posizione all'interno di un array)
   -- e restituisce una lista più facile da maneggiare di sole espressioni

@@ -194,8 +194,10 @@ instance Show CompoundType where
 
 instance Show ArrayType where
   show t = case t of
-    ArrDefBase dim bt -> "[]" ++ show bt
-    ArrDefPtr  dim p  -> "[]" ++ show p
+    ArrDefBase  dim bt -> "[]" ++ show bt
+    ArrDefPtr   dim p  -> "[]" ++ show p
+    ArrDefBaseC dim bt -> "<>" ++ show bt
+    ArrDefPtrC  dim p  -> "<>" ++ show p
 
 instance Show Ptr where
   show t = case t of

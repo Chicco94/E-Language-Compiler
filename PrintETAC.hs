@@ -73,8 +73,13 @@ instance Show Var where --Var = (String,(Int,Int),TACType)
 instance Show Temp where --Temp = Temp (Int,TACType) | TempT PTrue | TempF PFalse
   show temp  = case temp of
     (Temp (num,type_)) -> show type_ ++ " t" ++ show num
-    (TempT _) -> show TypeBool ++ "  true"
-    (TempF _) -> show TypeBool ++ "  false"
+    (TempI v) -> show v
+    (TempC v) -> show v
+    (TempS v) -> show v
+    (TempT _) -> "true"
+    (TempF _) -> "false"
+    (TempR v) -> show v
+    
   
 instance Show Label where --Label = (Int,TACType)
   show (Label (name,id)) = filter (/='\"') (show name) ++ "@" ++ show id 
