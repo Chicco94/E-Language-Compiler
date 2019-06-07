@@ -315,7 +315,7 @@ checkExpr (env@(sigs,blocks), prog) expr = do
         then do
           if t2 == t3
             then return (env, prog ++ [(PDefs [TypedDecl (ADecl t2 (DeclStmt (StmtExpr expr)))])])
-            else fail $ show (getExprPosition e2) ++ ": expression " ++ printTree e2 ++ " must have the same type of the expression " ++ printTree e3 ++ " " ++ show (getExprPosition e2) ++ "; at the moment there is a " ++ printTree t2 ++ " type and a " ++ printTree t3 ++ " type"
+            else fail $ show (getExprPosition e2) ++ ": expression " ++ printTree e2 ++ " must have the same type of the expression " ++ printTree e3 ++ "; at the moment there is a " ++ printTree t2 ++ " type and a " ++ printTree t3 ++ " type"
         else fail $ show (getExprPosition e1) ++ ": expression " ++ printTree e1 ++ " must have " ++ printTree tBool ++ " type"
 
     -- Left expressions.
@@ -501,6 +501,9 @@ inferExpr env expr =
     -- Left expressions. 
     ExprLeft lexpr -> inferLExpr env lexpr 
 
+    -- Ternary if.
+    ExprTernaryIf e1 e2 e3 -> inferTernaryIf env e1 e2 e3
+
     -- Base expressions (i.e., integers, floats, chars, strings, booleans) 
     ExprTrue _    -> Ok tBool
     ExprFalse _   -> Ok tBool
@@ -583,11 +586,24 @@ inferLExpr env@(sig, blocks) lexpr = do
             _                                -> fail $ "inferLExpr: tid not typecompound"
         _ -> fail $ show p ++ ": variable " ++ printTree ident ++ " not defined"
 
+-- Infer ternary if.
+inferTernaryIf :: Env -> Expr -> Expr -> Expr -> Err Type
+inferTernaryIf env e1 e2 e3 = do
+  t1 <- inferExpr env e1
+  t2 <- inferExpr env e2
+  t3 <- inferExpr env e3
+  if t1 == tBool
+    then do
+      if t2 == t3
+        then Ok t2
+        else fail $ show (getExprPosition e2) ++ ": expression " ++ printTree e2 ++ " must have the same type of the expression " ++ printTree e3 ++ "; at the moment there is a " ++ printTree t2 ++ " type and a " ++ printTree t3 ++ " type"
+    else fail $ show (getExprPosition e1) ++ ": expression " ++ printTree e1 ++ " must have " ++ printTree tBool ++ " type"
+
 -- Infer arithmetic unary operator.
 inferArithUnOp :: Env -> Expr -> Expr -> Err Type
 inferArithUnOp env expr e = do
   t <- inferExpr env e
-  if ((getInnerType t) == tInt) || ((getInnerType t) == tFloat) -- only ints and floats are allowed
+  if ((getInnerType t) `isCompatibleWithAny` [tBool,tChar,tInt, tFloat]) -- ASSUMPTION: void and string are not allowed
     then Ok t
     else fail $ show (getExprPosition e) ++ ": " ++ printTree e ++ " has type " ++ printTree t ++ " which must be " ++ printTree [tInt, tFloat]
 
@@ -596,11 +612,11 @@ inferArithBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
 inferArithBinOp env expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
-  if ((getInnerType t1) `isCompatibleWithAny` [tInt, tFloat]) && -- only ints and floats are allowed
-     ((getInnerType t2) `isCompatibleWithAny` [tInt, tFloat]) &&
+  if ((getInnerType t1) `isCompatibleWithAny` [tBool,tChar,tInt, tFloat]) && -- ASSUMPTION: void and string are not allowed
+     ((getInnerType t2) `isCompatibleWithAny` [tBool,tChar,tInt, tFloat]) &&
      areCompatible (getInnerType t1) (getInnerType t2)
      then getMostGeneric t1 t2
-     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ printTree t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ printTree t2 ++ " (only int and float allowed)"
+     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ printTree t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ printTree t2 ++ " (void and string are not allowd)"
 
 -- Infer arithmetic integer division or float division operator.
 inferArithBinOpDiv :: Env -> Expr -> Expr -> Expr -> Type -> Err Type
@@ -617,7 +633,7 @@ inferArithBinOpMod :: Env -> Expr -> Expr -> Expr -> Err Type
 inferArithBinOpMod env expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
-  if ((getInnerType t1) == tInt) && -- only ints are allowed
+  if ((getInnerType t1) == tInt) && -- ASSUMPTION: only ints are allowed
      ((getInnerType t2) == tInt) &&
      areCompatible (getInnerType t1) (getInnerType t2)
      then getMostGeneric t1 t2
@@ -628,7 +644,7 @@ inferRelBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
 inferRelBinOp env expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
-  if ((getInnerType t1) `isCompatibleWithAny` [tBool, tInt, tFloat, tChar, tString]) &&  -- only ints, floats, chars and strings are allowed
+  if ((getInnerType t1) `isCompatibleWithAny` [tBool, tInt, tFloat, tChar, tString]) &&  -- ASSUMPTION: only ints, floats, chars and strings are allowed
      ((getInnerType t2) `isCompatibleWithAny` [tBool, tInt, tFloat, tChar, tString]) &&  -- the same as above
      areCompatible (getInnerType t1) (getInnerType t2)
      then Ok tBool
@@ -647,7 +663,7 @@ inferBoolBinOp :: Env -> Expr -> Expr -> Expr -> Err Type
 inferBoolBinOp env expr e1 e2 = do
   t1 <- inferExpr env e1
   t2 <- inferExpr env e2
-  if ((getInnerType t1) == tBool) && ((getInnerType t2) == tBool) -- only booleans are allowed
+  if ((getInnerType t1) == tBool) && ((getInnerType t2) == tBool) -- ASSUMPTION: only booleans are allowed
     then Ok tBool  
     else fail $ show (getExprPosition e1) ++ ": invalid type operands in-between " ++ printTree e1 ++ " having type " ++ printTree t1 ++ " and " ++ printTree e2 ++ " " ++ show (getExprPosition e2) ++ " having type " ++ printTree t2 ++ " (only bool allowed)"
 
@@ -709,9 +725,10 @@ addVar context (m,ident) t = Map.insert ident (m,t) context
 -- T1 is compatible with T2?
 isCompatibleWith :: Type -> Type -> Bool
 t1 `isCompatibleWith` t2
-  | t1 == t2 = True
-  | t1 == tInt    = t2 == tFloat
-  | t1 == tChar = t2 `elem` [tInt,tFloat,tString]
+  | t1 == t2          = True
+  | t1 == tBool       = t2 `elem` [tChar,tInt,tFloat,tString]
+  | t1 == tInt        = t2 == tFloat
+  | t1 == tChar       = t2 `elem` [tInt,tFloat,tString]
   | otherwise         = False
 
 -- T is compatible with any of [T1,..Tn]?
@@ -752,6 +769,7 @@ getExprPosition e =
 
     ExprAssign lexpr op rexpr -> getLExprPosition lexpr
     ExprLeft lexpr            -> getLExprPosition lexpr
+    ExprTernaryIf e1 e2 e3    -> getExprPosition e1
 
     ExprBoolNot rexpr         -> getExprPosition rexpr
     ExprNegation rexpr        -> getExprPosition rexpr
