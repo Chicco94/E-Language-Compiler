@@ -8,8 +8,8 @@ def f (val h :int):float {
 def PP :int := 1;
 def KK :int := 3+PP;
 var w:int := 5;
-var u :[2]int := [w*(KK+1-r),-w];
 var r :int := 2;
+var u :[2]int := [w*(KK+1-r),-w];
 var a :int := u[r-1];
 var mat :[2,2]int :=[[1,2+KK],[3,4]];
 var pi :int* := &w;

@@ -504,7 +504,7 @@ module TypeChecker where
                   then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
                   else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree tlexpr ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree (getInnerType texpr)
               _          -> do 
-                if checkTypes tlexpr texpr && (getInnerType tlexpr == tBool) && (getInnerType texpr == tBool)
+                if checkTypes tlexpr texpr && (getInnerType tlexpr == tInt) && (getInnerType texpr == tInt)
                   then Ok (env, prog ++ [(PDefs [TypedDecl (ADecl (getInnerType tlexpr) (DeclStmt (StmtExpr (ExprAssign lexpr op expr))))])])
                   else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr  ++ " has type " ++ printTree tlexpr ++ " and the (right) expression " ++ printTree expr ++ " has type " ++ printTree texpr
       else fail $ show (getLExprPosition lexpr) ++ ": the (left) expression " ++ printTree lexpr ++ " has a pointer level " ++ show ((getLeftLevel lexpr) + (getTypeLevel tlexpr)) ++ " which is incompatible with the (right) expression " ++ printTree expr ++ " that has pointer level " ++ show ((getInitLevel expr) + (getTypeLevel texpr)) 
