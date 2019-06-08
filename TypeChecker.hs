@@ -240,25 +240,25 @@ module TypeChecker where
   checkStmtInit (env@(sig, blocks@((blockType, context):xs)), prog) pident@(PIdent (p, ident)) guard cexpr mut = case guard of
     GuardVoid        -> fail $ show p ++ ": variable " ++ printTree ident ++ " must have a type (" ++ printTree TypeVoid ++ " is not allowed)"
     GuardType tguard -> case tguard of
-      TypeCompoundType (CompoundTypeArrayType (ArrDefBase pints basicType)) -> case checkArrayInitBounds (getBoundsFromPInts pints) cexpr of
+      TypeCompoundType (CompoundTypeArrayType (ArrDefBase pints basicType)) -> case checkArrayInitBounds blocks (getBoundsFromPInts pints) cexpr of
         True  -> case inferArray env cexpr tguard of 
           Ok tarr -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), prog ++ [(PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))])])
-          Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree tguard ++ " but there is an expression with type " ++ s ++ " in its initialization"
+          Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree tguard ++ " but there is an expression that does not match its type or there is a non-initialized variable in the initialization of such array"
         False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but its initialization does not match such bounds"
-      TypeCompoundType (CompoundTypeArrayType (ArrDefPtr pints ptr)) -> case checkArrayInitBounds (getBoundsFromPInts pints) cexpr of
+      TypeCompoundType (CompoundTypeArrayType (ArrDefPtr pints ptr)) -> case checkArrayInitBounds blocks (getBoundsFromPInts pints) cexpr of
         True  -> case inferArray env cexpr tguard of 
                                  Ok tarr -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), prog ++ [(PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))])])
-                                 Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree tguard ++ " but there is an expression with type " ++ s ++ " in its initialization"
+                                 Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree tguard ++ " but there is an expression that does not match its type or there is a non-initialized variable in the initialization of such array"
         False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but its initialization does not match such bounds"
-      TypeCompoundType (CompoundTypeArrayType (ArrDefBaseC pints basicType)) -> case checkArrayInitBounds (getBoundsFromPInts pints) cexpr of
+      TypeCompoundType (CompoundTypeArrayType (ArrDefBaseC pints basicType)) -> case checkArrayInitBounds blocks (getBoundsFromPInts pints) cexpr of
         True  -> case inferArray env cexpr tguard of 
           Ok tarr -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), prog ++ [(PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))])])
-          Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree tguard ++ " but there is an expression with type " ++ s ++ " in its initialization"
+          Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree tguard ++ " but there is an expression that does not match its type or there is a non-initialized variable in the initialization of such array"
         False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but its initialization does not match such bounds"
-      TypeCompoundType (CompoundTypeArrayType (ArrDefPtrC pints ptr)) -> case checkArrayInitBounds (getBoundsFromPInts pints) cexpr of
+      TypeCompoundType (CompoundTypeArrayType (ArrDefPtrC pints ptr)) -> case checkArrayInitBounds blocks (getBoundsFromPInts pints) cexpr of
         True  -> case inferArray env cexpr tguard of 
                                  Ok tarr -> Ok $ ((sig, ((blockType, addVar context (mut, ident) tguard):blocks)), prog ++ [(PDefs [TypedDecl (ADecl tguard (DeclStmt (StmtVarInit pident guard cexpr)))])])
-                                 Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree tguard ++ " but there is an expression with type " ++ s ++ " in its initialization"
+                                 Bad s   -> fail $ show p ++ ": array " ++ printTree ident ++ " has type " ++ printTree tguard ++ " but there is an expression that does not match its type or there is a non-initialized variable in the initialization of such array"
         False -> fail $ show p ++ ": array " ++ printTree ident ++ " has bounds " ++ show (getBoundsFromPInts pints) ++ " but its initialization does not match such bounds"
   
       TypeCompoundType (CompoundTypePtr ptr) -> do
@@ -965,7 +965,7 @@ module TypeChecker where
                            Ok t -> case expr of
                                      ExprReference _ -> [(1, t)]
                                      _               -> [((getInitLevel expr), t)]
-                           _    -> []
+                           _    -> [(0, tVoid)] -- put void if the variable is not initialized
   
   -- Infer arrays.
   inferArrs :: Env -> [ComplexExpr] -> [(Int, Type)]
@@ -977,28 +977,33 @@ module TypeChecker where
                            Ok t -> case expr of 
                                      ExprReference _ -> [(1, t)] ++ inferArrs env xs
                                      _               -> [((getInitLevel expr), t)] ++ inferArrs env xs
-                           _    -> []  ++ inferArrs env xs
+                           _    -> [(0, tVoid)]  ++ inferArrs env xs -- put void if the variable is not initialized
   
   -- Check array initialization bounds.
-  checkArrayInitBounds :: [Int] -> ComplexExpr -> Bool
-  checkArrayInitBounds [] _ = True
-  checkArrayInitBounds (int:ints) arr =
+  checkArrayInitBounds :: [(BlockType, Context)] -> [Int] -> ComplexExpr -> Bool
+  checkArrayInitBounds _ [] _ = True
+  checkArrayInitBounds blocks (int:ints) arr =
     case arr of
       ExprArray multiArr@(x:xs) -> (checkLengthArray int multiArr) && 
-                                   (checkArrayInitBounds ints x) && 
-                                   (checkNestedArrayBounds ((int-1):ints) xs)
-      ExprSimple expr -> False
+                                   (checkArrayInitBounds blocks ints x) && 
+                                   (checkNestedArrayBounds blocks ((int-1):ints) xs)
+      ExprSimple (ExprReference (LExprId (PIdent (p, id)))) -> do
+        case lookupVar blocks id of
+          Ok (m,t) -> if (getBoundsFromType t) == (int:ints) then True
+                                                             else False
+          _        -> False
+      _ -> False
   
   -- Check nested array bounds.
-  checkNestedArrayBounds :: [Int] -> [ComplexExpr] -> Bool
-  checkNestedArrayBounds _ [] = True
-  checkNestedArrayBounds (int:ints) (x:xs) =
+  checkNestedArrayBounds :: [(BlockType, Context)] -> [Int] -> [ComplexExpr] -> Bool
+  checkNestedArrayBounds _ _ [] = True
+  checkNestedArrayBounds blocks (int:ints) (x:xs) =
     case x of
       ExprArray multiArr@(y:ys) -> (checkLengthArray int (x:xs))  && 
                                    (checkLengthArray (head ints) (y:ys)) && 
-                                   (checkArrayInitBounds (tail ints) y) && 
-                                   (checkNestedArrayBounds (((head ints)-1):(tail ints)) ys) && 
-                                   (checkNestedArrayBounds ((int-1):ints) xs)
+                                   (checkArrayInitBounds blocks (tail ints) y) && 
+                                   (checkNestedArrayBounds blocks (((head ints)-1):(tail ints)) ys) && 
+                                   (checkNestedArrayBounds blocks ((int-1):ints) xs)
       ExprSimple expr -> True
   
   -- Get bounds from PIntegers.
