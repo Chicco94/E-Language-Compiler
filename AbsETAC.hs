@@ -46,6 +46,9 @@ data TAC
   | AssignV2T Temp Var   Temp
   | AssignT2P Temp
 
+-- conversioni
+  | Convert Temp Temp
+
 -- operazioni varie
   | BinOp  BinaryOperator Temp Temp Temp
   | UnaryOp UnaryOperator Temp Temp

@@ -34,6 +34,8 @@ instance Show TAC where
     AssignT2T   tmp1 tmp2                -> "\t" ++ show tmp1 ++ " = " ++ show tmp2 ++ "\n"
     AssignV2T   temp var  (Temp (pos,t)) -> "\t" ++ show temp ++ " = " ++ show var  ++ (if pos /= -1 then "[t" ++ show pos ++ "]\n" else "\n")
     AssignT2P   temp                     -> "\t" ++ "param_"  ++ show temp ++ "\n"
+
+    Convert tmp1@(Temp (p1,t1)) tmp2@(Temp (p2,t2)) -> "\t" ++ show tmp2 ++ " = convert-" ++ show t1 ++ "-to-" ++ show t2 ++" "++ show tmp1 ++ "\n"
     
     BinOp BOpPlus      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2 ++ "\n"
     BinOp BOpMinus     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " - " ++ show temp2 ++ "\n"
