@@ -112,8 +112,7 @@ transExpr x = case x of
   ExprAddition expr -> failure x
   ExprPower expr1 expr2 -> failure x
   ExprMul expr1 expr2 -> failure x
-  ExprFloatDiv expr1 expr2 -> failure x
-  ExprIntDiv expr1 expr2 -> failure x
+  ExprDiv expr1 expr2 -> failure x
   ExprReminder expr1 expr2 -> failure x
   ExprModulo expr1 expr2 -> failure x
   ExprReference lexpr -> failure x
@@ -151,8 +150,7 @@ transAssignOperator x = case x of
   OpPlus -> failure x
   OpMinus -> failure x
   OpMul -> failure x
-  OpIntDiv -> failure x
-  OpFloatDiv -> failure x
+  OpDiv -> failure x
   OpRemainder -> failure x
   OpModulo -> failure x
   OpPower -> failure x

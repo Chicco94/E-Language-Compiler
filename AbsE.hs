@@ -96,8 +96,7 @@ data Expr
     | ExprAddition Expr
     | ExprPower Expr Expr
     | ExprMul Expr Expr
-    | ExprFloatDiv Expr Expr
-    | ExprIntDiv Expr Expr
+    | ExprDiv Expr Expr
     | ExprReminder Expr Expr
     | ExprModulo Expr Expr
     | ExprReference LExpr
@@ -133,15 +132,14 @@ data AssignOperator
     | OpPlus
     | OpMinus
     | OpMul
-    | OpIntDiv
-    | OpFloatDiv
+    | OpDiv
     | OpRemainder
     | OpModulo
     | OpPower
   deriving (Eq, Ord, Show, Read)
 
 data Type = TypeBasicType BasicType | TypeCompoundType CompoundType
-  deriving (Eq, Ord, Read)
+deriving (Eq, Ord, Read)
 
 data BasicType
     = TypeBool | TypeFloat | TypeInt | TypeVoid | TypeChar | TypeString
@@ -156,10 +154,10 @@ data ArrayType
     | ArrDefBaseC [PInteger] BasicType
     | ArrDefPtr [PInteger] Ptr
     | ArrDefPtrC [PInteger] Ptr
-  deriving (Eq, Ord, Read)
+    deriving (Eq, Ord, Read)
 
 data Ptr = Pointer BasicType | Pointer2Pointer Ptr
-  deriving (Eq, Ord, Read)
+deriving (Eq, Ord, Read)
 
 
 instance Show PTrue     where show (PTrue     (_, val)) = filter (/='\"') (show val)

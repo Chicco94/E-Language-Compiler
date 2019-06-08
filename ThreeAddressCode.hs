@@ -234,16 +234,6 @@ module ThreeAddressCode where
         -- chiamata di funzione
         ExprFunCall  fun params  -> (generateCallFunc env fun params type_) 
 
-        -- operatore ternario 
-        ExprTernaryIf  bexpr et ef -> do
-          let env1@(p1,t1,v1,l1,s1) = addTACList (generateExpr env (TypeBasicType TypeBool) bexpr) [IfFalse Empty (Label ("if_false",labels) )]
-          let env2@(p2,t2@(Temp (id2,t)),v2,l2,s2) = (generateExpr ([],t1,v1,l1,s1) type_ et)
-          let env3@(p3,t3@(Temp (id3,t)),v3,l3,s3) = (generateExpr ([],t2,v2,l2,s2) type_ ef)
-          case id2 - id3 of
-            x | x > 0 -> ([Lbl (Label ("end_if",labels) ),AssignT2T (Temp ((id2),t)) t3]++p3                                                                                                 ++p2++p1,(Temp ((id2),t)),v3,l3,s3)
-            x | x < 0 -> ([Lbl (Label ("end_if",labels) )]                              ++p3++[Lbl (Label ("if_false",labels)),Goto (Label ("end_if",labels) ),AssignT2T (Temp ((id3),t)) t2]++p2++p1,(Temp ((id3),t)),v3,l3,s3)
-            _         -> ([Lbl (Label ("end_if",labels) )]                              ++p3++[Lbl (Label ("if_false",labels)),Goto (Label ("end_if",labels) )]                              ++p2++p1,t3              ,v3,l3,s3)
-
         -- not
         ExprBoolNot   expr       -> notExpr (generateExpr env type_ expr)
 
@@ -252,11 +242,7 @@ module ThreeAddressCode where
         ExprNegation (ExprFloat val) -> (addTACList env [AssignFloatTemp  (Temp (t_c+1,(TypeBasicType TypeFloat) )) (float2PFloat (-(pFloat2Float val)))])
         ExprNegation  expr       -> unaryExpr (generateExpr env type_ expr) type_ UOpMinus
         ExprAddition  expr       -> unaryExpr (generateExpr env type_ expr) type_ UOpPlus
-
-        -- deref
-        ExprReference (LExprId id@(PIdent (pos,name))) -> (addTACList env1 [DerefOp UOpDeref (Temp (t_c+1,(getPointerFromType type_v)))  var ])
-          where (env1@(_, _, new_variables,_,_), var@(Var (_,_,type_v))) = findVar env (Var (name,pos,undefined))
-        
+       
         -- binary operations
         -- arithmetic
         (ExprPower expr1 expr2) -> do
@@ -265,21 +251,20 @@ module ThreeAddressCode where
         ExprMul      expr1 expr2 -> do
           let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
           binaryExpr  (generateExpr env1 type_ expr2) type_ BOpMul       r1
-        ExprFloatDiv expr1 expr2 -> do
+        ExprDiv expr1 expr2 -> do
           let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
-          binaryExpr  (generateExpr env1 type_ expr2) type_ BOpFloatDiv  r1
+          binaryExpr  (generateExpr env1 type_ expr2) type_ BOpDiv  r1
+        ExprReminder expr1 expr2 -> do
+            let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
+            binaryExpr  (generateExpr env1 type_ expr2) type_ BOpRemainder r1
         ExprModulo   expr1 expr2 -> do
           let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
           binaryExpr  (generateExpr env1 type_ expr2) type_ BOpModulo    r1
-        ExprIntDiv   expr1 expr2 -> do
-          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
-          binaryExpr  (generateExpr env1 type_ expr2) type_ BOpIntDiv    r1
+        ExprReference (LExprId id@(PIdent (pos,name))) -> (addTACList env1 [DerefOp UOpDeref (Temp (t_c+1,(getPointerFromType type_v)))  var ])
+          where (env1@(_, _, new_variables,_,_), var@(Var (_,_,type_v))) = findVar env (Var (name,pos,undefined))
         ExprPlus     expr1 expr2 -> do
           let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
           binaryExpr  (generateExpr env1 type_ expr2) type_ BOpPlus      r1 
-        ExprReminder expr1 expr2 -> do
-          let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
-          binaryExpr  (generateExpr env1 type_ expr2) type_ BOpRemainder r1
         ExprMinus    expr1 expr2 -> do
           let env1@(_,r1,_,_,_) = (generateExpr env type_ expr1)
           binaryExpr  (generateExpr env1 type_ expr2) type_ BOpMinus     r1  
@@ -313,6 +298,17 @@ module ThreeAddressCode where
           let env1@(program1, last_temp1, variables1, labels1,_) = (generateExpr env type_ expr1)
           let (program2, last_temp2@(Temp (t_c,t_t)), variables2, labels2,_) = (generateExpr (addTACList env1 [If Empty (Label ("false_and", labels1))]) type_ expr2)
           ([Lbl (Label ("end_and",labels1)),AssignFalseTemp (Temp (t_c+1,(TypeBasicType TypeBool))) (PFalse ((0,0),"false")), Lbl (Label ("false_and",labels1) ),Goto (Label ("end_and",labels1) ), AssignTrueTemp  (Temp (t_c+1,(TypeBasicType TypeBool))) (PTrue ((0,0),"true")), If (BoolOp BOpEq last_temp2 (TempF (PFalse ((0,0),"false")))) (Label ("false_and", labels1) )]++program2,(Temp (t_c+1,(TypeBasicType TypeBool))), variables2, labels2+1,scope)       
+
+        -- operatore ternario 
+        ExprTernaryIf  bexpr et ef -> do
+          let env1@(p1,t1,v1,l1,s1) = addTACList (generateExpr env (TypeBasicType TypeBool) bexpr) [IfFalse Empty (Label ("if_false",labels) )]
+          let env2@(p2,t2@(Temp (id2,t)),v2,l2,s2) = (generateExpr ([],t1,v1,l1,s1) type_ et)
+          let env3@(p3,t3@(Temp (id3,t)),v3,l3,s3) = (generateExpr ([],t2,v2,l2,s2) type_ ef)
+          case id2 - id3 of
+            x | x > 0 -> ([Lbl (Label ("end_if",labels) ),AssignT2T (Temp ((id2),t)) t3]++p3                                                                                                 ++p2++p1,(Temp ((id2),t)),v3,l3,s3)
+            x | x < 0 -> ([Lbl (Label ("end_if",labels) )]                              ++p3++[Lbl (Label ("if_false",labels)),Goto (Label ("end_if",labels) ),AssignT2T (Temp ((id3),t)) t2]++p2++p1,(Temp ((id3),t)),v3,l3,s3)
+            _         -> ([Lbl (Label ("end_if",labels) )]                              ++p3++[Lbl (Label ("if_false",labels)),Goto (Label ("end_if",labels) )]                              ++p2++p1,t3              ,v3,l3,s3)
+
 
   -- genera ogni espressione binaria usando l'utlima variabile temporanea
   -- e una passata come parametro
@@ -360,8 +356,7 @@ module ThreeAddressCode where
                                     OpPlus      -> BOpPlus       
                                     OpMinus     -> BOpMinus     
                                     OpMul       -> BOpMul        
-                                    OpIntDiv    -> BOpIntDiv     
-                                    OpFloatDiv  -> BOpFloatDiv   
+                                    OpDiv       -> BOpDiv     
                                     OpRemainder -> BOpRemainder 
                                     OpModulo    -> BOpModulo    
                                     OpPower     -> BOpPower     

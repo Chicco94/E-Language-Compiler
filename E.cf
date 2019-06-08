@@ -82,7 +82,6 @@ ExprRange.      Range    ::= Expr ".." Expr ;
 
 
 ExprAssign.     Expr     ::= LExpr  AssignOperator  Expr1  ;
---ExprTernaryIf.  Expr ::= "(" Expr ")" "?" Expr ":" Expr ;
 
 
 -- A statement is a declaration.
@@ -118,8 +117,10 @@ ExprAddition.   Expr14  ::= "+" Expr15 ;
 ExprPower.      Expr13 ::= Expr14 "**"  Expr13 ;
 
 ExprMul.        Expr12 ::= Expr12 "*"  Expr13 ;
-ExprFloatDiv.   Expr12 ::= Expr12 "/"  Expr13 ;
-ExprIntDiv.     Expr12 ::= Expr12 "//" Expr13 ;
+
+ExprDiv.      Expr12 ::= Expr12 "/"  Expr13 ;
+
+
 ExprReminder.   Expr12 ::= Expr12 "%"  Expr13 ;
 ExprModulo.     Expr12 ::= Expr12 "%%" Expr13 ;
 
@@ -131,7 +132,7 @@ ExprLt.         Expr9  ::= Expr9  "<"   Expr10 ;
 ExprGt.         Expr9  ::= Expr9  ">"   Expr10 ;
 ExprLtEq.       Expr9  ::= Expr9  "<="  Expr10 ;
 ExprGtEq.       Expr9  ::= Expr9  ">="  Expr10 ;
-  
+
 ExprEq.         Expr8  ::= Expr8  "=="  Expr9 ;
 ExprNeq.        Expr8  ::= Expr8  "!="  Expr9 ;
 
@@ -139,9 +140,7 @@ ExprAnd.        Expr4  ::= Expr4  "&&"  Expr5 ;
 
 ExprOr.         Expr3  ::= Expr3  "||"  Expr4 ;
 ExprTernaryIf.  Expr2  ::= Expr3 "?" Expr ":" Expr2;
--- https://github.com/BNFC/bnfc/blob/master/examples/C/C.cf riga 244
--- mi dava problemi con assegnamento, errore di parsing
--- con queste precedenze NON abbiamo bisogno delle parentesi in teoria
+
 
 coercions Expr 17 ;
 separator Expr "," ;
@@ -154,11 +153,10 @@ OpAnd.        AssignOperator ::= "&=" ;
 OpPlus.       AssignOperator ::= "+=" ;
 OpMinus.      AssignOperator ::= "-=" ;
 OpMul.        AssignOperator ::= "*=" ;
-OpIntDiv.     AssignOperator ::= "//=" ;
-OpFloatDiv.   AssignOperator ::= "/=" ;
+OpDiv.        AssignOperator ::= "/=" ;
 OpRemainder.  AssignOperator ::= "%=" ;
 OpModulo.     AssignOperator ::= "%%=" ;
-OpPower.      AssignOperator ::= "**=" ;
+OpPower.      AssignOperator ::= "^=" ;
 
 
 rules Type ::= BasicType | CompoundType ;

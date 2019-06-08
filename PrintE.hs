@@ -213,8 +213,7 @@ instance Print Expr where
     ExprAddition expr -> prPrec i 14 (concatD [doc (showString "+"), prt 15 expr])
     ExprPower expr1 expr2 -> prPrec i 13 (concatD [prt 14 expr1, doc (showString "**"), prt 13 expr2])
     ExprMul expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "*"), prt 13 expr2])
-    ExprFloatDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "/"), prt 13 expr2])
-    ExprIntDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "//"), prt 13 expr2])
+    ExprDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "/"), prt 13 expr2])
     ExprReminder expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "%"), prt 13 expr2])
     ExprModulo expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "%%"), prt 13 expr2])
     ExprReference lexpr -> prPrec i 11 (concatD [doc (showString "&"), prt 0 lexpr])
@@ -259,11 +258,10 @@ instance Print AssignOperator where
     OpPlus -> prPrec i 0 (concatD [doc (showString "+=")])
     OpMinus -> prPrec i 0 (concatD [doc (showString "-=")])
     OpMul -> prPrec i 0 (concatD [doc (showString "*=")])
-    OpIntDiv -> prPrec i 0 (concatD [doc (showString "//=")])
-    OpFloatDiv -> prPrec i 0 (concatD [doc (showString "/=")])
+    OpDiv -> prPrec i 0 (concatD [doc (showString "/=")])
     OpRemainder -> prPrec i 0 (concatD [doc (showString "%=")])
     OpModulo -> prPrec i 0 (concatD [doc (showString "%%=")])
-    OpPower -> prPrec i 0 (concatD [doc (showString "**=")])
+    OpPower -> prPrec i 0 (concatD [doc (showString "^=")])
 
 instance Print Type where
   prt i e = case e of
