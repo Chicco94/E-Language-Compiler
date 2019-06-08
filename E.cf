@@ -8,7 +8,7 @@ position token PIdent (letter (letter | digit | '_' | '\'')*) ;	-- function and 
 position token PInteger digit+ ;								-- integer
 position token PFloat digit+ '.' digit+ ;						-- float
 position token PChar '\'' char '\'' ;							-- char
-position token PString '"' ((char - ["\"\\"]) | ('\\' ["\"\\nt"]))* '"' ;							-- string
+position token PString '"' (char - ["\""])+ '"' ;				-- string
 
 -- A program is a sequence of declarations.
 PDefs.     Program ::= [Decl] ;
