@@ -195,13 +195,7 @@ module ThreeAddressCode where
     case expr of
         -- assign val to variable
         ExprAssign   (LExprId id) op re -> generateAssign env type_ id op [re] (Temp (-1,(TypeBasicType TypeInt)))
-        -- assign val to array
-        {- LO PRENDO CON IL CASO PIÙ GENERICO
-        ExprAssign   (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing expr_step ))) op re    -> do
-          let env2@(_,temp1,_,_,_) = generateExpr env1 (TypeBasicType TypeInt) (ExprMul expr_step (ExprInt (int2PInt (sizeOf type_v)))) -- (step)*(sizeOf type_v)
-          generateAssign env2 type_ id op [re] temp1 
-            where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))-}
-        -- assign val to multiarray
+        -- assign val to array/multiarray
         ExprAssign   (LExprArr (LArrExpr id@(PIdent (pos,name)) a)) op re    -> do
           let env2@(_,temp1@(Temp (t_c1,t_t1)),_,_,_) = (getStep env1 a (type2Dims type_v)) -- calcolo e controllo gli indici
           let env3@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList (env2) [AssignIntTemp (Temp (t_c1+1,(TypeBasicType TypeInt))) (int2PInt (sizeOf type_v)), BinOp   BOpMul (Temp (t_c1+2,t_t1)) (Temp (t_c1+1,(TypeBasicType TypeInt))) temp1]) -- (step)*(sizeOf type_v)
@@ -211,12 +205,7 @@ module ThreeAddressCode where
         -- use of variable
         ExprLeft     (LExprId id@(PIdent (pos,name)))                   -> (addTACList env1 [AssignV2T   (Temp (t_c+1,type_v)) var (Temp (-1,(TypeBasicType TypeInt)))])
           where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
-        -- use of array 
-        ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) (ArrSing expr_step)))  -> do 
-          let env2@(_,step_temp,_,_,_) = generateExpr env1 (TypeBasicType TypeInt) (ExprMul expr_step (ExprInt (int2PInt (sizeOf type_v))))
-          (addTACList env2 [AssignV2T   (Temp (t_c+1,type_v)) var step_temp]) 
-            where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
-        -- use of multiarray
+        -- use of array/multiarray
         ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) a)) -> do
           let env2@(_,temp1@(Temp (t_c1,t_t1)),_,_,_) = (getStep env1 a  (type2Dims type_v))
           let env3@(_,temp2@(Temp (t_c2,t_t2)),_,_,_) = (addTACList (addTACList (env2) [AssignIntTemp (Temp (t_c1+1,(TypeBasicType TypeInt))) (int2PInt (sizeOf type_v))]) [BinOp   BOpMul (Temp (t_c1+2,t_t1)) (Temp (t_c1+1,(TypeBasicType TypeInt))) temp1])
@@ -308,7 +297,7 @@ module ThreeAddressCode where
             x | x > 0 -> ([Lbl (Label ("end_if",labels) ),AssignT2T (Temp ((id2),t)) t3]++p3                                                                                                 ++p2++p1,(Temp ((id2),t)),v3,l3,s3)
             x | x < 0 -> ([Lbl (Label ("end_if",labels) )]                              ++p3++[Lbl (Label ("if_false",labels)),Goto (Label ("end_if",labels) ),AssignT2T (Temp ((id3),t)) t2]++p2++p1,(Temp ((id3),t)),v3,l3,s3)
             _         -> ([Lbl (Label ("end_if",labels) )]                              ++p3++[Lbl (Label ("if_false",labels)),Goto (Label ("end_if",labels) )]                              ++p2++p1,t3              ,v3,l3,s3)
-
+        _-> env
 
   -- genera ogni espressione binaria usando l'utlima variabile temporanea
   -- e una passata come parametro
@@ -403,7 +392,7 @@ module ThreeAddressCode where
   -- data una lista di espressioni ritorna l'assegnamento ai parametri associati
   generateParams :: Env -> [Expr] -> Env
   generateParams env [] = env
-  generateParams env (param:params) = generateParams (addTACList (generateExpr env undefined param) [AssignT2P undefined]) params
+  generateParams env (param:params) = generateParams (addTACList (generateExpr env (TypeBasicType TypeVoid) param) [AssignT2P undefined]) params
   
 
 
@@ -483,8 +472,8 @@ module ThreeAddressCode where
   -- restituisce le dimensioni di un vettore/matrice
   type2Dims :: Type -> ([PInteger],Bool)
   type2Dims (TypeBasicType _) = ([],False)
-  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefBase  dims _))) = ((reverse dims),True)
-  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefPtr   dims _))) = ((reverse dims),True)
+  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefBase  dims _))) = ((reverse dims),False)
+  type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefPtr   dims _))) = ((reverse dims),False)
   type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefBaseC dims _))) = ((reverse dims),True)
   type2Dims (TypeCompoundType (CompoundTypeArrayType (ArrDefPtrC  dims _))) = ((reverse dims),True)
 

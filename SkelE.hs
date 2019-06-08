@@ -56,8 +56,8 @@ transArg x = case x of
 transModality :: Modality -> Result
 transModality x = case x of
   ModEmpty -> failure x
-  ModVar -> failure x
-  ModDef -> failure x
+  ModVal -> failure x
+  ModConst -> failure x
   ModRef -> failure x
 transGuard :: Guard -> Result
 transGuard x = case x of

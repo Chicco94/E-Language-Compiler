@@ -42,7 +42,7 @@ data AnnotatedDecl = ADecl Type Decl
 data Arg = ArgDecl Modality PIdent Guard
   deriving (Eq, Ord, Show, Read)
 
-data Modality = ModEmpty | ModVar | ModDef | ModRef
+data Modality = ModEmpty | ModVal | ModConst | ModRef
   deriving (Eq, Ord, Show, Read)
 
 data Guard = GuardVoid | GuardType Type

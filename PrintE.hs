@@ -146,8 +146,8 @@ instance Print Arg where
 instance Print Modality where
   prt i e = case e of
     ModEmpty -> prPrec i 0 (concatD [])
-    ModVar -> prPrec i 0 (concatD [doc (showString "var")])
-    ModDef -> prPrec i 0 (concatD [doc (showString "def")])
+    ModVal -> prPrec i 0 (concatD [doc (showString "val")])
+    ModConst -> prPrec i 0 (concatD [doc (showString "const")])
     ModRef -> prPrec i 0 (concatD [doc (showString "ref")])
 
 instance Print Guard where
@@ -211,7 +211,7 @@ instance Print Expr where
     ExprBoolNot expr -> prPrec i 14 (concatD [doc (showString "!"), prt 15 expr])
     ExprNegation expr -> prPrec i 14 (concatD [doc (showString "-"), prt 15 expr])
     ExprAddition expr -> prPrec i 14 (concatD [doc (showString "+"), prt 15 expr])
-    ExprPower expr1 expr2 -> prPrec i 13 (concatD [prt 14 expr1, doc (showString "**"), prt 13 expr2])
+    ExprPower expr1 expr2 -> prPrec i 13 (concatD [prt 14 expr1, doc (showString "^"), prt 13 expr2])
     ExprMul expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "*"), prt 13 expr2])
     ExprDiv expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "/"), prt 13 expr2])
     ExprReminder expr1 expr2 -> prPrec i 12 (concatD [prt 12 expr1, doc (showString "%"), prt 13 expr2])

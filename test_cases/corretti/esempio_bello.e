@@ -1,5 +1,5 @@
 # meaningless example
-def f (var h :int):float {
+def f (val h :int):float {
   h+=1;
   h+=1;
   return (h + 2);
@@ -16,7 +16,7 @@ var pi :int* := &w;
 var x :float := 5+f(r);
 
 def main():void {
-  def g (var k :int):int {
+  def g (val k :int):int {
     k+=1;
     k+=1;
     return (k); # noi non gestiamo aritmetica tra interi e char
