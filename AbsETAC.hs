@@ -82,8 +82,7 @@ data BinaryOperator
   | BOpPlus
   | BOpMinus
   | BOpMul
-  | BOpIntDiv
-  | BOpFloatDiv
+  | BOpDiv
   | BOpRemainder
   | BOpModulo
   | BOpPower

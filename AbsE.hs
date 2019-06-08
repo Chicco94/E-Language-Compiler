@@ -139,7 +139,7 @@ data AssignOperator
   deriving (Eq, Ord, Show, Read)
 
 data Type = TypeBasicType BasicType | TypeCompoundType CompoundType
-deriving (Eq, Ord, Read)
+  deriving (Eq, Ord, Read)
 
 data BasicType
     = TypeBool | TypeFloat | TypeInt | TypeVoid | TypeChar | TypeString
@@ -157,7 +157,7 @@ data ArrayType
     deriving (Eq, Ord, Read)
 
 data Ptr = Pointer BasicType | Pointer2Pointer Ptr
-deriving (Eq, Ord, Read)
+  deriving (Eq, Ord, Read)
 
 
 instance Show PTrue     where show (PTrue     (_, val)) = filter (/='\"') (show val)

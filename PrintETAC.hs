@@ -35,14 +35,13 @@ instance Show TAC where
     AssignV2T   temp var  (Temp (pos,t)) -> "\t" ++ show temp ++ " = " ++ show var  ++ (if pos /= -1 then "[t" ++ show pos ++ "]\n" else "\n")
     AssignT2P   temp                     -> "\t" ++ "param_"  ++ show temp ++ "\n"
     
-    BinOp BOpPlus      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2  ++ "\n"
-    BinOp BOpMinus     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " - " ++ show temp2  ++ "\n"
-    BinOp BOpMul       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " * " ++ show temp2  ++ "\n"
-    BinOp BOpIntDiv    tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " // " ++ show temp2 ++ "\n"
-    BinOp BOpFloatDiv  tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " / " ++ show temp2  ++ "\n"
-    BinOp BOpRemainder tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " % " ++ show temp2  ++ "\n"
-    BinOp BOpModulo    tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " %% " ++ show temp2 ++ "\n"
-    BinOp BOpPower     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " **" ++ show temp2  ++ "\n"
+    BinOp BOpPlus      tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " + " ++ show temp2 ++ "\n"
+    BinOp BOpMinus     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " - " ++ show temp2 ++ "\n"
+    BinOp BOpMul       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " * " ++ show temp2 ++ "\n"
+    BinOp BOpDiv       tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " / " ++ show temp2 ++ "\n"
+    BinOp BOpRemainder tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " % " ++ show temp2 ++ "\n"
+    BinOp BOpModulo    tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " %% "++ show temp2 ++ "\n"
+    BinOp BOpPower     tempr temp1 temp2 -> "\t" ++ show tempr ++ " = " ++ show temp1 ++ " ^ " ++ show temp2 ++ "\n"
 
     UnaryOp UOpMinus         temp1 temp2 -> "\t" ++ show temp1 ++ " = 0 - "  ++ show temp2 ++ "\n"       
     UnaryOp UOpPlus          temp1 temp2 -> "\t" ++ show temp1 ++ " = 0 + "  ++ show temp2 ++ "\n"
