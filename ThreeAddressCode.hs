@@ -379,7 +379,8 @@ module ThreeAddressCode where
 
   addArgs :: Env -> [Arg] -> Env
   addArgs env [] = env
-  addArgs env@(_, _,vars,_,_) (arg@(ArgDecl _ (PIdent id@(pos,name)) guard):args)= (addArgs (fst (addVar env (Var (name,pos,getGuardType guard)))) args)
+  addArgs env@(_, _,vars,_,_) (arg@(ArgDecl ModRef (PIdent id@(pos,name)) guard):args)= (addArgs (fst (addVar env (Var (name,pos, (getPointerFromType (getGuardType guard)))))) args)
+  addArgs env@(_, _,vars,_,_) (arg@(ArgDecl _      (PIdent id@(pos,name)) guard):args)= (addArgs (fst (addVar env (Var (name,pos,getGuardType guard)))) args)
 
 
   -- chiamata di funzione, inserisce i valori negli slot param

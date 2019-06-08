@@ -8,7 +8,7 @@ import AbsE
 instance Show TAC where
   show t = case t of
     {-mettere \n dopo return-}
-    FuncDef (Var (name,pos@(row,col),type_))         -> "\n\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\t#Function:\n\tType: " ++ show type_ ++ "\n\tStatements:\n"
+    FuncDef (Var (name,pos@(row,col),type_))         -> "\n\n"++ filter (/='\"') (show name) ++ "@"++ show row ++ "-"++show col ++"\t#Function:\n\t#Type: " ++ show type_ ++ "\n\t#Statements:\n"
     Return  temp                                     -> "\treturn_" ++ show temp ++"\n"
     EndFunction                                      -> "\t#End Function\n\n"
     FuncCall (Var ("main",pos@(row,col),type_)) temp -> "\tcall main@"++ show row ++ "-"++show col++"\n"
