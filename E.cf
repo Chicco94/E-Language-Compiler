@@ -33,8 +33,8 @@ separator  Arg "," ;
 -- An argument declaration has a type and an identifier.
 ArgDecl.   Arg      ::= Modality PIdent Guard ;
 ModEmpty.  Modality ::= {-empty-} ;  -- no modality
-ModVar.    Modality ::= "var" ;      -- variable modality
-ModDef.    Modality ::= "def" ;      -- constant modality
+ModVal.    Modality ::= "val" ;      -- value modality
+ModConst.  Modality ::= "const" ;    -- constant modality
 ModRef.    Modality ::= "ref" ;      -- reference modality
 
 
@@ -99,47 +99,45 @@ ArrSing. AExpr ::= Expr ;
 ArrMul.  AExpr ::= AExpr "," Expr ;
 
 -- (Right) Expressions
-ExprLeft.       Expr17 ::= LExpr ;
-ExprInt.        Expr16 ::= PInteger ;
-ExprFloat.      Expr16 ::= PFloat ;
-ExprChar.       Expr16 ::= PChar ;
-ExprString.     Expr16 ::= PString ;
-ExprTrue.       Expr16 ::= PTrue ;
-ExprFalse.      Expr16 ::= PFalse ;
+ExprLeft.     Expr17 ::= LExpr ;
+ExprInt.      Expr16 ::= PInteger ;
+ExprFloat.    Expr16 ::= PFloat ;
+ExprChar.     Expr16 ::= PChar ;
+ExprString.   Expr16 ::= PString ;
+ExprTrue.     Expr16 ::= PTrue ;
+ExprFalse.    Expr16 ::= PFalse ;
 
-ExprFunCall.    Expr15 ::= PIdent "(" [Expr] ")" ;
+ExprFunCall.  Expr15 ::= PIdent "(" [Expr] ")" ;
 
-ExprBoolNot.    Expr14  ::= "!" Expr15 ;
+ExprBoolNot.  Expr14  ::= "!" Expr15 ;
 
-ExprNegation.   Expr14  ::= "-" Expr15 ;
-ExprAddition.   Expr14  ::= "+" Expr15 ;
+ExprNegation. Expr14  ::= "-" Expr15 ;
+ExprAddition. Expr14  ::= "+" Expr15 ;
 
-ExprPower.      Expr13 ::= Expr14 "**"  Expr13 ;
+ExprPower.    Expr13 ::= Expr14 "^"  Expr13 ;
 
-ExprMul.        Expr12 ::= Expr12 "*"  Expr13 ;
-
+ExprMul.      Expr12 ::= Expr12 "*"  Expr13 ;
 ExprDiv.      Expr12 ::= Expr12 "/"  Expr13 ;
+ExprReminder. Expr12 ::= Expr12 "%"  Expr13 ;
+ExprModulo.   Expr12 ::= Expr12 "%%" Expr13 ;
 
+ExprReference. Expr11 ::= "&" LExpr ;
+ExprPlus.      Expr11 ::= Expr11 "+"  Expr12 ;
+ExprMinus.     Expr11 ::= Expr11 "-"  Expr12 ;
 
-ExprReminder.   Expr12 ::= Expr12 "%"  Expr13 ;
-ExprModulo.     Expr12 ::= Expr12 "%%" Expr13 ;
+ExprLt.       Expr9  ::= Expr9  "<"   Expr10 ;
+ExprGt.       Expr9  ::= Expr9  ">"   Expr10 ;
+ExprLtEq.     Expr9  ::= Expr9  "<="  Expr10 ;
+ExprGtEq.     Expr9  ::= Expr9  ">="  Expr10 ;
 
-ExprReference.  Expr11 ::= "&" LExpr ;
-ExprPlus.       Expr11 ::= Expr11 "+"  Expr12 ;
-ExprMinus.      Expr11 ::= Expr11 "-"  Expr12 ;
+ExprEq.       Expr8  ::= Expr8  "=="  Expr9 ;
+ExprNeq.      Expr8  ::= Expr8  "!="  Expr9 ;
 
-ExprLt.         Expr9  ::= Expr9  "<"   Expr10 ;
-ExprGt.         Expr9  ::= Expr9  ">"   Expr10 ;
-ExprLtEq.       Expr9  ::= Expr9  "<="  Expr10 ;
-ExprGtEq.       Expr9  ::= Expr9  ">="  Expr10 ;
+ExprAnd.      Expr4  ::= Expr4  "&&"  Expr5 ;
 
-ExprEq.         Expr8  ::= Expr8  "=="  Expr9 ;
-ExprNeq.        Expr8  ::= Expr8  "!="  Expr9 ;
+ExprOr.       Expr3  ::= Expr3  "||"  Expr4 ;
 
-ExprAnd.        Expr4  ::= Expr4  "&&"  Expr5 ;
-
-ExprOr.         Expr3  ::= Expr3  "||"  Expr4 ;
-ExprTernaryIf.  Expr2  ::= Expr3 "?" Expr ":" Expr2;
+ExprTernaryIf.  Expr2 ::= Expr3 "?" Expr ":" Expr2 ;
 
 
 coercions Expr 17 ;
@@ -173,8 +171,8 @@ TypeString. BasicType ::= "string" ;
 rules CompoundType ::= ArrayType | Ptr ;
 
 
---; [] usual array
---; <> checked array
+-- [] usual array
+-- <> checked array
 ArrDefBase.  ArrayType ::= "[" [PInteger] "]" BasicType ;
 ArrDefBaseC. ArrayType ::= "<" [PInteger] ">" BasicType ;
 ArrDefPtr.   ArrayType ::= "[" [PInteger] "]" Ptr ;
