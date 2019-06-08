@@ -203,7 +203,9 @@ module ThreeAddressCode where
             where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
         
         -- use of variable
-        ExprLeft     (LExprId id@(PIdent (pos,name)))                   -> (addTACList env1 [AssignV2T   (Temp (t_c+1,type_v)) var (Temp (-1,(TypeBasicType TypeInt)))])
+        ExprLeft (LExprId id@(PIdent (pos,name)))                       -> (addTACList env1 [AssignV2T   (Temp (t_c+1,type_v)) var (Temp (-1,(TypeBasicType TypeInt)))])
+          where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
+        ExprLeft (LExprRef (LRefExpr (LExprId id@(PIdent (pos,name))))) -> (addTACList env1 [AssignV2T   (Temp (t_c+1,type_v)) var (Temp (-1,(TypeBasicType TypeInt)))])
           where (env1, var@(Var (_,_,type_v))) = findVar env (Var (name,pos,type_))
         -- use of array/multiarray
         ExprLeft (LExprArr (LArrExpr id@(PIdent (pos,name)) a)) -> do
@@ -297,7 +299,7 @@ module ThreeAddressCode where
             x | x > 0 -> ([Lbl (Label ("end_if",labels) ),AssignT2T (Temp ((id2),t)) t3]++p3                                                                                                 ++p2++p1,(Temp ((id2),t)),v3,l3,s3)
             x | x < 0 -> ([Lbl (Label ("end_if",labels) )]                              ++p3++[Lbl (Label ("if_false",labels)),Goto (Label ("end_if",labels) ),AssignT2T (Temp ((id3),t)) t2]++p2++p1,(Temp ((id3),t)),v3,l3,s3)
             _         -> ([Lbl (Label ("end_if",labels) )]                              ++p3++[Lbl (Label ("if_false",labels)),Goto (Label ("end_if",labels) )]                              ++p2++p1,t3              ,v3,l3,s3)
-        _-> env
+        --_-> env
 
   -- genera ogni espressione binaria usando l'utlima variabile temporanea
   -- e una passata come parametro
